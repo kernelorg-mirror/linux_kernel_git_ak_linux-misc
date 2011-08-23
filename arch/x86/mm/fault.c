@@ -1134,6 +1134,8 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (error_code & PF_WRITE)
 		flags |= FAULT_FLAG_WRITE;
 
+	predictive_page_clear();
+
 	/*
 	 * When running in the kernel we expect faults to occur only to
 	 * addresses in user space.  All other faults represent errors in
@@ -1224,6 +1226,12 @@ good_area:
 		mm_fault_error(regs, error_code, address, fault);
 		return;
 	}
+
+	/*
+	 * Clear page prediction not successfull?
+	 */
+	if (tsk->clear_page)
+		tsk->clear_count = 0;
 
 	/*
 	 * Major/minor page fault accounting is only done on the
