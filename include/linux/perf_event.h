@@ -32,6 +32,7 @@ enum perf_type_id {
 	PERF_TYPE_HW_CACHE			= 3,
 	PERF_TYPE_RAW				= 4,
 	PERF_TYPE_BREAKPOINT			= 5,
+	PERF_TYPE_HW_TRANSACTION		= 6,
 
 	PERF_TYPE_MAX,				/* non-ABI */
 };
@@ -91,6 +92,30 @@ enum perf_hw_cache_op_result_id {
 	PERF_COUNT_HW_CACHE_RESULT_MISS		= 1,
 
 	PERF_COUNT_HW_CACHE_RESULT_MAX,		/* non-ABI */
+};
+
+/*
+ * Transactional memory related events:
+ * { op, reason } (8 bits each)
+ * Only aborts have a reason.
+ */
+enum perf_hw_transaction_op_id {
+	PERF_COUNT_HW_TRANSACTION_START		= 0,
+	PERF_COUNT_HW_TRANSACTION_COMMIT	= 1,
+	PERF_COUNT_HW_TRANSACTION_ABORT         = 2, /* qualified by reason */
+	PERF_COUNT_HW_ELISION_START		= 3,
+	PERF_COUNT_HW_ELISION_COMMIT		= 4,
+	PERF_COUNT_HW_ELISION_ABORT		= 5, /* qualified by reason */
+
+	PERF_COUNT_HW_TRANSACTION_MAX,		/* non-ABI */
+};
+
+enum perf_transaction_abort_reason_id {
+	PERF_COUNT_HW_ABORT_ALL			= 0, /* all aborts */
+	PERF_COUNT_HW_ABORT_CONFLICT		= 1, /* conflict with other CPU */
+	PERF_COUNT_HW_ABORT_CAPACITY		= 2, /* abort due to capacity */
+
+	PERF_COUNT_HW_ABORT_MAX,		/* non-ABI */
 };
 
 /*

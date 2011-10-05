@@ -53,6 +53,13 @@ u64 __read_mostly hw_cache_extra_regs
 				[PERF_COUNT_HW_CACHE_RESULT_MAX];
 
 /*
+ * Generalized transactional memory event table.
+ */
+u64 __read_mostly hw_transaction_event_ids
+				[PERF_COUNT_HW_TRANSACTION_MAX]
+				[PERF_COUNT_HW_ABORT_MAX];
+
+/*
  * Propagate event elapsed time into the generic event.
  * Can only be executed on the CPU where the event is active.
  * Returns the delta events processed.
@@ -285,6 +292,31 @@ set_ext_hw_attr(struct hw_perf_event *hwc, struct perf_event *event)
 	return x86_pmu_extra_regs(val, event);
 }
 
+static int
+set_hw_transaction_attr(struct hw_perf_event *hwc, struct perf_event *event)
+{
+	struct perf_event_attr *attr = &event->attr;
+	u64 config, val;
+	unsigned int op, reason;
+
+	config = attr->config;
+	op = config & 0xff;
+	if (op >= PERF_COUNT_HW_TRANSACTION_MAX)
+		return -EINVAL;
+	reason = (config >> 8) & 0xff;
+	if (reason >= PERF_COUNT_HW_ABORT_MAX)
+		return -EINVAL;
+	if (config >> 16)
+		return -EINVAL;
+	val = hw_transaction_event_ids[config][reason];
+	if (val == 0)
+		return -ENOENT;
+	if (val == -1)
+		return -EINVAL;
+	hwc->config |= val;
+	return 0;
+}
+
 int x86_setup_perfctr(struct perf_event *event)
 {
 	struct perf_event_attr *attr = &event->attr;
@@ -311,6 +343,9 @@ int x86_setup_perfctr(struct perf_event *event)
 
 	if (attr->type == PERF_TYPE_HW_CACHE)
 		return set_ext_hw_attr(hwc, event);
+
+	if (attr->type == PERF_TYPE_HW_TRANSACTION)
+		return set_hw_transaction_attr(hwc, event);
 
 	if (attr->config >= x86_pmu.max_events)
 		return -EINVAL;
@@ -1547,6 +1582,7 @@ static int x86_pmu_event_init(struct perf_event *event)
 	case PERF_TYPE_RAW:
 	case PERF_TYPE_HARDWARE:
 	case PERF_TYPE_HW_CACHE:
+	case PERF_TYPE_HW_TRANSACTION:
 		break;
 
 	default:

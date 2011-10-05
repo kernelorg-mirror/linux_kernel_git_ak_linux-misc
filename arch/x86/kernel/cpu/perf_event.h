@@ -452,6 +452,10 @@ extern u64 __read_mostly hw_cache_extra_regs
 				[PERF_COUNT_HW_CACHE_OP_MAX]
 				[PERF_COUNT_HW_CACHE_RESULT_MAX];
 
+extern u64 __read_mostly hw_transaction_event_ids
+				[PERF_COUNT_HW_TRANSACTION_MAX]
+				[PERF_COUNT_HW_ABORT_MAX];
+
 u64 x86_perf_event_update(struct perf_event *event);
 
 static inline int x86_pmu_addr_offset(int index)
