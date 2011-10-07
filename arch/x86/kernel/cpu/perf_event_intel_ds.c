@@ -600,6 +600,7 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 	struct pebs_record_core *pebs = __pebs;
 	struct perf_sample_data data;
 	struct pt_regs regs;
+	struct perf_raw_record raw;
 
 	if (!intel_pmu_save_and_restart(event))
 		return;
@@ -629,6 +630,12 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 		regs.flags |= PERF_EFLAGS_EXACT;
 	else
 		regs.flags &= ~PERF_EFLAGS_EXACT;
+
+	if (event->attr.sample_type & PERF_SAMPLE_RAW) {
+		raw.size = x86_pmu.pebs_record_size;
+		raw.data = __pebs;
+		data.raw = &raw;
+	}
 
 	if (has_branch_stack(event))
 		data.br_stack = &cpuc->lbr_stack;
