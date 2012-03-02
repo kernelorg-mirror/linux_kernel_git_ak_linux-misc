@@ -34,6 +34,12 @@ Intel PEBS and can be specified multiple times:
 
 The PEBS implementation now supports up to 2.
 
+On Intel Haswell CPUs t and c can be specified to request that the event
+is only counted inside transactions ('t') or that the counter is rolled
+back to the beginning of the transaction on a abort ('c'). This can
+be used to account for transaction residency and cycles lost to transaction
+aborts.
+
 RAW HARDWARE EVENT DESCRIPTOR
 -----------------------------
 Even when an event is not available in a symbolic form within perf right now,
