@@ -1679,6 +1679,8 @@ PMU_FORMAT_ATTR(pc,	"config:19"	);
 PMU_FORMAT_ATTR(any,	"config:21"	); /* v3 + */
 PMU_FORMAT_ATTR(inv,	"config:23"	);
 PMU_FORMAT_ATTR(cmask,	"config:24-31"	);
+PMU_FORMAT_ATTR(intx,	"config:32"	);
+PMU_FORMAT_ATTR(intx_cp, "config:33"	);
 
 static struct attribute *intel_arch_formats_attr[] = {
 	&format_attr_event.attr,
@@ -1835,6 +1837,23 @@ static struct attribute *intel_arch3_formats_attr[] = {
 	&format_attr_offcore_rsp.attr, /* XXX do NHM/WSM + SNB breakout */
 	NULL,
 };
+
+/* Arch3 + TSX support */
+static struct attribute *intel_hsw_formats_attr[] __read_mostly = {
+	&format_attr_event.attr,
+	&format_attr_umask.attr,
+	&format_attr_edge.attr,
+	&format_attr_pc.attr,
+	&format_attr_any.attr,
+	&format_attr_inv.attr,
+	&format_attr_cmask.attr,
+	&format_attr_intx.attr,
+	&format_attr_intx_cp.attr,
+
+	&format_attr_offcore_rsp.attr, /* XXX do NHM/WSM + SNB breakout */
+	NULL,
+};
+
 
 static __initconst const struct x86_pmu intel_pmu = {
 	.name			= "Intel",
@@ -2222,6 +2241,7 @@ __init int intel_pmu_init(void)
 
 		x86_pmu.hw_config = hsw_hw_config;
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
+		x86_pmu.format_attrs = intel_hsw_formats_attr;
 		x86_pmu.lbr_double_abort = true;
 		pr_cont("Haswell events, ");
 		break;
