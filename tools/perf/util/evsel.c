@@ -93,11 +93,12 @@ static int perf_evsel__add_modifiers(struct perf_evsel *evsel, char *bf, size_t 
 	struct perf_event_attr *attr = &evsel->attr;
 	bool exclude_guest_default = false;
 
-#define MOD_PRINT(context, mod)	do {					\
-		if (!attr->exclude_##context) {				\
+#define __MOD_PRINT(test, mod)	do {				\
+		if (test) {					\
 			if (!colon) colon = ++r;			\
 			r += scnprintf(bf + r, size - r, "%c", mod);	\
 		} } while(0)
+#define MOD_PRINT(context, mod) __MOD_PRINT(!attr->exclude_##context, mod)
 
 	if (attr->exclude_kernel || attr->exclude_user || attr->exclude_hv) {
 		MOD_PRINT(kernel, 'k');
@@ -113,11 +114,20 @@ static int perf_evsel__add_modifiers(struct perf_evsel *evsel, char *bf, size_t 
 		exclude_guest_default = true;
 	}
 
+	if (attr->intx || attr->intx_checkpointed) {
+		__MOD_PRINT(attr->intx_checkpointed, 'c');
+		__MOD_PRINT(attr->intx, 't');
+		/* Set the bizarro flag: */
+		exclude_guest_default = true;
+	}
+
 	if (attr->exclude_host || attr->exclude_guest == exclude_guest_default) {
 		MOD_PRINT(host, 'H');
 		MOD_PRINT(guest, 'G');
 	}
+
 #undef MOD_PRINT
+#undef __MOD_PRINT
 	if (colon)
 		bf[colon - 1] = ':';
 	return r;

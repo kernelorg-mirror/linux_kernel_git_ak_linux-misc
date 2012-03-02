@@ -628,6 +628,7 @@ int parse_events_modifier(struct list_head *list, char *str)
 	struct perf_evsel *evsel;
 	int exclude = 0, exclude_GH = 0;
 	int eu = 0, ek = 0, eh = 0, eH = 0, eG = 0, precise = 0;
+	int intx = 0, intx_cp = 0;
 
 	if (str == NULL)
 		return 0;
@@ -655,6 +656,10 @@ int parse_events_modifier(struct list_head *list, char *str)
 			eH = 0;
 		} else if (*str == 'p') {
 			precise++;
+		} else if (*str == 't') {
+			intx = 1;
+		} else if (*str == 'c') {
+			intx_cp = 1;
 		} else
 			break;
 
@@ -681,6 +686,8 @@ int parse_events_modifier(struct list_head *list, char *str)
 		evsel->attr.precise_ip     = precise;
 		evsel->attr.exclude_host   = eH;
 		evsel->attr.exclude_guest  = eG;
+		evsel->attr.intx_checkpointed = intx_cp;
+		evsel->attr.intx	     = intx;
 	}
 
 	return 0;
