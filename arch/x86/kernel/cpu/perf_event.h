@@ -226,6 +226,13 @@ struct cpu_hw_events {
 	EVENT_CONSTRAINT(c, (1ULL << (32+n)), X86_RAW_EVENT_MASK)
 
 /*
+ * Also filter out TSX bits.
+ */
+#define TSX_FIXED_EVENT_CONSTRAINT(c, n)	\
+	EVENT_CONSTRAINT(c, (1ULL << (32+n)),	\
+			 X86_RAW_EVENT_MASK|HSW_INTX|HSW_INTX_CHECKPOINTED)
+
+/*
  * Constraint on the Event code + UMask
  */
 #define INTEL_UEVENT_CONSTRAINT(c, n)	\
