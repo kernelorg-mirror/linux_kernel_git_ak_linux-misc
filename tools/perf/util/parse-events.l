@@ -49,6 +49,10 @@ static int term(int type)
 	return PE_TERM;
 }
 
+#define txn(t)		sym(PERF_TYPE_HW_TRANSACTION, PERF_COUNT_HW_##t)
+#define txn_abort(t, a) sym(PERF_TYPE_HW_TRANSACTION, PERF_COUNT_HW_##t | \
+			    ((PERF_COUNT_HW_ABORT_##a)<<8))
+
 %}
 
 %x mem
@@ -95,6 +99,17 @@ prefetch|prefetches			|
 speculative-read|speculative-load	|
 refs|Reference|ops|access		|
 misses|miss				{ return str(PE_NAME_CACHE_OP_RESULT); }
+
+transaction-start|tx-start		{ return txn(TRANSACTION_START);  }
+transaction-commit|tx-commit		{ return txn(TRANSACTION_COMMIT); }
+transaction-abort-all|tx-aborts		{ return txn_abort(TRANSACTION_ABORT, ALL); }
+transaction-abort-conflict|tx-conflict	{ return txn_abort(TRANSACTION_ABORT, CONFLICT); }
+transaction-abort-capacity|tx-capacity	{ return txn_abort(TRANSACTION_ABORT, CAPACITY); }
+elision-start|le-start			{ return txn(ELISION_START);  }
+elision-commit|le-commit		{ return txn(ELISION_COMMIT); }
+elision-abort-all|le-abort-all		{ return txn_abort(ELISION_ABORT, ALL); }
+elision-abort-conflict|le-conflict	{ return txn_abort(ELISION_ABORT, CONFLICT); }
+elision-abort-capacity|le-capacity	{ return txn_abort(ELISION_ABORT, CAPACITY); }
 
 	/*
 	 * These are event config hardcoded term names to be specified

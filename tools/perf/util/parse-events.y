@@ -101,7 +101,7 @@ PE_VALUE_SYM '/' event_config '/'
 {
 	struct list_head *list = NULL;
 	int type = $1 >> 16;
-	int config = $1 & 255;
+	int config = $1;
 
 	ABORT_ON(parse_events_add_numeric(&list, idx, type, config, $3));
 	parse_events__free_terms($3);
@@ -112,7 +112,7 @@ PE_VALUE_SYM sep_slash_dc
 {
 	struct list_head *list = NULL;
 	int type = $1 >> 16;
-	int config = $1 & 255;
+	int config = $1;
 
 	ABORT_ON(parse_events_add_numeric(&list, idx, type, config, NULL));
 	$$ = list;

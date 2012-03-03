@@ -30,6 +30,9 @@ int parse_events_parse(struct list_head *list, int *idx);
 
 #define CHW(x) .type = PERF_TYPE_HARDWARE, .config = PERF_COUNT_HW_##x
 #define CSW(x) .type = PERF_TYPE_SOFTWARE, .config = PERF_COUNT_SW_##x
+#define TSW(x) .type = PERF_TYPE_HW_TRANSACTION, .config = PERF_COUNT_HW_##x
+#define TSWA(x, y) \
+	.type = PERF_TYPE_HW_TRANSACTION, .config = PERF_COUNT_HW_##x | PERF_COUNT_HW_ABORT_##y
 
 static struct event_symbol event_symbols[] = {
   { CHW(CPU_CYCLES),			"cpu-cycles",			"cycles"		},
@@ -52,6 +55,18 @@ static struct event_symbol event_symbols[] = {
   { CSW(CPU_MIGRATIONS),		"cpu-migrations",		"migrations"		},
   { CSW(ALIGNMENT_FAULTS),		"alignment-faults",		""			},
   { CSW(EMULATION_FAULTS),		"emulation-faults",		""			},
+
+  { TSW(TRANSACTION_START),		"transaction-start",		"tx-start"		},
+  { TSW(TRANSACTION_COMMIT),		"transaction-commit",		"tx-commit"		},
+  { TSWA(TRANSACTION_ABORT, ALL),	"transaction-abort-all",	"tx-aborts"		},
+  { TSWA(TRANSACTION_ABORT, CONFLICT),	"transaction-abort-conflict",	"tx-conflict"		},
+  { TSWA(TRANSACTION_ABORT, CAPACITY),	"transaction-abort-capacity",	"tx-capacity"		},
+
+  { TSW(ELISION_START),			"elision-start",		"le-start"		},
+  { TSW(ELISION_COMMIT),		"elision-commit",		"le-commit"		},
+  { TSWA(ELISION_ABORT, ALL),		"elision-abort-all",		"le-aborts"		},
+  { TSWA(ELISION_ABORT, CONFLICT),	"elision-abort-conflict",	"le-conflict"		},
+  { TSWA(ELISION_ABORT, CAPACITY),	"elision-abort-capacity",	"le-capacity"		},
 };
 
 #define __PERF_EVENT_FIELD(config, name) \
@@ -117,6 +132,21 @@ static unsigned long hw_cache_stat[C(MAX)] = {
  [C(ITLB)]	= (CACHE_READ),
  [C(BPU)]	= (CACHE_READ),
  [C(NODE)]	= (CACHE_READ | CACHE_WRITE | CACHE_PREFETCH),
+};
+
+static const char *transaction_name[] = {
+ [PERF_COUNT_HW_TRANSACTION_START]  = "transaction-start",
+ [PERF_COUNT_HW_TRANSACTION_COMMIT] = "transaction-commit",
+ [PERF_COUNT_HW_TRANSACTION_ABORT]  = "transaction-abort",
+ [PERF_COUNT_HW_ELISION_START]      = "elision-start",
+ [PERF_COUNT_HW_ELISION_COMMIT]     = "elision-commit",
+ [PERF_COUNT_HW_ELISION_ABORT]      = "elision-abort",
+};
+
+static const char *transaction_reason[] = {
+ [PERF_COUNT_HW_ABORT_ALL]          = "all",
+ [PERF_COUNT_HW_ABORT_CONFLICT]     = "conflict",
+ [PERF_COUNT_HW_ABORT_CAPACITY]     = "capacity",
 };
 
 #define for_each_subsystem(sys_dir, sys_dirent, sys_next)	       \
@@ -275,6 +305,9 @@ const char *event_type(int type)
 	case PERF_TYPE_HW_CACHE:
 		return "hardware-cache";
 
+	case PERF_TYPE_HW_TRANSACTION:
+		return "hardware-transaction";
+
 	default:
 		break;
 	}
@@ -335,6 +368,21 @@ const char *__event_name(int type, u64 config)
 			return "invalid-cache";
 
 		return event_cache_name(cache_type, cache_op, cache_result);
+	}
+
+	case PERF_TYPE_HW_TRANSACTION: {
+		u8 name = config & 0xff, reason = (config >> 8) & 0xff;
+		if (name < PERF_COUNT_HW_TRANSACTION_MAX &&
+		    reason < PERF_COUNT_HW_ABORT_MAX) {
+			strcpy(buf, transaction_name[name]);
+			if (name == PERF_COUNT_HW_TRANSACTION_ABORT ||
+			    name == PERF_COUNT_HW_ELISION_ABORT) {
+				strcat(buf, "-");
+				strcat(buf, transaction_reason[reason]);
+			}
+			return buf;
+		}
+		return "invalid-transaction";
 	}
 
 	case PERF_TYPE_SOFTWARE:
@@ -866,6 +914,7 @@ static const char * const event_type_descriptors[] = {
 	"Hardware cache event",
 	"Raw hardware event descriptor",
 	"Hardware breakpoint",
+	"Hardware transaction event",
 };
 
 /*
