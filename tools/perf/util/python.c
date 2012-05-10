@@ -528,6 +528,8 @@ static int pyrf_evsel__init(struct pyrf_evsel *pevsel,
 		"bp_type",
 		"bp_addr",
 		"bp_len",
+		"intx",
+		"intx_checkpointed",
 		 NULL
 	};
 	u64 sample_period = 0;
@@ -548,6 +550,8 @@ static int pyrf_evsel__init(struct pyrf_evsel *pevsel,
 	    watermark = 0,
 	    precise_ip = 0,
 	    mmap_data = 0,
+	    intx = 0,
+	    intx_cp = 0,
 	    sample_id_all = 1;
 	int idx = 0;
 
@@ -562,7 +566,7 @@ static int pyrf_evsel__init(struct pyrf_evsel *pevsel,
 					 &enable_on_exec, &task, &watermark,
 					 &precise_ip, &mmap_data, &sample_id_all,
 					 &attr.wakeup_events, &attr.bp_type,
-					 &attr.bp_addr, &attr.bp_len, &idx))
+					 &attr.bp_addr, &attr.bp_len, &intx, &intx_cp, &idx))
 		return -1;
 
 	/* union... */
@@ -591,6 +595,8 @@ static int pyrf_evsel__init(struct pyrf_evsel *pevsel,
 	attr.precise_ip	    = precise_ip;
 	attr.mmap_data	    = mmap_data;
 	attr.sample_id_all  = sample_id_all;
+	attr.intx	    = intx;
+	attr.intx_checkpointed = intx_cp;
 
 	perf_evsel__init(&pevsel->evsel, &attr, idx);
 	return 0;
