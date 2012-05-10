@@ -1217,9 +1217,11 @@ static void print_event_desc(struct perf_header *ph, int fd, FILE *fp)
 				(u64)attr.config1,
 				(u64)attr.config2);
 
-		fprintf(fp, ", excl_usr = %d, excl_kern = %d",
+		fprintf(fp, ", excl_usr = %d, excl_kern = %d, intx = %d, intx_cp = %d",
 				attr.exclude_user,
-				attr.exclude_kernel);
+				attr.exclude_kernel,
+				attr.intx,
+				attr.intx_checkpointed);
 
 		fprintf(fp, ", excl_host = %d, excl_guest = %d",
 				attr.exclude_host,
