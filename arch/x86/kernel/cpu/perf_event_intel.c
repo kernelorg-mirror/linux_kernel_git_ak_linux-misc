@@ -1631,7 +1631,8 @@ static int hsw_hw_config(struct perf_event *event)
 	return 0;
 }
 
-static struct event_constraint counter2_constraint = EVENT_CONSTRAINT(0, 0x4, 0);
+static struct event_constraint counter2_constraint = 
+			EVENT_CONSTRAINT(0, 0x4, 0);
 
 static struct event_constraint *
 hsw_get_event_constraints(struct cpu_hw_events *cpuc, struct perf_event *event)
