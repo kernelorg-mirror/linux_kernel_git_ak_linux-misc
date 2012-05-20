@@ -165,7 +165,7 @@ __typeof__(__builtin_choose_expr(sizeof(x) > sizeof(0UL), 0ULL, 0UL))
 	int __ret_gu;							\
 	register __inttype(*(ptr)) __val_gu asm("%edx");		\
 	__chk_user_ptr(ptr);						\
-	might_fault();							\
+	might_fault_debug_only();					\
 	asm volatile("call __get_user_%P3"				\
 		     : "=a" (__ret_gu), "=r" (__val_gu)			\
 		     : "0" (ptr), "i" (sizeof(*(ptr))));		\
@@ -541,4 +541,3 @@ extern struct movsl_mask {
 #endif
 
 #endif /* _ASM_X86_UACCESS_H */
-
