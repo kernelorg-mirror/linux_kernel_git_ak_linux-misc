@@ -18,6 +18,7 @@
 #include <asm/alternative-asm.h>
 #include <asm/asm.h>
 #include <asm/smap.h>
+#include "user-common.h"
 
 /*
  * By placing feature2 after feature1 in altinstructions section, we logically
@@ -73,7 +74,7 @@
 /* Standard copy_to_user with segment limit checking */
 ENTRY(_copy_to_user)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%rax)
+	GET_THREAD_AND_SCHEDULE %rax
 	movq %rdi,%rcx
 	addq %rdx,%rcx
 	jc bad_to_user
@@ -88,7 +89,7 @@ ENDPROC(_copy_to_user)
 /* Standard copy_from_user with segment limit checking */
 ENTRY(_copy_from_user)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%rax)
+	GET_THREAD_AND_SCHEDULE %rax
 	movq %rsi,%rcx
 	addq %rdx,%rcx
 	jc bad_from_user

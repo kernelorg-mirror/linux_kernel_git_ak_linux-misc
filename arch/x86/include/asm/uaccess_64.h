@@ -58,7 +58,7 @@ static inline unsigned long __must_check copy_from_user(void *to,
 {
 	int sz = __compiletime_object_size(to);
 
-	might_fault();
+	might_fault_debug_only();
 	if (likely(sz == -1 || sz >= n))
 		n = _copy_from_user(to, from, n);
 #ifdef CONFIG_DEBUG_VM
@@ -71,7 +71,7 @@ static inline unsigned long __must_check copy_from_user(void *to,
 static __always_inline __must_check
 int copy_to_user(void __user *dst, const void *src, unsigned size)
 {
-	might_fault();
+	might_fault_debug_only();
 
 	return _copy_to_user(dst, src, size);
 }
