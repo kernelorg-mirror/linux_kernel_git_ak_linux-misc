@@ -16,6 +16,8 @@
 #include <asm/errno.h>
 #include <asm/asm.h>
 #include <asm/smap.h>
+#include <asm/calling.h>
+#include "user-common.h"
 
 
 /*
@@ -31,7 +33,7 @@
  */
 
 #define ENTER	CFI_STARTPROC ; \
-		GET_THREAD_INFO(%_ASM_BX)
+		GET_THREAD_AND_SCHEDULE %_ASM_BX
 #define EXIT	ASM_CLAC ;	\
 		ret ;		\
 		CFI_ENDPROC
@@ -99,3 +101,11 @@ END(bad_put_user)
 #ifdef CONFIG_X86_32
 	_ASM_EXTABLE(5b,bad_put_user)
 #endif
+
+ENTRY(user_schedule)
+	CFI_STARTPROC
+	SAVE_ALL
+	call _cond_resched
+	RESTORE_ALL
+	ret
+	CFI_ENDPROC
