@@ -2473,11 +2473,13 @@ static inline void cond_resched_rcu(void)
 
 #ifdef CONFIG_PROVE_LOCKING
 void might_fault(void);
+#define might_fault_debug_only() might_fault()
 #else
 static inline void might_fault(void)
 {
 	might_sleep();
 }
+#define might_fault_debug_only() do {} while(0)
 #endif
 
 /*
