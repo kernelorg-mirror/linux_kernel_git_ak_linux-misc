@@ -16,6 +16,7 @@
 #include <asm/thread_info.h>
 #include <asm/asm.h>
 #include <asm/smap.h>
+#include "user-common.h"
 
 	.macro ALIGN_DESTINATION
 #ifdef FIX_ALIGNMENT
@@ -42,6 +43,12 @@
 	_ASM_EXTABLE(101b,103b)
 #endif
 	.endm
+
+ENTRY(__copy_user_nocache_might_fault)
+	CFI_STARTPROC
+	GET_THREAD_AND_SCHEDULE %rax
+	CFI_ENDPROC
+	/* fall through */
 
 /*
  * copy_user_nocache - Uncached memory copy with exception handling
