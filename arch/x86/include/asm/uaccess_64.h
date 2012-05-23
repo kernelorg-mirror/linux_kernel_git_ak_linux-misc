@@ -122,7 +122,7 @@ int __copy_from_user_nocheck(void *dst, const void __user *src, unsigned size)
 static __always_inline __must_check
 int __copy_from_user(void *dst, const void __user *src, unsigned size)
 {
-	might_fault();
+	might_fault_debug_only();
 	return __copy_from_user_nocheck(dst, src, size);
 }
 
@@ -172,7 +172,7 @@ int __copy_to_user_nocheck(void __user *dst, const void *src, unsigned size)
 static __always_inline __must_check
 int __copy_to_user(void __user *dst, const void *src, unsigned size)
 {
-	might_fault();
+	might_fault_debug_only();
 	return __copy_to_user_nocheck(dst, src, size);
 }
 
