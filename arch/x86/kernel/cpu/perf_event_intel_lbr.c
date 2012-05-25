@@ -12,6 +12,7 @@ enum {
 	LBR_FORMAT_LIP		= 0x01,
 	LBR_FORMAT_EIP		= 0x02,
 	LBR_FORMAT_EIP_FLAGS	= 0x03,
+	LBR_FORMAT_EIP_FLAGS2	= 0x04,
 };
 
 /*
@@ -56,6 +57,8 @@ enum {
 	 LBR_FAR)
 
 #define LBR_FROM_FLAG_MISPRED  (1ULL << 63)
+#define LBR_FROM_FLAG_INTX     (1ULL << 62)
+#define LBR_FROM_FLAG_ABORT    (1ULL << 61)
 
 #define for_each_branch_sample_type(x) \
 	for ((x) = PERF_SAMPLE_BRANCH_USER; \
@@ -270,21 +273,30 @@ static void intel_pmu_lbr_read_64(struct cpu_hw_events *cpuc)
 
 	for (i = 0; i < x86_pmu.lbr_nr; i++) {
 		unsigned long lbr_idx = (tos - i) & mask;
-		u64 from, to, mis = 0, pred = 0;
+		u64 from, to, mis = 0, pred = 0, intx = 0, abort = 0;
 
 		rdmsrl(x86_pmu.lbr_from + lbr_idx, from);
 		rdmsrl(x86_pmu.lbr_to   + lbr_idx, to);
 
-		if (lbr_format == LBR_FORMAT_EIP_FLAGS) {
+		if (lbr_format == LBR_FORMAT_EIP_FLAGS ||
+		    lbr_format == LBR_FORMAT_EIP_FLAGS2) {
 			mis = !!(from & LBR_FROM_FLAG_MISPRED);
 			pred = !mis;
-			from = (u64)((((s64)from) << 1) >> 1);
+			if (lbr_format == LBR_FORMAT_EIP_FLAGS)
+				from = (u64)((((s64)from) << 1) >> 1);
+			else if (lbr_format == LBR_FORMAT_EIP_FLAGS2) {
+				intx = !!(from & LBR_FROM_FLAG_INTX);
+				abort = !!(from & LBR_FROM_FLAG_ABORT);
+				from = (u64)((((s64)from) << 3) >> 3);
+			}
 		}
 
 		cpuc->lbr_entries[i].from	= from;
 		cpuc->lbr_entries[i].to		= to;
 		cpuc->lbr_entries[i].mispred	= mis;
 		cpuc->lbr_entries[i].predicted	= pred;
+		cpuc->lbr_entries[i].intx	= intx;
+		cpuc->lbr_entries[i].abort	= abort;
 		cpuc->lbr_entries[i].reserved	= 0;
 	}
 	cpuc->lbr_stack.nr = i;
