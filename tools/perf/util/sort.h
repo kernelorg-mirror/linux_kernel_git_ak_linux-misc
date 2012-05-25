@@ -93,6 +93,8 @@ enum sort_type {
 	SORT_SYM_FROM,
 	SORT_SYM_TO,
 	SORT_MISPREDICT,
+	SORT_ABORT,
+	SORT_INTX,
 };
 
 /*
