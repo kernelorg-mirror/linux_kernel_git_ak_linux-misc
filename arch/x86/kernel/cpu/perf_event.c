@@ -385,6 +385,10 @@ static inline int precise_br_compat(struct perf_event *event)
 
 int x86_pmu_hw_config(struct perf_event *event)
 {
+	if (event->attr.sample_type & PERF_SAMPLE_ITRACE &&
+	    event->attr.sample_type & PERF_SAMPLE_BRANCH_STACK)
+		return -EINVAL;
+
 	if (event->attr.precise_ip) {
 		int precise = 0;
 

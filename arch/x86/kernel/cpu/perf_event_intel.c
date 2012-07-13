@@ -1312,6 +1312,8 @@ int intel_pmu_save_and_restart(struct perf_event *event)
 	return x86_perf_event_set_period(event);
 }
 
+void intel_pt_interrupt(void);
+
 static void intel_pmu_reset(void)
 {
 	struct debug_store *ds = __this_cpu_read(cpu_hw_events.ds);
@@ -1390,6 +1392,14 @@ again:
 	if (__test_and_clear_bit(62, (unsigned long *)&status)) {
 		handled++;
 		x86_pmu.drain_pebs(regs);
+	}
+
+	/*
+	 * Intel PT
+	 */
+	if (__test_and_clear_bit(55, (unsigned long *)&status)) {
+		handled++;
+		intel_pt_interrupt();
 	}
 
 	/*
