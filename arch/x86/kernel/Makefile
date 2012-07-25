@@ -123,3 +123,5 @@ ifeq ($(CONFIG_X86_64),y)
 	obj-$(CONFIG_PCI_MMCONFIG)	+= mmconf-fam10h_64.o
 	obj-y				+= vsmp_64.o
 endif
+
+obj-$(CONFIG_RTM_LOCKS)			+= rtm-test.o
