@@ -26,6 +26,17 @@
 #include <linux/debug_locks.h>
 
 /*
+ * When debugging is enabled we must not clear the owner before time,
+ * the slow path will always be taken, and that clears the owner field
+ * after verifying that it was indeed current.
+ */
+#ifndef CONFIG_DEBUG_MUTEXES
+#define mutex_unlock_clear_owner(l) mutex_clear_owner(l)
+#else
+#define mutex_unlock_clear_owner(l) do {} while(0)
+#endif
+
+/*
  * In the DEBUG case we are using the "NULL fastpath" for mutexes,
  * which forces all calls into the slowpath:
  */
@@ -35,6 +46,36 @@
 #else
 # include "mutex.h"
 # include <asm/mutex.h>
+#endif
+
+/*
+ * Eliding locks cannot support an owner, so allow the architecture
+ * to disable owner for this case only.
+ *
+ * Below are the default implementations to be used when the architecture
+ * doesn't do anything special.
+ *
+ * Note this cannot be inlines because "s" is a label passed to assembler.
+ */
+#ifndef ARCH_HAS_MUTEX_AND_OWN
+#define __mutex_fastpath_lock_and_own(l, s) ({	\
+	__mutex_fastpath_lock(&(l)->count, s);	\
+	mutex_set_owner(l); })
+#define __mutex_fastpath_unlock_and_unown(l, s) ({	\
+	mutex_unlock_clear_owner(l);			\
+	__mutex_fastpath_unlock(&(l)->count, s); })
+#define __mutex_fastpath_lock_retval_and_own(l, s) ({ \
+	int ret;					     \
+	ret = __mutex_fastpath_lock_retval(&(l)->count, s);  \
+	if (!ret)					     \
+		mutex_set_owner(l);			     \
+	ret; })
+#define __mutex_fastpath_trylock_and_own(l, s) ({			\
+	int ret;							\
+	ret = __mutex_fastpath_trylock(&(l)->count, s);			\
+	if (ret)							\
+		mutex_set_owner(l);					\
+	ret; })
 #endif
 
 void
@@ -88,8 +129,7 @@ void __sched mutex_lock(struct mutex *lock)
 	 * The locking fastpath is the 1->0 transition from
 	 * 'unlocked' into 'locked' state.
 	 */
-	__mutex_fastpath_lock(&lock->count, __mutex_lock_slowpath);
-	mutex_set_owner(lock);
+	__mutex_fastpath_lock_and_own(lock, __mutex_lock_slowpath);
 }
 
 EXPORT_SYMBOL(mutex_lock);
@@ -114,15 +154,7 @@ void __sched mutex_unlock(struct mutex *lock)
 	 * The unlocking fastpath is the 0->1 transition from 'locked'
 	 * into 'unlocked' state:
 	 */
-#ifndef CONFIG_DEBUG_MUTEXES
-	/*
-	 * When debugging is enabled we must not clear the owner before time,
-	 * the slow path will always be taken, and that clears the owner field
-	 * after verifying that it was indeed current.
-	 */
-	mutex_clear_owner(lock);
-#endif
-	__mutex_fastpath_unlock(&lock->count, __mutex_unlock_slowpath);
+	__mutex_fastpath_unlock_and_unown(lock, __mutex_unlock_slowpath);
 }
 
 EXPORT_SYMBOL(mutex_unlock);
@@ -372,11 +404,8 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 	int ret;
 
 	might_sleep();
-	ret =  __mutex_fastpath_lock_retval
-			(&lock->count, __mutex_lock_interruptible_slowpath);
-	if (!ret)
-		mutex_set_owner(lock);
-
+	return  __mutex_fastpath_lock_retval_and_own(lock,
+					     __mutex_lock_interruptible_slowpath);
 	return ret;
 }
 
@@ -384,15 +413,9 @@ EXPORT_SYMBOL(mutex_lock_interruptible);
 
 int __sched mutex_lock_killable(struct mutex *lock)
 {
-	int ret;
-
 	might_sleep();
-	ret = __mutex_fastpath_lock_retval
-			(&lock->count, __mutex_lock_killable_slowpath);
-	if (!ret)
-		mutex_set_owner(lock);
-
-	return ret;
+	return __mutex_fastpath_lock_retval_and_own(lock,
+					    __mutex_lock_killable_slowpath);
 }
 EXPORT_SYMBOL(mutex_lock_killable);
 
@@ -464,13 +487,7 @@ static inline int __mutex_trylock_slowpath(atomic_t *lock_count)
  */
 int __sched mutex_trylock(struct mutex *lock)
 {
-	int ret;
-
-	ret = __mutex_fastpath_trylock(&lock->count, __mutex_trylock_slowpath);
-	if (ret)
-		mutex_set_owner(lock);
-
-	return ret;
+	return __mutex_fastpath_trylock_and_own(lock, __mutex_trylock_slowpath);
 }
 EXPORT_SYMBOL(mutex_trylock);
 
