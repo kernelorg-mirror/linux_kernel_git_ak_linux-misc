@@ -1079,6 +1079,17 @@ static void intel_pmu_enable_event(struct perf_event *event)
 int intel_pmu_save_and_restart(struct perf_event *event)
 {
 	x86_perf_event_update(event);
+	/*
+	 * For a checkpointed counter always reset back to 0.  This
+	 * avoids a situation where the counter overflows, aborts the
+	 * transaction and is then set back to shortly before the
+	 * overflow, and overflows and aborts again.
+	 */
+	if (event->hw.config & HSW_INTX_CHECKPOINTED) {
+		/* No race with NMIs because the counter should not be armed */
+		wrmsrl(event->hw.event_base, 0);
+		local64_set(&event->hw.prev_count, 0);
+	}
 	return x86_perf_event_set_period(event);
 }
 
@@ -1161,6 +1172,10 @@ again:
 		handled++;
 		x86_pmu.drain_pebs(regs);
 	}
+
+	/* XXX move somewhere else. */
+	if (cpuc->events[2] && (cpuc->events[2]->hw.config & HSW_INTX_CHECKPOINTED))
+		status |= (1ULL << 2);
 
 	for_each_set_bit(bit, (unsigned long *)&status, X86_PMC_IDX_MAX) {
 		struct perf_event *event = cpuc->events[bit];
@@ -1627,6 +1642,16 @@ static int hsw_hw_config(struct perf_event *event)
 	if (!boot_cpu_has(X86_FEATURE_RTM) && !boot_cpu_has(X86_FEATURE_HLE))
 		return 0;
 	event->hw.config |= event->attr.config & (HSW_INTX|HSW_INTX_CHECKPOINTED);
+	if (event->hw.config & HSW_INTX_CHECKPOINTED) {
+		/*
+		 * Sampling of checkpointed events can cause situations where
+		 * the CPU constantly aborts because of a overflow, which is
+		 * then checkpointed back and ignored. Forbid checkpointing
+		 * for sampling.
+		 */
+		if (is_sampling_event(event))
+			return -EIO;
+	}
 	return 0;
 }
 
