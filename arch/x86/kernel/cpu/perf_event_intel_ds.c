@@ -466,7 +466,12 @@ void intel_pmu_pebs_enable(struct perf_event *event)
 
 	hwc->config &= ~ARCH_PERFMON_EVENTSEL_INT;
 
-	cpuc->pebs_enabled |= 1ULL << hwc->idx;
+	/* When weight is requested enable LL instead of normal PEBS */
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+		x86_pmu.intel_cap.pebs_format >= 2)
+		cpuc->pebs_enabled |= 1ULL << (32 + hwc->idx);
+	else
+		cpuc->pebs_enabled |= 1ULL << hwc->idx;
 }
 
 void intel_pmu_pebs_disable(struct perf_event *event)
@@ -474,7 +479,11 @@ void intel_pmu_pebs_disable(struct perf_event *event)
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	struct hw_perf_event *hwc = &event->hw;
 
-	cpuc->pebs_enabled &= ~(1ULL << hwc->idx);
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+		x86_pmu.intel_cap.pebs_format >= 2)
+		cpuc->pebs_enabled &= ~(1ULL << (32 + hwc->idx));
+	else
+		cpuc->pebs_enabled &= ~(1ULL << hwc->idx);
 	if (cpuc->enabled)
 		wrmsrl(MSR_IA32_PEBS_ENABLE, cpuc->pebs_enabled);
 
@@ -625,6 +634,13 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 	if ((event->attr.sample_type & PERF_SAMPLE_ADDR) &&
 		x86_pmu.intel_cap.pebs_format >= 2)
 		data.addr = ((struct pebs_record_v2 *)pebs)->nhm.dla;
+
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+	    x86_pmu.intel_cap.pebs_format >= 2) {
+		data.weight = ((struct pebs_record_v2 *)pebs)->tsx_tuning & 0xffffffff;
+		if (!data.weight)
+			data.weight = ((struct pebs_record_v2 *)pebs)->nhm.lat;
+	}
 
 	if (has_branch_stack(event))
 		data.br_stack = &cpuc->lbr_stack;

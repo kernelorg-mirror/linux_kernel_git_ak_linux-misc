@@ -1549,6 +1549,9 @@ static int hsw_hw_config(struct perf_event *event)
 
 	if (ret)
 		return ret;
+	/* PEBS cannot capture both */
+	if (event->attr.sample_type & PERF_SAMPLE_ADDR)
+		event->attr.sample_type &= ~PERF_SAMPLE_WEIGHT;
 	if (!boot_cpu_has(X86_FEATURE_RTM) && !boot_cpu_has(X86_FEATURE_HLE))
 		return 0;
 	if (event->attr.intx)
