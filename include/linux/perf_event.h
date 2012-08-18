@@ -130,8 +130,9 @@ enum perf_event_sample_format {
 	PERF_SAMPLE_STREAM_ID			= 1U << 9,
 	PERF_SAMPLE_RAW				= 1U << 10,
 	PERF_SAMPLE_BRANCH_STACK		= 1U << 11,
+	PERF_SAMPLE_WEIGHT			= 1U << 12,
 
-	PERF_SAMPLE_MAX = 1U << 12,		/* non-ABI */
+	PERF_SAMPLE_MAX = 1U << 13,		/* non-ABI */
 };
 
 /*
@@ -174,6 +175,7 @@ enum perf_branch_sample_type {
  *	  { u64		time_enabled; } && PERF_FORMAT_TOTAL_TIME_ENABLED
  *	  { u64		time_running; } && PERF_FORMAT_TOTAL_TIME_RUNNING
  *	  { u64		id;           } && PERF_FORMAT_ID
+ *	  { u64		weight;       } && PERF_FORMAT_WEIGHT
  *	} && !PERF_FORMAT_GROUP
  *
  *	{ u64		nr;
@@ -181,6 +183,7 @@ enum perf_branch_sample_type {
  *	  { u64		time_running; } && PERF_FORMAT_TOTAL_TIME_RUNNING
  *	  { u64		value;
  *	    { u64	id;           } && PERF_FORMAT_ID
+ *	  { u64		weight;       } && PERF_FORMAT_WEIGHT
  *	  }		cntr[nr];
  *	} && PERF_FORMAT_GROUP
  * };
@@ -190,8 +193,9 @@ enum perf_event_read_format {
 	PERF_FORMAT_TOTAL_TIME_RUNNING		= 1U << 1,
 	PERF_FORMAT_ID				= 1U << 2,
 	PERF_FORMAT_GROUP			= 1U << 3,
+	PERF_FORMAT_WEIGHT			= 1U << 4,
 
-	PERF_FORMAT_MAX = 1U << 4,		/* non-ABI */
+	PERF_FORMAT_MAX = 1U << 5,		/* non-ABI */
 };
 
 #define PERF_ATTR_SIZE_VER0	64	/* sizeof first published struct */
@@ -1141,6 +1145,7 @@ struct perf_sample_data {
 	struct perf_callchain_entry	*callchain;
 	struct perf_raw_record		*raw;
 	struct perf_branch_stack	*br_stack;
+	u64				weight;
 };
 
 static inline void perf_sample_data_init(struct perf_sample_data *data,
@@ -1151,6 +1156,7 @@ static inline void perf_sample_data_init(struct perf_sample_data *data,
 	data->raw  = NULL;
 	data->br_stack = NULL;
 	data->period	= period;
+	data->weight = 0;
 }
 
 extern void perf_output_sample(struct perf_output_handle *handle,
