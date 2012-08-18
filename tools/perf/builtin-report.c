@@ -138,6 +138,7 @@ static int perf_evsel__add_hist_entry(struct perf_evsel *evsel,
 	struct symbol *parent = NULL;
 	int err = 0;
 	struct hist_entry *he;
+	unsigned i;
 
 	if ((sort__has_parent || symbol_conf.use_callchain) && sample->callchain) {
 		err = machine__resolve_callchain(machine, evsel, al->thread,
@@ -146,17 +147,35 @@ static int perf_evsel__add_hist_entry(struct perf_evsel *evsel,
 			return err;
 	}
 
-	he = __hists__add_entry(&evsel->hists, al, parent, sample->period);
-	if (he == NULL)
-		return -ENOMEM;
+	if (sample->weight) {
+		/* XXX inefficient. Could be done better */
+		for (i = 0; i < sample->weight; i++) {
+			he = __hists__add_entry(&evsel->hists, al, parent, sample->period);
+			if (he == NULL)
+				return -ENOMEM;
 
-	if (symbol_conf.use_callchain) {
-		err = callchain_append(he->callchain,
-				       &callchain_cursor,
-				       sample->period);
-		if (err)
-			return err;
+			if (symbol_conf.use_callchain) {
+				err = callchain_append(he->callchain,
+						       &callchain_cursor,
+						       sample->period);
+				if (err)
+					return err;
+			}
+		}
+	} else {
+		he = __hists__add_entry(&evsel->hists, al, parent, sample->period);
+		if (he == NULL)
+			return -ENOMEM;
+
+		if (symbol_conf.use_callchain) {
+			err = callchain_append(he->callchain,
+					       &callchain_cursor,
+					       sample->period);
+			if (err)
+				return err;
+		}
 	}
+
 	/*
 	 * Only in the newt browser we are doing integrated annotation,
 	 * so we don't allocated the extra space needed because the stdio

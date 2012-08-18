@@ -205,6 +205,9 @@ void perf_evsel__config(struct perf_evsel *evsel, struct perf_record_opts *opts,
 		attr->mmap_data = track;
 	}
 
+	if (opts->sample_weight)
+		attr->sample_type	|= PERF_SAMPLE_WEIGHT;
+
 	if (opts->call_graph)
 		attr->sample_type	|= PERF_SAMPLE_CALLCHAIN;
 
@@ -583,6 +586,7 @@ int perf_event__parse_sample(const union perf_event *event, u64 type,
 	data->cpu = data->pid = data->tid = -1;
 	data->stream_id = data->id = data->time = -1ULL;
 	data->period = 1;
+	data->weight = 0;
 
 	if (event->header.type != PERF_RECORD_SAMPLE) {
 		if (!sample_id_all)
@@ -651,6 +655,12 @@ int perf_event__parse_sample(const union perf_event *event, u64 type,
 
 	if (type & PERF_SAMPLE_PERIOD) {
 		data->period = *array;
+		array++;
+	}
+
+	data->weight = 0;
+	if (type & PERF_SAMPLE_WEIGHT) {
+		data->weight = *array;
 		array++;
 	}
 
