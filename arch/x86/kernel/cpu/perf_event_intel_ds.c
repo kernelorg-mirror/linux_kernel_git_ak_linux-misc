@@ -456,6 +456,17 @@ struct event_constraint intel_hsw_pebs_event_constraints[] = {
 	EVENT_CONSTRAINT_END
 };
 
+/* Subset of PEBS events supporting memory latency. Not used for scheduling */
+
+struct event_constraint intel_hsw_memory_latency_events[] = {
+	INTEL_EVENT_CONSTRAINT(0xcd, 0), /* MEM_TRANS_RETIRED.* */
+	INTEL_EVENT_CONSTRAINT(0xd0, 0), /* MEM_UOPS_RETIRED.* */
+	INTEL_EVENT_CONSTRAINT(0xd1, 0), /* MEM_LOAD_UOPS_RETIRED.* */
+	INTEL_EVENT_CONSTRAINT(0xd2, 0), /* MEM_LOAD_UOPS_LLC_HIT_RETIRED.* */
+	INTEL_EVENT_CONSTRAINT(0xd3, 0), /* MEM_LOAD_UOPS_LLC_MISS_RETIRED.* */
+	EVENT_CONSTRAINT_END
+};
+
 struct event_constraint *intel_pebs_constraints(struct perf_event *event)
 {
 	struct event_constraint *c;
@@ -473,6 +484,21 @@ struct event_constraint *intel_pebs_constraints(struct perf_event *event)
 	return &emptyconstraint;
 }
 
+static bool is_memory_lat_event(struct perf_event *event)
+{
+	struct event_constraint *c;
+
+	if (x86_pmu.intel_cap.pebs_format < 1)
+		return false;
+	if (!x86_pmu.memory_lat_events)
+		return false;
+	for_each_event_constraint(c, x86_pmu.memory_lat_events) {
+		if ((event->hw.config & c->cmask) == c->code)
+			return true;
+	}
+	return false;
+}
+
 void intel_pmu_pebs_enable(struct perf_event *event)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
@@ -480,7 +506,12 @@ void intel_pmu_pebs_enable(struct perf_event *event)
 
 	hwc->config &= ~ARCH_PERFMON_EVENTSEL_INT;
 
-	cpuc->pebs_enabled |= 1ULL << hwc->idx;
+	/* When weight is requested enable LL instead of normal PEBS */
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+		is_memory_lat_event(event))
+		cpuc->pebs_enabled |= 1ULL << (32 + hwc->idx);
+	else
+		cpuc->pebs_enabled |= 1ULL << hwc->idx;
 }
 
 void intel_pmu_pebs_disable(struct perf_event *event)
@@ -488,7 +519,11 @@ void intel_pmu_pebs_disable(struct perf_event *event)
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
 	struct hw_perf_event *hwc = &event->hw;
 
-	cpuc->pebs_enabled &= ~(1ULL << hwc->idx);
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+		is_memory_lat_event(event))
+		cpuc->pebs_enabled &= ~(1ULL << (32 + hwc->idx));
+	else
+		cpuc->pebs_enabled &= ~(1ULL << hwc->idx);
 	if (cpuc->enabled)
 		wrmsrl(MSR_IA32_PEBS_ENABLE, cpuc->pebs_enabled);
 
@@ -633,6 +668,14 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 	if ((event->attr.sample_type & PERF_SAMPLE_ADDR) &&
 		x86_pmu.intel_cap.pebs_format >= 2)
 		data.addr = ((struct pebs_record_v2 *)pebs)->nhm.dla;
+
+	if ((event->attr.sample_type & PERF_SAMPLE_WEIGHT) &&
+	    x86_pmu.intel_cap.pebs_format >= 2) {
+		data.weight = ((struct pebs_record_v2 *)pebs)->tsx_tuning &
+				0xffffffff;
+		if (!data.weight)
+			data.weight = ((struct pebs_record_v2 *)pebs)->nhm.lat;
+	}
 
 	if (has_branch_stack(event))
 		data.br_stack = &cpuc->lbr_stack;
