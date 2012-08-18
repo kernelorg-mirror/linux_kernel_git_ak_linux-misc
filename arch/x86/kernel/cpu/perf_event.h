@@ -168,6 +168,7 @@ struct cpu_hw_events {
 	u64				perf_ctr_virt_mask;
 
 	void				*kfree_on_online;
+	u8				*memory_latency_events;
 };
 
 #define __EVENT_CONSTRAINT(c, n, m, w, o) {\
@@ -396,6 +397,7 @@ struct x86_pmu {
 	struct event_constraint *pebs_constraints;
 	void		(*pebs_aliases)(struct perf_event *event);
 	int 		max_pebs_events;
+	struct event_constraint *memory_lat_events;
 
 	/*
 	 * Intel LBR
@@ -599,6 +601,8 @@ extern struct event_constraint intel_snb_pebs_event_constraints[];
 extern struct event_constraint intel_ivb_pebs_event_constraints[];
 
 extern struct event_constraint intel_hsw_pebs_event_constraints[];
+
+extern struct event_constraint intel_hsw_memory_latency_events[];
 
 struct event_constraint *intel_pebs_constraints(struct perf_event *event);
 
