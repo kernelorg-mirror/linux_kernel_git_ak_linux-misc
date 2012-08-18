@@ -114,7 +114,7 @@ Default is to monitor all CPUS.
 --sort::
 	Sort by key(s): pid, comm, dso, symbol, parent, srcline,
         dso_from, dso_to, symbol_to, symbol_from, mispredict,
-        abort, intx
+        abort, intx,  local_weight, weight
 
 -n::
 --show-nr-samples::
