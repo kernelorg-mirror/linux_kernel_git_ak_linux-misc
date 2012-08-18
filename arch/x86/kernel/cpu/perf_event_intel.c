@@ -1637,6 +1637,9 @@ static int hsw_hw_config(struct perf_event *event)
 
 	if (ret)
 		return ret;
+	/* PEBS cannot capture both */
+	if (event->attr.sample_type & PERF_SAMPLE_ADDR)
+		event->attr.sample_type &= ~PERF_SAMPLE_WEIGHT;
 	if (!boot_cpu_has(X86_FEATURE_RTM) && !boot_cpu_has(X86_FEATURE_HLE))
 		return 0;
 	if (event->attr.intx)
@@ -2161,6 +2164,7 @@ __init int intel_pmu_init(void)
 
 		x86_pmu.hw_config = hsw_hw_config;
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
+		x86_pmu.memory_lat_events = intel_hsw_memory_latency_events;
 		pr_cont("Haswell events, ");
 		break;
 
