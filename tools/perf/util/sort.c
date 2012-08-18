@@ -516,6 +516,49 @@ struct sort_entry sort_intx = {
 	.se_width_idx	= HISTC_INTX,
 };
 
+static u64 he_weight(struct hist_entry *he)
+{
+	return he->nr_events ? he->weight / he->nr_events : 0;
+}
+
+static int64_t
+sort__weight_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return he_weight(left) - he_weight(right);
+}
+
+static int hist_entry__weight_snprintf(struct hist_entry *self, char *bf,
+				    size_t size, unsigned int width)
+{
+	return repsep_snprintf(bf, size, "%-*llu", width, he_weight(self));
+}
+
+struct sort_entry sort_weight = {
+	.se_header	= "Weight",
+	.se_cmp		= sort__weight_cmp,
+	.se_snprintf	= hist_entry__weight_snprintf,
+	.se_width_idx	= HISTC_WEIGHT,
+};
+
+static int64_t
+sort__global_weight_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->weight - right->weight;
+}
+
+static int hist_entry__global_weight_snprintf(struct hist_entry *self, char *bf,
+					      size_t size, unsigned int width)
+{
+	return repsep_snprintf(bf, size, "%-*llu", width, self->weight);
+}
+
+struct sort_entry sort_global_weight = {
+	.se_header	= "Total weight",
+	.se_cmp		= sort__global_weight_cmp,
+	.se_snprintf	= hist_entry__global_weight_snprintf,
+	.se_width_idx	= HISTC_GLOBAL_WEIGHT,
+};
+
 struct sort_dimension {
 	const char		*name;
 	struct sort_entry	*entry;
@@ -538,7 +581,9 @@ static struct sort_dimension sort_dimensions[] = {
 	DIM(SORT_MISPREDICT, "mispredict", sort_mispredict),
 	DIM(SORT_SRCLINE, "srcline", sort_srcline),
 	DIM(SORT_ABORT, "abort", sort_abort),
-	DIM(SORT_INTX, "intx", sort_intx)
+	DIM(SORT_INTX, "intx", sort_intx),
+	DIM(SORT_WEIGHT, "weight", sort_weight),
+	DIM(SORT_GLOBAL_WEIGHT, "global_weight", sort_global_weight),
 };
 
 int sort_dimension__add(const char *tok)
@@ -595,6 +640,10 @@ int sort_dimension__add(const char *tok)
 				sort__first_dimension = SORT_INTX;
 			else if (!strcmp(sd->name, "abort"))
 				sort__first_dimension = SORT_ABORT;
+			else if (!strcmp(sd->name, "weight"))
+				sort__first_dimension = SORT_WEIGHT;
+			else if (!strcmp(sd->name, "global_weight"))
+				sort__first_dimension = SORT_GLOBAL_WEIGHT;
 		}
 
 		list_add_tail(&sd->entry->list, &hist_entry__sort_list);
