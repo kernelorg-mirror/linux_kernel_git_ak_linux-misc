@@ -236,12 +236,16 @@ static u8 symbol__parent_filter(const struct symbol *parent)
 static struct hist_entry *add_hist_entry(struct hists *hists,
 				      struct hist_entry *entry,
 				      struct addr_location *al,
-				      u64 period)
+				      u64 period,
+				      u64 weight)
 {
 	struct rb_node **p;
 	struct rb_node *parent = NULL;
 	struct hist_entry *he;
 	int cmp;
+
+	if (weight == 0)
+		weight = 1;
 
 	pthread_mutex_lock(&hists->lock);
 
@@ -255,7 +259,8 @@ static struct hist_entry *add_hist_entry(struct hists *hists,
 
 		if (!cmp) {
 			he->period += period;
-			++he->nr_events;
+			he->nr_events++;
+			he->weight += weight;
 
 			/* If the map of an existing hist_entry has
 			 * become out-of-date due to an exec() or
@@ -294,7 +299,8 @@ struct hist_entry *__hists__add_branch_entry(struct hists *self,
 					     struct addr_location *al,
 					     struct symbol *sym_parent,
 					     struct branch_info *bi,
-					     u64 period)
+					     u64 period,
+					     u64 weight)
 {
 	struct hist_entry entry = {
 		.thread	= al->thread,
@@ -311,12 +317,13 @@ struct hist_entry *__hists__add_branch_entry(struct hists *self,
 		.branch_info = bi,
 	};
 
-	return add_hist_entry(self, &entry, al, period);
+	return add_hist_entry(self, &entry, al, period, weight);
 }
 
 struct hist_entry *__hists__add_entry(struct hists *self,
 				      struct addr_location *al,
-				      struct symbol *sym_parent, u64 period)
+				      struct symbol *sym_parent, u64 period,
+				      u64 weight)
 {
 	struct hist_entry entry = {
 		.thread	= al->thread,
@@ -332,7 +339,7 @@ struct hist_entry *__hists__add_entry(struct hists *self,
 		.filtered = symbol__parent_filter(sym_parent),
 	};
 
-	return add_hist_entry(self, &entry, al, period);
+	return add_hist_entry(self, &entry, al, period, weight);
 }
 
 int64_t
@@ -396,6 +403,7 @@ static bool hists__collapse_insert_entry(struct hists *hists __used,
 		if (!cmp) {
 			iter->period += he->period;
 			iter->nr_events += he->nr_events;
+			iter->weight += he->weight;
 			if (symbol_conf.use_callchain) {
 				callchain_cursor_reset(&callchain_cursor);
 				callchain_merge(&callchain_cursor,

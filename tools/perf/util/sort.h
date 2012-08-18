@@ -60,6 +60,7 @@ struct hist_entry {
 	struct map_symbol	ms;
 	struct thread		*thread;
 	u64			ip;
+	u64			weight;
 	s32			cpu;
 	u32			nr_events;
 
@@ -97,6 +98,8 @@ enum sort_type {
 	SORT_SRCLINE,
 	SORT_ABORT,
 	SORT_INTX,
+	SORT_WEIGHT,
+	SORT_GLOBAL_WEIGHT,
 };
 
 /*
