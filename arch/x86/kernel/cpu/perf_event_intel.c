@@ -820,6 +820,38 @@ static __initconst const u64 atom_hw_cache_event_ids
  },
 };
 
+#define FORCE_PEBS (1ULL << 63)
+
+static u64 __initdata hsw_transaction_event_ids
+				[PERF_COUNT_HW_TRANSACTION_MAX]
+				[PERF_COUNT_HW_ABORT_MAX] =
+{
+	/* RTM_RETIRED.START */
+	[ PERF_COUNT_HW_TRANSACTION_START ]  = { 0x1c9 },
+	/* RTM_RETIRED.COMMIT */
+	[ PERF_COUNT_HW_TRANSACTION_COMMIT ] = { 0x2c9 },
+	[ PERF_COUNT_HW_TRANSACTION_ABORT ]  = {
+		/* RTM_RETIRED.ABORTED with pebs */
+		[ PERF_COUNT_HW_ABORT_ALL ]      = 0x4c9|FORCE_PEBS,
+		/* TX_MEM.ABORT_CONFLICT */
+		[ PERF_COUNT_HW_ABORT_CONFLICT ] = 0x154,
+		/* TX_MEM.ABORT_CAPACITY */
+		[ PERF_COUNT_HW_ABORT_CAPACITY ] = 0x254,
+	},
+	/* HLE_RETIRED.START */
+	[ PERF_COUNT_HW_ELISION_START ]  =     { 0x1c8 },
+	/* HLE_RETIRED.COMMIT */
+	[ PERF_COUNT_HW_ELISION_COMMIT ] =     { 0x2c8 },
+	[ PERF_COUNT_HW_ELISION_ABORT ]  = {
+		/* HLE_RETIRED.ABORTED with pebs */
+		[ PERF_COUNT_HW_ABORT_ALL ]      = 0x4c8|FORCE_PEBS,
+		/* TX_MEM.ABORT_CONFLICT */
+		[ PERF_COUNT_HW_ABORT_CONFLICT ] = 0x154,
+		/* TX_MEM.ABORT_CAPACITY */
+		[ PERF_COUNT_HW_ABORT_CAPACITY ] = 0x254,
+	}
+};
+
 static inline bool intel_pmu_needs_lbr_smpl(struct perf_event *event)
 {
 	/* user explicitly requested branch sampling */
@@ -1655,6 +1687,18 @@ static int hsw_hw_config(struct perf_event *event)
 			return -EIO;
 		event->hw.config |= HSW_INTX_CHECKPOINTED;
 	}
+
+	/*
+	 * Sampling transaction abort events work very poorly without
+	 * PEBS. So force it.
+	 */
+	if (event->attr.type == PERF_TYPE_HW_TRANSACTION &&
+	    (event->hw.config & FORCE_PEBS)) {
+		event->hw.config &= ~FORCE_PEBS;
+		if (is_sampling_event(event))
+			event->attr.precise_ip = 2;
+	}
+
 	return 0;
 }
 
@@ -2165,6 +2209,9 @@ __init int intel_pmu_init(void)
 		x86_pmu.hw_config = hsw_hw_config;
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
 		x86_pmu.memory_lat_events = intel_hsw_memory_latency_events;
+		memcpy(hw_transaction_event_ids, hsw_transaction_event_ids,
+		       sizeof(hsw_transaction_event_ids));
+
 		pr_cont("Haswell events, ");
 		break;
 
