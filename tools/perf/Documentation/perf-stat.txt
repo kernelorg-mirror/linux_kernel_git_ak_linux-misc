@@ -114,6 +114,10 @@ with it.  --append may be used here.  Examples:
 
 perf stat --repeat 10 --null --sync --pre 'make -s O=defconfig-build/clean' -- make -s -j64 O=defconfig-build/ bzImage
 
+-T::
+--transaction::
+
+Print statistics of transactional execution if supported.
 
 EXAMPLES
 --------
