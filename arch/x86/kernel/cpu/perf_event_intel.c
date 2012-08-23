@@ -2097,6 +2097,7 @@ EVENT_ATTR_STR(cycles-t,        cycles_t,       "event=0x3c,intx=1");
 EVENT_ATTR_STR(cycles-ct,       cycles_ct,      "event=0x3c,intx=1,intx_cp=1");
 EVENT_ATTR_STR(instructions-t,  instructions_t, "event=0xc0,intx=1");
 EVENT_ATTR_STR(instructions-ct, instructions_ct, "event=0xc0,intx=1,intx_cp=1");
+EVENT_ATTR_STR(instructions-p,  instructions_p, "event=0xc0,umask=0x01,precise=2");
 
 #define EVENT_PTR(_id) &(event_attr_##_id.attr.attr)
 
@@ -2121,6 +2122,7 @@ static struct attribute *hsw_events_attrs[] = {
 	EVENT_PTR(cycles_ct),
 	EVENT_PTR(instructions_t),
 	EVENT_PTR(instructions_ct),
+	EVENT_PTR(instructions_p),
 	NULL
 };
 
