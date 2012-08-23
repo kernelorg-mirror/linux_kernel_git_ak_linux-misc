@@ -108,7 +108,10 @@ with it.  --append may be used here.  Examples:
      3>results  perf stat --log-fd 3          -- $cmd
      3>>results perf stat --log-fd 3 --append -- $cmd
 
+-T::
+--transaction::
 
+Print statistics of transactional execution.  Implies --group.
 
 EXAMPLES
 --------
