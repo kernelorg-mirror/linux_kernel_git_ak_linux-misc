@@ -617,6 +617,13 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 	regs.bp = pebs->bp;
 	regs.sp = pebs->sp;
 
+	if ((current->ptrace & PT_TRACE_PEBS)) {
+		if (!user_mode(iregs) && (long long)iregs->ip > 0)
+			trace_printk("user mode in nmi still broken %llx %x\n", 
+				     iregs->ip, iregs->cs);
+		set_thread_flag(TIF_PTRACE_NOTIFY);
+	}
+
 	if (event->attr.precise_ip > 1 && x86_pmu.intel_cap.pebs_format >= 2) {
 		regs.ip = ((struct pebs_record_v2 *)pebs)->eventingrip;
 		regs.flags |= PERF_EFLAGS_EXACT;
