@@ -10,6 +10,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/export.h>
+#include <linux/moduleparam.h>
 
 #include <asm/cpufeature.h>
 #include <asm/hardirq.h>
@@ -1071,6 +1072,32 @@ static void intel_pmu_reset(void)
 	local_irq_restore(flags);
 }
 
+static bool print_spurious_pmi = true;
+module_param(print_spurious_pmi, bool, 0644);
+
+#define msr(x) ({ u64 v; rdmsrl(x, v); v; })
+
+static void print_pmu(void)
+{
+	int i;
+	for (i = 0; i < x86_pmu.num_counters; i++) {
+		if (x86_pmu.intel_cap.fw_write)
+			pr_debug("PMC%d %llx ", i, msr(MSR_IA32_PMC0 + i));
+		pr_debug("EVTSEL%d: %llx CTR%d %llx\n",
+		       i, msr(MSR_ARCH_PERFMON_EVENTSEL0 + i),
+		       i, msr(MSR_ARCH_PERFMON_PERFCTR0 + i));
+	}
+	for (i = 0; i < x86_pmu.num_counters_fixed; i++)
+		pr_debug("FIXEDCTR%d: %llx\n", i, msr(MSR_CORE_PERF_FIXED_CTR0 + i));
+	pr_debug("GLOBAL_CTRL %llx GLOBAL_STATUS %llx OVF_CTRL %llx\n",
+	       msr(MSR_CORE_PERF_GLOBAL_CTRL),
+	       msr(MSR_CORE_PERF_GLOBAL_STATUS),
+	       msr(MSR_CORE_PERF_GLOBAL_OVF_CTRL));
+	pr_debug("PEBS_ENABLE %llx PERF_CAP %llx\n",
+	       msr(MSR_IA32_PEBS_ENABLE),
+	       msr(MSR_IA32_PERF_CAPABILITIES));
+}
+
 /*
  * This handler is triggered by the local APIC, so the APIC IRQ handling
  * rules apply:
@@ -1157,7 +1184,11 @@ again:
 		goto again;
 
 done:
-	intel_pmu_enable_all(0);
+	if (!handled && print_spurious_pmi) {
+		pr_debug("Spurious PMI\n");
+		print_pmu();
+	}
+	intel_pmu_enable_all(0);	
 	return handled;
 }
 
