@@ -38,6 +38,7 @@
 #include "perf_event.h"
 
 struct x86_pmu x86_pmu __read_mostly;
+int	       print_spurious_pmi __read_mostly;
 
 DEFINE_PER_CPU(struct cpu_hw_events, cpu_hw_events) = {
 	.enabled = 1,
@@ -1630,9 +1631,11 @@ static ssize_t set_attr_rdpmc(struct device *cdev,
 }
 
 static DEVICE_ATTR(rdpmc, S_IRUSR | S_IWUSR, get_attr_rdpmc, set_attr_rdpmc);
+static DEVICE_INT_ATTR(print_spurious_pmi, 0644, print_spurious_pmi);
 
 static struct attribute *x86_pmu_attrs[] = {
 	&dev_attr_rdpmc.attr,
+	&dev_attr_print_spurious_pmi.attr.attr,
 	NULL,
 };
 

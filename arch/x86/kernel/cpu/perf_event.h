@@ -657,3 +657,5 @@ static inline struct intel_shared_regs *allocate_shared_regs(int cpu)
 }
 
 #endif /* CONFIG_CPU_SUP_INTEL */
+
+extern int print_spurious_pmi;

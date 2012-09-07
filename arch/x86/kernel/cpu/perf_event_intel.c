@@ -1205,6 +1205,10 @@ again:
 		goto again;
 
 done:
+	if (!handled && print_spurious_pmi) {
+		pr_debug("Spurious PMI\n");
+		perf_event_print_debug();
+	}
 	intel_pmu_enable_all(0);
 	return handled;
 }
