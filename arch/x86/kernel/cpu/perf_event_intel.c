@@ -12,12 +12,16 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/export.h>
+#include <linux/moduleparam.h>
 
 #include <asm/cpufeature.h>
 #include <asm/hardirq.h>
 #include <asm/apic.h>
 
 #include "perf_event.h"
+
+static bool print_spurious_pmi __read_mostly;
+module_param(print_spurious_pmi, bool, 0644);
 
 /*
  * Intel PerfMon, used on Core and later.
@@ -1237,6 +1241,10 @@ again:
 		goto again;
 
 done:
+	if (!handled && print_spurious_pmi) {
+		pr_debug("Spurious PMI\n");
+		perf_event_print_debug();
+	}
 	intel_pmu_enable_all(0);
 	return handled;
 }
