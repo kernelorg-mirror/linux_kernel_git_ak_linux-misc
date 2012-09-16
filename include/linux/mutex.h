@@ -14,6 +14,7 @@
 #include <linux/spinlock_types.h>
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
+#include <linux/elide.h>
 
 #include <linux/atomic.h>
 
@@ -123,6 +124,7 @@ extern void __mutex_init(struct mutex *lock, const char *name,
  */
 static inline int mutex_is_locked(struct mutex *lock)
 {
+	elide_abort();
 	return atomic_read(&lock->count) != 1;
 }
 
