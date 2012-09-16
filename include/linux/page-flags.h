@@ -139,7 +139,8 @@ static inline int Page##uname(const struct page *page)			\
 
 #define SETPAGEFLAG(uname, lname)					\
 static inline void SetPage##uname(struct page *page)			\
-			{ set_bit(PG_##lname, &page->flags); }
+			{ if (!test_bit(PG_##lname, &page->flags))	\
+				set_bit(PG_##lname, &page->flags); }
 
 #define CLEARPAGEFLAG(uname, lname)					\
 static inline void ClearPage##uname(struct page *page)			\
