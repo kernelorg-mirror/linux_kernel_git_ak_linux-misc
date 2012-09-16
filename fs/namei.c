@@ -34,6 +34,7 @@
 #include <linux/device_cgroup.h>
 #include <linux/fs_struct.h>
 #include <linux/posix_acl.h>
+#include <linux/rtm.h>
 #include <asm/uaccess.h>
 
 #include "internal.h"
@@ -2098,7 +2099,7 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
 	unsigned int c;
 	int err;
 
-	WARN_ON_ONCE(!mutex_is_locked(&base->d_inode->i_mutex));
+	WARN_ON_ONCE(!_xtest() && !mutex_is_locked(&base->d_inode->i_mutex));
 
 	this.name = name;
 	this.len = len;
