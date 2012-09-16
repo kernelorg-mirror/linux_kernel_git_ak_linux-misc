@@ -1269,8 +1269,16 @@ do_page_fault(struct pt_regs *regs, unsigned long error_code)
 	 */
 
 	prev_state = exception_enter();
+	/*
+	 * Write faults usually flush the TLB, so cause aborts.
+	 * Don't elide in this case.
+	 */
+	if (error_code & PF_WRITE)
+		disable_txn();
 	__do_page_fault(regs, error_code, address);
 	exception_exit(prev_state);
+	if (error_code & PF_WRITE)
+		reenable_txn();
 }
 
 #ifdef CONFIG_TRACING
