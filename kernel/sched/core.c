@@ -1485,6 +1485,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 	 * set_current_state() the waiting thread does.
 	 */
 	smp_mb__before_spinlock();
+	disable_txn();
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	if (!(p->state & state))
 		goto out;
@@ -1525,6 +1526,7 @@ stat:
 	ttwu_stat(p, cpu, wake_flags);
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
+	reenable_txn();
 
 	return success;
 }
@@ -2473,7 +2475,9 @@ asmlinkage void __sched schedule(void)
 	struct task_struct *tsk = current;
 
 	sched_submit_work(tsk);
+	disable_txn();
 	__schedule();
+	reenable_txn();
 }
 EXPORT_SYMBOL(schedule);
 
@@ -2521,7 +2525,9 @@ asmlinkage void __sched notrace preempt_schedule(void)
 
 	do {
 		add_preempt_count_notrace(PREEMPT_ACTIVE);
+		disable_txn();
 		__schedule();
+		reenable_txn();
 		sub_preempt_count_notrace(PREEMPT_ACTIVE);
 
 		/*
@@ -2552,7 +2558,9 @@ asmlinkage void __sched preempt_schedule_irq(void)
 	do {
 		add_preempt_count(PREEMPT_ACTIVE);
 		local_irq_enable();
+		disable_txn();
 		__schedule();
+		reenable_txn();
 		local_irq_disable();
 		sub_preempt_count(PREEMPT_ACTIVE);
 
@@ -2613,9 +2621,11 @@ void __wake_up(wait_queue_head_t *q, unsigned int mode,
 {
 	unsigned long flags;
 
+	disable_txn();
 	spin_lock_irqsave(&q->lock, flags);
 	__wake_up_common(q, mode, nr_exclusive, 0, key);
 	spin_unlock_irqrestore(&q->lock, flags);
+	reenable_txn();
 }
 EXPORT_SYMBOL(__wake_up);
 
@@ -2663,9 +2673,11 @@ void __wake_up_sync_key(wait_queue_head_t *q, unsigned int mode,
 	if (unlikely(nr_exclusive != 1))
 		wake_flags = 0;
 
+	disable_txn();
 	spin_lock_irqsave(&q->lock, flags);
 	__wake_up_common(q, mode, nr_exclusive, wake_flags, key);
 	spin_unlock_irqrestore(&q->lock, flags);
+	reenable_txn();
 }
 EXPORT_SYMBOL_GPL(__wake_up_sync_key);
 
@@ -3802,7 +3814,9 @@ static inline int should_resched(void)
 static void __cond_resched(void)
 {
 	add_preempt_count(PREEMPT_ACTIVE);
+	disable_txn();
 	__schedule();
+	reenable_txn();
 	sub_preempt_count(PREEMPT_ACTIVE);
 }
 
