@@ -37,6 +37,7 @@
 #include <linux/proc_fs.h>
 #include <linux/debugfs.h>
 #include <linux/ratelimit.h>
+#include <linux/rtm.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/jbd.h>
@@ -1094,7 +1095,7 @@ void journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
 {
 	journal_superblock_t *sb = journal->j_superblock;
 
-	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+	BUG_ON(!_xtest() && !mutex_is_locked(&journal->j_checkpoint_mutex));
 	jbd_debug(1,"JBD: updating superblock (start %u, seq %u)\n",
 		  tail_block, tail_tid);
 
@@ -1121,7 +1122,7 @@ static void mark_journal_empty(journal_t *journal)
 {
 	journal_superblock_t *sb = journal->j_superblock;
 
-	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+	BUG_ON(!_xtest()&& !mutex_is_locked(&journal->j_checkpoint_mutex));
 	spin_lock(&journal->j_state_lock);
 	/* Is it already empty? */
 	if (sb->s_start == 0) {
