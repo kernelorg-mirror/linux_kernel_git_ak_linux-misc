@@ -1249,9 +1249,17 @@ do_page_fault(struct pt_regs *regs, unsigned long error_code)
 {
 	enum ctx_state prev_state;
 
+	/* 
+	 * Write faults usually flush the TLB, so cause aborts.
+	 * Don't elide in this case.
+	 */
+	if (error_code & PF_WRITE)
+		disable_txn();
 	prev_state = exception_enter();
 	__do_page_fault(regs, error_code);
 	exception_exit(prev_state);
+	if (error_code & PF_WRITE)
+		reenable_txn();
 }
 
 static void trace_page_fault_entries(struct pt_regs *regs,
