@@ -39,6 +39,7 @@ struct thread_info {
 						*/
 	__u8			supervisor_stack[0];
 #endif
+	unsigned char		notxn;		/* transactions are disabled */
 	unsigned int		sig_on_uaccess_error:1;
 	unsigned int		uaccess_err:1;	/* uaccess failed */
 };
@@ -279,6 +280,13 @@ static inline bool is_ia32_task(void)
 #endif
 	return false;
 }
+
+#ifdef CONFIG_RTM_LOCKS
+#define txn_disabled() (current_thread_info()->notxn)
+#define disable_txn()  (current_thread_info()->notxn++)
+#define reenable_txn() (current_thread_info()->notxn--)
+#endif
+
 #endif	/* !__ASSEMBLY__ */
 
 #ifndef __ASSEMBLY__
