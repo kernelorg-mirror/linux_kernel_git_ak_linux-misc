@@ -122,7 +122,7 @@ value_sym '/' event_config '/'
 	struct parse_events_data__events *data = _data;
 	struct list_head *list = NULL;
 	int type = $1 >> 16;
-	int config = $1 & 255;
+	int config = $1 & 0xffff;
 
 	ABORT_ON(parse_events_add_numeric(&list, &data->idx,
 					  type, config, $3));
@@ -135,7 +135,7 @@ value_sym sep_slash_dc
 	struct parse_events_data__events *data = _data;
 	struct list_head *list = NULL;
 	int type = $1 >> 16;
-	int config = $1 & 255;
+	int config = $1 & 0xffff;
 
 	ABORT_ON(parse_events_add_numeric(&list, &data->idx,
 					  type, config, NULL));

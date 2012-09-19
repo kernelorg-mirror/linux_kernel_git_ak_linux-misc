@@ -110,6 +110,20 @@ static struct event_symbol event_symbols_sw[PERF_COUNT_SW_MAX] = {
 	},
 };
 
+static struct event_symbol event_symbols_txn[] = {
+	{ .symbol = "transaction-start",          .alias = "tx-start"    },
+	{ .symbol = "transaction-commit",         .alias = "tx-commit"   },
+	{ .symbol = "transaction-abort-all",      .alias = "tx-abort"    },
+	{ .symbol = "transaction-abort-capacity", .alias = "tx-capacity" },
+	{ .symbol = "transaction-abort-conflict", .alias = "tx-conflict" },
+	{ .symbol = "elision-start",              .alias = "le-start"    },
+	{ .symbol = "elision-commit",             .alias = "le-commit"   },
+	{ .symbol = "elision-abort-all",          .alias = "le-abort"    },
+	{ .symbol = "elision-abort-capacity",     .alias = "le-capacity" },
+	{ .symbol = "elision-abort-conflict",     .alias = "le-conflict" },
+
+};
+
 #define __PERF_EVENT_FIELD(config, name) \
 	((config & PERF_EVENT_##name##_MASK) >> PERF_EVENT_##name##_SHIFT)
 
@@ -231,6 +245,9 @@ const char *event_type(int type)
 
 	case PERF_TYPE_HW_CACHE:
 		return "hardware-cache";
+
+	case PERF_TYPE_HW_TRANSACTION:
+		return "hardware-transaction";
 
 	default:
 		break;
@@ -800,6 +817,7 @@ static const char * const event_type_descriptors[] = {
 	"Hardware cache event",
 	"Raw hardware event descriptor",
 	"Hardware breakpoint",
+	"Hardware transaction event",
 };
 
 /*
@@ -909,6 +927,9 @@ void print_events_type(u8 type)
 {
 	if (type == PERF_TYPE_SOFTWARE)
 		__print_events_type(type, event_symbols_sw, PERF_COUNT_SW_MAX);
+	else if (type == PERF_TYPE_HW_TRANSACTION)
+		__print_events_type(type, event_symbols_txn,
+				    ARRAY_SIZE(event_symbols_txn));
 	else
 		__print_events_type(type, event_symbols_hw, PERF_COUNT_HW_MAX);
 }
@@ -983,6 +1004,9 @@ void print_events(const char *event_glob)
 			    event_symbols_sw, PERF_COUNT_SW_MAX);
 
 	print_hwcache_events(event_glob);
+
+	print_symbol_events(event_glob, PERF_TYPE_HW_TRANSACTION,
+			    event_symbols_txn, ARRAY_SIZE(event_symbols_txn));
 
 	if (event_glob != NULL)
 		return;

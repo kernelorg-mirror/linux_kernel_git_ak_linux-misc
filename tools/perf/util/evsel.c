@@ -288,6 +288,42 @@ static int perf_evsel__hw_cache_name(struct perf_evsel *evsel, char *bf, size_t 
 	return ret + perf_evsel__add_modifiers(evsel, bf + ret, size - ret);
 }
 
+static const char *transaction_name[] = {
+ [PERF_COUNT_HW_TRANSACTION_START]  = "transaction-start",
+ [PERF_COUNT_HW_TRANSACTION_COMMIT] = "transaction-commit",
+ [PERF_COUNT_HW_TRANSACTION_ABORT]  = "transaction-abort",
+ [PERF_COUNT_HW_ELISION_START]      = "elision-start",
+ [PERF_COUNT_HW_ELISION_COMMIT]     = "elision-commit",
+ [PERF_COUNT_HW_ELISION_ABORT]      = "elision-abort",
+};
+
+static const char *transaction_reason[] = {
+ [PERF_COUNT_HW_ABORT_ALL]          = "all",
+ [PERF_COUNT_HW_ABORT_CONFLICT]     = "conflict",
+ [PERF_COUNT_HW_ABORT_CAPACITY]     = "capacity",
+};
+
+static int perf_evsel__transaction_name(struct perf_evsel *evsel, char *bf,
+					size_t size)
+{
+	u64 config = evsel->attr.config;
+	u8 name = config & 0xff, reason = (config >> 8) & 0xff;
+
+	if (name < PERF_COUNT_HW_TRANSACTION_MAX &&
+	    reason < PERF_COUNT_HW_ABORT_MAX) {
+		const char *sep = "", *rtxt = "";
+		if (name == PERF_COUNT_HW_TRANSACTION_ABORT ||
+		    name == PERF_COUNT_HW_ELISION_ABORT) {
+			sep = "-";
+			rtxt = transaction_reason[reason];
+		}
+		return scnprintf(bf, size, "%s%s%s", transaction_name[name],
+						     sep, rtxt);
+	}
+
+	return scnprintf(bf, size, "invalid-transaction");
+}
+
 static int perf_evsel__raw_name(struct perf_evsel *evsel, char *bf, size_t size)
 {
 	int ret = scnprintf(bf, size, "raw 0x%" PRIx64, evsel->attr.config);
@@ -324,6 +360,10 @@ const char *perf_evsel__name(struct perf_evsel *evsel)
 
 	case PERF_TYPE_BREAKPOINT:
 		perf_evsel__bp_name(evsel, bf, sizeof(bf));
+		break;
+
+	case PERF_TYPE_HW_TRANSACTION:
+		perf_evsel__transaction_name(evsel, bf, sizeof(bf));
 		break;
 
 	default:

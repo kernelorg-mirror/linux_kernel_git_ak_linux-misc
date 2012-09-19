@@ -56,7 +56,8 @@ static int sym(yyscan_t scanner, int type, int config)
 	YYSTYPE *yylval = parse_events_get_lval(scanner);
 
 	yylval->num = (type << 16) + config;
-	return type == PERF_TYPE_HARDWARE ? PE_VALUE_SYM_HW : PE_VALUE_SYM_SW;
+	return type == PERF_TYPE_HARDWARE || type == PERF_TYPE_HW_TRANSACTION ?
+	       PE_VALUE_SYM_HW : PE_VALUE_SYM_SW;
 }
 
 static int term(yyscan_t scanner, int type)
@@ -66,6 +67,11 @@ static int term(yyscan_t scanner, int type)
 	yylval->num = type;
 	return PE_TERM;
 }
+
+#define txn(t)		sym(yyscanner, PERF_TYPE_HW_TRANSACTION, \
+                            PERF_COUNT_HW_##t)
+#define txn_abort(t, a) sym(yyscanner, PERF_TYPE_HW_TRANSACTION, \
+			    PERF_COUNT_HW_##t | ((PERF_COUNT_HW_ABORT_##a)<<8))
 
 %}
 
@@ -126,6 +132,17 @@ prefetch|prefetches			|
 speculative-read|speculative-load	|
 refs|Reference|ops|access		|
 misses|miss				{ return str(yyscanner, PE_NAME_CACHE_OP_RESULT); }
+
+transaction-start|tx-start		{ return txn(TRANSACTION_START);  }
+transaction-commit|tx-commit		{ return txn(TRANSACTION_COMMIT); }
+transaction-abort-all|tx-aborts?	{ return txn_abort(TRANSACTION_ABORT, ALL); }
+transaction-abort-conflict|tx-conflict  { return txn_abort(TRANSACTION_ABORT, CONFLICT); }
+transaction-abort-capacity|tx-capacity  { return txn_abort(TRANSACTION_ABORT, CAPACITY); }
+elision-start|le-start			{ return txn(ELISION_START);  }
+elision-commit|le-commit		{ return txn(ELISION_COMMIT); }
+elision-abort-all|le-aborts?		{ return txn_abort(ELISION_ABORT, ALL); }
+elision-abort-conflict|le-conflict	{ return txn_abort(ELISION_ABORT, CONFLICT); }
+elision-abort-capacity|le-capacity	{ return txn_abort(ELISION_ABORT, CAPACITY); }
 
 	/*
 	 * These are event config hardcoded term names to be specified
