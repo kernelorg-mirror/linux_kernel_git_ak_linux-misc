@@ -677,6 +677,15 @@ static void __intel_pmu_pebs_event(struct perf_event *event,
 			data.weight = ((struct pebs_record_v2 *)pebs)->nhm.lat;
 	}
 
+	if ((event->attr.sample_type & PERF_SAMPLE_TRANSACTION) &&
+	    x86_pmu.intel_cap.pebs_format >= 2) {
+		data.transaction =
+		     ((struct pebs_record_v2 *)pebs)->tsx_tuning >> 32;
+		if ((data.transaction & PERF_SAMPLE_TXN_TRANSACTION) &&
+		    (pebs->ax & 1))
+			data.transaction |= pebs->ax & 0xff000000;
+	}
+
 	if (has_branch_stack(event))
 		data.br_stack = &cpuc->lbr_stack;
 
