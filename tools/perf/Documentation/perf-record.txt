@@ -182,11 +182,14 @@ is enabled for all the sampling events. The sampled branch type is the same for 
 The various filters must be specified as a comma separated list: --branch-filter any_ret,u,k
 Note that this feature may not be available on all processors.
 
--W::
 --weight::
 Enable weightened sampling. When the event supports an additional weight per sample scale
 the histogram by this weight. This currently works for TSX abort events and some memory events
 in precise mode on modern Intel CPUs.
+
+-T::
+--transaction::
+Record transaction flags for transaction related events.
 
 SEE ALSO
 --------

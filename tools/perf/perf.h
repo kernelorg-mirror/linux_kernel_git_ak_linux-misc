@@ -233,6 +233,7 @@ struct perf_record_opts {
 	u64          branch_stack;
 	u64	     default_interval;
 	u64	     user_interval;
+	bool	     sample_transaction;
 };
 
 #endif
