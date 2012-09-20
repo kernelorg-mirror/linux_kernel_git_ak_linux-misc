@@ -420,6 +420,9 @@ void perf_evsel__config(struct perf_evsel *evsel, struct perf_record_opts *opts,
 	if (opts->sample_weight)
 		attr->sample_type	|= PERF_SAMPLE_WEIGHT;
 
+	if (opts->sample_transaction)
+		attr->sample_type	|= PERF_SAMPLE_TRANSACTION;
+
 	if (opts->call_graph)
 		attr->sample_type	|= PERF_SAMPLE_CALLCHAIN;
 
@@ -873,6 +876,12 @@ int perf_evsel__parse_sample(struct perf_evsel *evsel, union perf_event *event,
 	data->weight = 0;
 	if (type & PERF_SAMPLE_WEIGHT) {
 		data->weight = *array;
+		array++;
+	}
+
+	data->transaction = 0;
+	if (type & PERF_SAMPLE_TRANSACTION) {
+		data->transaction = *array;
 		array++;
 	}
 
