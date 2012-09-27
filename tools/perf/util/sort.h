@@ -61,6 +61,7 @@ struct hist_entry {
 	struct thread		*thread;
 	u64			ip;
 	u64			weight;
+	u64			transaction;
 	s32			cpu;
 	u32			nr_events;
 
@@ -100,6 +101,7 @@ enum sort_type {
 	SORT_INTX,
 	SORT_WEIGHT,
 	SORT_GLOBAL_WEIGHT,
+	SORT_TRANSACTION,
 };
 
 /*
