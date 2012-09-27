@@ -559,6 +559,55 @@ struct sort_entry sort_global_weight = {
 	.se_width_idx	= HISTC_GLOBAL_WEIGHT,
 };
 
+static int64_t
+sort__transaction_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->transaction - right->transaction;
+}
+
+static inline char *add_str(char *p, const char *str)
+{
+	strcpy(p, str);
+	return p + strlen(str);
+}
+
+static int hist_entry__transaction_snprintf(struct hist_entry *self, char *bf,
+				    size_t size, unsigned int width)
+{
+	u64 t = self->transaction;
+	char buf[128];
+	char *p = buf;
+
+	if (t & PERF_SAMPLE_TXN_ELISION)
+		*p++ = 'E';
+	if (t & PERF_SAMPLE_TXN_TRANSACTION)
+		*p++ = 'T';
+	if (t & PERF_SAMPLE_TXN_SYNC)
+		*p++ = 'I';
+	if (t & PERF_SAMPLE_TXN_RETRY)
+		*p++ = 'R';
+	*p = 0;
+	if (t & PERF_SAMPLE_TXN_CONFLICT)
+		p = add_str(p, ":con");
+	if (t & PERF_SAMPLE_TXN_CONFLICT)
+		p = add_str(p, ":cap");
+	if (t & PERF_SAMPLE_TXN_ABORT_MASK) {
+		sprintf(p, ":%" PRIx64,
+			(t & PERF_SAMPLE_TXN_ABORT_MASK) >>
+			PERF_SAMPLE_TXN_ABORT_SHIFT);
+		p += strlen(p);
+	}
+
+	return repsep_snprintf(bf, size, "%-*s", width, buf);
+}
+
+struct sort_entry sort_transaction = {
+	.se_header	= "Transaction",
+	.se_cmp		= sort__transaction_cmp,
+	.se_snprintf	= hist_entry__transaction_snprintf,
+	.se_width_idx	= HISTC_TRANSACTION,
+};
+
 struct sort_dimension {
 	const char		*name;
 	struct sort_entry	*entry;
@@ -584,6 +633,7 @@ static struct sort_dimension sort_dimensions[] = {
 	DIM(SORT_INTX, "intx", sort_intx),
 	DIM(SORT_WEIGHT, "weight", sort_weight),
 	DIM(SORT_GLOBAL_WEIGHT, "global_weight", sort_global_weight),
+	DIM(SORT_TRANSACTION, "transaction", sort_transaction),
 };
 
 int sort_dimension__add(const char *tok)
