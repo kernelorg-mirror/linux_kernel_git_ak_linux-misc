@@ -2041,6 +2041,99 @@ static __init void intel_gen_arch_events(void)
 	x86_pmu.events_attrs = intel_arch_events;
 }
 
+struct sevent_attribute {
+	struct device_attribute 	attr;
+	const char 			*val;
+};
+
+#define PMU_EVENT(_name, _id, _val)					\
+	static struct sevent_attribute attr_ ## _name =			\
+	{ .attr =							\
+	  { .attr = { .name = _id, .mode = 0444 },			\
+	    .show = show_sevent },					\
+	  .val = _val }
+
+static ssize_t show_sevent(struct device *dev,
+			  struct device_attribute *attr,
+			  char *page)
+{
+	struct sevent_attribute *e = container_of(attr, struct sevent_attribute, attr);
+
+	return sprintf(page, "%s", e->val);
+}
+
+/* Haswell special events */
+PMU_EVENT(tx_start,       "tx-start",       "event=0xc9,umask=0x1");
+PMU_EVENT(tx_commit,      "tx-commit",      "event=0xc9,umask=0x2");
+PMU_EVENT(tx_abort,       "tx-abort",       "event=0xc9,umask=0x4,precise=2");
+PMU_EVENT(tx_abort_count, "tx-abort-count", "event=0xc9,umask=0x4");
+/* alias */
+PMU_EVENT(tx_aborts,      "tx-aborts",      "event=0xc9,umask=0x4,precise=2");
+PMU_EVENT(tx_capacity,    "tx-capacity",    "event=0x54,umask=0x2");
+PMU_EVENT(tx_conflict,    "tx-conflict",    "event=0x54,umask=0x1");
+PMU_EVENT(el_start,       "el-start",       "event=0xc8,umask=0x1");
+PMU_EVENT(el_commit,      "el-commit",      "event=0xc8,umask=0x2");
+PMU_EVENT(el_abort,       "el-abort",       "event=0xc8,umask=0x4,precise=2");
+PMU_EVENT(el_abort_count, "el-abort-count", "event=0xc8,umask=0x4");
+/* alias */
+PMU_EVENT(el_aborts,      "el-aborts",      "event=0xc8,umask=0x4,precise=2");
+/* shared with tx-* */
+PMU_EVENT(el_capacity,    "el-capacity",    "event=0x54,umask=0x2");
+/* shared with tx-* */
+PMU_EVENT(el_conflict,    "el-conflict",    "event=0x54,umask=0x1");
+PMU_EVENT(cycles_t,       "cycles-t",       "event=0x3c,intx=1");
+PMU_EVENT(cycles_ct,      "cycles-ct",      "event=0x3c,intx=1,intx_cp=1");
+PMU_EVENT(insns_t,        "instructions-t", "event=0xc0,intx=1");
+PMU_EVENT(insns_ct,       "instructions-ct","event=0xc0,intx=1,intx_cp=1");
+
+#define PMU_EVENT_PTR(x) &attr_ ## x .attr.attr
+
+static struct attribute *hsw_events_attrs[] = {
+	PMU_EVENT_PTR(tx_start),
+	PMU_EVENT_PTR(tx_commit),
+	PMU_EVENT_PTR(tx_abort),
+	PMU_EVENT_PTR(tx_aborts),
+	PMU_EVENT_PTR(tx_abort_count),
+	PMU_EVENT_PTR(tx_capacity),
+	PMU_EVENT_PTR(tx_conflict),
+	PMU_EVENT_PTR(el_start),
+	PMU_EVENT_PTR(el_commit),
+	PMU_EVENT_PTR(el_abort),
+	PMU_EVENT_PTR(el_aborts),
+	PMU_EVENT_PTR(el_abort_count),
+	PMU_EVENT_PTR(el_capacity),
+	PMU_EVENT_PTR(el_conflict),
+	PMU_EVENT_PTR(cycles_t),
+	PMU_EVENT_PTR(cycles_ct),
+	PMU_EVENT_PTR(insns_t),
+	PMU_EVENT_PTR(insns_ct),
+	NULL
+};
+
+/* Merge two pointer arrays */
+static __init struct attribute **merge_attr(struct attribute **a, 
+					    struct attribute **b)
+{
+	struct attribute **new;
+	int j, i;
+
+	for (j = 0; a[j]; j++)
+		;
+	for (i = 0; b[i]; i++)
+		j++;
+	j++;
+	new = kmalloc(sizeof(struct attribute *) * j, GFP_KERNEL);
+	if (!new)
+		return a;
+	j = 0;
+	for (i = 0; a[i]; i++)
+		new[j++] = a[i];
+	for (i = 0; b[i]; i++)
+		new[j++] = b[i];
+	new[j] = NULL;
+	return new;
+}
+
 __init int intel_pmu_init(void)
 {
 	union cpuid10_edx edx;
@@ -2265,6 +2358,8 @@ __init int intel_pmu_init(void)
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
 		x86_pmu.format_attrs = intel_hsw_formats_attr;
 		x86_pmu.memory_lat_events = intel_hsw_memory_latency_events;
+		x86_pmu.events_attrs = merge_attr(x86_pmu.events_attrs, 
+						  hsw_events_attrs);
 		pr_cont("Haswell events, ");
 		break;
 
