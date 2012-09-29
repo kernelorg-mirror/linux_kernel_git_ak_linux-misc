@@ -2085,6 +2085,7 @@ PMU_EVENT(cycles_t,       "cycles-t",       "event=0x3c,intx=1");
 PMU_EVENT(cycles_ct,      "cycles-ct",      "event=0x3c,intx=1,intx_cp=1");
 PMU_EVENT(insns_t,        "instructions-t", "event=0xc0,intx=1");
 PMU_EVENT(insns_ct,       "instructions-ct","event=0xc0,intx=1,intx_cp=1");
+PMU_EVENT(insns_prec,     "instructions-p", "event=0xc0,umask=0x01,precise=2");
 
 #define PMU_EVENT_PTR(x) &attr_ ## x .attr.attr
 
@@ -2107,6 +2108,7 @@ static struct attribute *hsw_events_attrs[] = {
 	PMU_EVENT_PTR(cycles_ct),
 	PMU_EVENT_PTR(insns_t),
 	PMU_EVENT_PTR(insns_ct),
+	PMU_EVENT_PTR(insns_prec),
 	NULL
 };
 
