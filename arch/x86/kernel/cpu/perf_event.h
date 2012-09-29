@@ -358,6 +358,7 @@ struct x86_pmu {
 	 */
 	int		attr_rdpmc;
 	struct attribute **format_attrs;
+	struct attribute **events_attrs;
 
 	/*
 	 * CPU Hotplug hooks

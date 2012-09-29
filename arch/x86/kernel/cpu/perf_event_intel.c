@@ -34,6 +34,18 @@ static u64 intel_perfmon_event_map[PERF_COUNT_HW_MAX] __read_mostly =
 	[PERF_COUNT_HW_REF_CPU_CYCLES]		= 0x0300, /* pseudo-encoding */
 };
 
+static const char *intel_perfmon_names[PERF_COUNT_HW_MAX] __read_mostly =
+{
+	[PERF_COUNT_HW_CPU_CYCLES]		= "cycles",
+	[PERF_COUNT_HW_INSTRUCTIONS]		= "instructions",
+	[PERF_COUNT_HW_CACHE_REFERENCES]	= "cache-references",
+	[PERF_COUNT_HW_CACHE_MISSES]		= "cache-misses",
+	[PERF_COUNT_HW_BRANCH_INSTRUCTIONS]	= "branches",
+	[PERF_COUNT_HW_BRANCH_MISSES]		= "branch-misses",
+	[PERF_COUNT_HW_BUS_CYCLES]		= "bus-cycles",
+	[PERF_COUNT_HW_REF_CPU_CYCLES]		= "ref-cycles"
+};
+
 static struct event_constraint intel_core_event_constraints[] __read_mostly =
 {
 	INTEL_EVENT_CONSTRAINT(0x11, 0x2), /* FP_ASSIST */
@@ -1987,6 +1999,48 @@ static __init void intel_nehalem_quirk(void)
 	}
 }
 
+static struct attribute *intel_arch_events[PERF_COUNT_HW_MAX + 1] __read_mostly;
+
+struct event_attribute {
+	struct device_attribute 	attr;
+	u64				config;
+};
+
+static struct event_attribute intel_arch_event_attr[PERF_COUNT_HW_MAX];
+
+static ssize_t show_event(struct device *dev,
+			  struct device_attribute *attr,
+			  char *page)
+{
+	struct event_attribute *e = container_of(attr, struct event_attribute, attr);
+
+	return sprintf(page, "event=%#llx,umask=%#llx",
+		       e->config & 0xff,
+		       (e->config >> 8) & 0xff);
+}
+
+static __init void intel_gen_arch_events(void)
+{
+	int j, i;
+
+	j = 0;
+	for_each_clear_bit(i, x86_pmu.events_mask, ARRAY_SIZE(intel_arch_events_map)) {
+		struct event_attribute *e = intel_arch_event_attr + j;
+		struct device_attribute *d = &e->attr;
+		struct attribute *a = &d->attr;
+		int id = intel_arch_events_map[i].id;
+		
+		e->config = intel_perfmon_event_map[id];
+		intel_arch_events[j] = a;
+		a->name = intel_perfmon_names[id];
+		a->mode = 0444;
+		d->show = show_event;
+		j++;
+	}
+	intel_arch_events[j] = NULL;
+	x86_pmu.events_attrs = intel_arch_events;
+}
+
 __init int intel_pmu_init(void)
 {
 	union cpuid10_edx edx;
@@ -2029,6 +2083,8 @@ __init int intel_pmu_init(void)
 	x86_pmu.events_mask_len		= eax.split.mask_length;
 
 	x86_pmu.max_pebs_events		= min_t(unsigned, MAX_PEBS_EVENTS, x86_pmu.num_counters);
+
+	intel_gen_arch_events();
 
 	/*
 	 * Quirk: v2 perfmon does not report fixed-purpose events, so
