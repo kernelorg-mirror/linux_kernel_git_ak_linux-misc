@@ -2004,6 +2004,52 @@ static __init void intel_nehalem_quirk(void)
 	}
 }
 
+/* Haswell special events */
+EVENT_ATTR_STR(tx-start,       tx_start,       "event=0xc9,umask=0x1");
+EVENT_ATTR_STR(tx-commit,      tx_commit,      "event=0xc9,umask=0x2");
+EVENT_ATTR_STR(tx-abort,       tx_abort,       "event=0xc9,umask=0x4,precise=2");
+EVENT_ATTR_STR(tx-abort-count, tx_abort_count, "event=0xc9,umask=0x4");
+/* alias */
+EVENT_ATTR_STR(tx-aborts,      tx_aborts,      "event=0xc9,umask=0x4,precise=2");
+EVENT_ATTR_STR(tx-capacity,    tx_capacity,    "event=0x54,umask=0x2");
+EVENT_ATTR_STR(tx-conflict,    tx_conflict,    "event=0x54,umask=0x1");
+EVENT_ATTR_STR(el-start,       el_start,       "event=0xc8,umask=0x1");
+EVENT_ATTR_STR(el-commit,      el_commit,      "event=0xc8,umask=0x2");
+EVENT_ATTR_STR(el-abort,       el_abort,       "event=0xc8,umask=0x4,precise=2");
+EVENT_ATTR_STR(el-abort-count, el_abort_count, "event=0xc8,umask=0x4");
+/* alias */
+EVENT_ATTR_STR(el-aborts,      el_aborts,      "event=0xc8,umask=0x4,precise=2");
+/* shared with tx-* */
+EVENT_ATTR_STR(el-capacity,    el_capacity,    "event=0x54,umask=0x2");
+/* shared with tx-* */
+EVENT_ATTR_STR(el-conflict,    el_conflict,    "event=0x54,umask=0x1");
+EVENT_ATTR_STR(cycles-t,       cycles_t,       "event=0x3c,intx=1");
+EVENT_ATTR_STR(cycles-ct,      cycles_ct,      "event=0x3c,intx=1,intx_cp=1");
+EVENT_ATTR_STR(instructions-t, instructions_t, "event=0xc0,intx=1");
+EVENT_ATTR_STR(instructions-ct,instructions_ct,"event=0xc0,intx=1,intx_cp=1");
+
+static struct attribute *hsw_events_attrs[] = {
+	EVENT_PTR(tx_start),
+	EVENT_PTR(tx_commit),
+	EVENT_PTR(tx_abort),
+	EVENT_PTR(tx_aborts),
+	EVENT_PTR(tx_abort_count),
+	EVENT_PTR(tx_capacity),
+	EVENT_PTR(tx_conflict),
+	EVENT_PTR(el_start),
+	EVENT_PTR(el_commit),
+	EVENT_PTR(el_abort),
+	EVENT_PTR(el_aborts),
+	EVENT_PTR(el_abort_count),
+	EVENT_PTR(el_capacity),
+	EVENT_PTR(el_conflict),
+	EVENT_PTR(cycles_t),
+	EVENT_PTR(cycles_ct),
+	EVENT_PTR(instructions_t),
+	EVENT_PTR(instructions_ct),
+	NULL
+};
+
 __init int intel_pmu_init(void)
 {
 	union cpuid10_edx edx;
@@ -2229,6 +2275,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
 		x86_pmu.format_attrs = intel_hsw_formats_attr;
 		x86_pmu.memory_lat_events = intel_hsw_memory_latency_events;
+		x86_pmu.cpu_events = hsw_events_attrs;
 		pr_cont("Haswell events, ");
 		break;
 
