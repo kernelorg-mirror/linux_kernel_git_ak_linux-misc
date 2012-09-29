@@ -2078,9 +2078,66 @@ static __init void intel_nehalem_quirk(void)
 
 EVENT_ATTR_STR(mem-loads,      mem_ld_hsw,
 		"event=0xcd,umask=0x1,ldlat=3,precise=2");
-EVENT_ATTR_STR(mem-stores,     mem_st_hsw,  "event=0xd0,umask=0x82,precise=2")
+EVENT_ATTR_STR(mem-stores,     mem_st_hsw,  "event=0xd0,umask=0x82,precise=2");
+/* Haswell special events */
+EVENT_ATTR_STR(tx-start,        tx_start,       "event=0xc9,umask=0x1");
+EVENT_ATTR_STR(tx-commit,       tx_commit,      "event=0xc9,umask=0x2");
+EVENT_ATTR_STR(tx-abort,        tx_abort,
+		"event=0xc9,umask=0x4,precise=2");
+EVENT_ATTR_STR(tx-abort-count,  tx_abort_return, "event=0xc9,umask=0x4");
+EVENT_ATTR_STR(tx-abort-return, tx_abort_count,
+		"event=0xc9,umask=0x4,precise=1");
+/* alias */
+EVENT_ATTR_STR(tx-aborts,       tx_aborts,
+		"event=0xc9,umask=0x4,precise=2");
+EVENT_ATTR_STR(tx-capacity,     tx_capacity,    "event=0x54,umask=0x2");
+EVENT_ATTR_STR(tx-conflict,     tx_conflict,    "event=0x54,umask=0x1");
+EVENT_ATTR_STR(el-start,        el_start,       "event=0xc8,umask=0x1");
+EVENT_ATTR_STR(el-commit,       el_commit,      "event=0xc8,umask=0x2");
+EVENT_ATTR_STR(el-abort,        el_abort,
+		"event=0xc8,umask=0x4,precise=2");
+EVENT_ATTR_STR(el-abort-return, el_abort_return,
+		"event=0xc8,umask=0x4,precise=1");
+EVENT_ATTR_STR(el-abort-count,  el_abort_count, "event=0xc8,umask=0x4");
+/* alias */
+EVENT_ATTR_STR(el-aborts,       el_aborts,
+		"event=0xc8,umask=0x4,precise=2");
+/* shared with tx-* */
+EVENT_ATTR_STR(el-capacity,     el_capacity,    "event=0x54,umask=0x2");
+/* shared with tx-* */
+EVENT_ATTR_STR(el-conflict,     el_conflict,    "event=0x54,umask=0x1");
+EVENT_ATTR_STR(cycles-t,        cycles_t,       "event=0x3c,in_tx=1");
+EVENT_ATTR_STR(cycles-ct,       cycles_ct,
+		"event=0x3c,in_tx=1,in_tx_cp=1");
+EVENT_ATTR_STR(instructions-t,  instructions_t,
+		"event=0xc0,umask=0x01,in_tx=1");
+EVENT_ATTR_STR(instructions-ct, instructions_ct,
+		"event=0xc0,umask=0x01,in_tx=1,in_tx_cp=1");
+EVENT_ATTR_STR(instructions-p,  instructions_p,
+		"event=0xc0,umask=0x01,precise=2");
 
 static struct attribute *hsw_events_attrs[] = {
+	EVENT_PTR(tx_start),
+	EVENT_PTR(tx_commit),
+	EVENT_PTR(tx_abort),
+	EVENT_PTR(tx_aborts),
+	EVENT_PTR(tx_abort_count),
+	EVENT_PTR(tx_abort_return),
+	EVENT_PTR(tx_capacity),
+	EVENT_PTR(tx_conflict),
+	EVENT_PTR(el_start),
+	EVENT_PTR(el_commit),
+	EVENT_PTR(el_abort),
+	EVENT_PTR(el_aborts),
+	EVENT_PTR(el_abort_count),
+	EVENT_PTR(el_abort_return),
+	EVENT_PTR(el_capacity),
+	EVENT_PTR(el_conflict),
+	EVENT_PTR(cycles_t),
+	EVENT_PTR(cycles_ct),
+	EVENT_PTR(instructions_t),
+	EVENT_PTR(instructions_ct),
+	EVENT_PTR(instructions_p),
 	EVENT_PTR(mem_ld_hsw),
 	EVENT_PTR(mem_st_hsw),
 	NULL
