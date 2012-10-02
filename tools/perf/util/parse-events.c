@@ -703,6 +703,9 @@ static int parse_events__scanner(const char *str, void *data, int start_token)
 #endif
 	ret = parse_events_parse(data, scanner);
 
+	if (ret)
+		fprintf(stderr, "Cannot parse event `%s'\n", str);
+
 	parse_events__flush_buffer(buffer, scanner);
 	parse_events__delete_buffer(buffer, scanner);
 	parse_events_lex_destroy(scanner);
