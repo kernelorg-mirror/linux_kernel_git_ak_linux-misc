@@ -136,11 +136,40 @@ do {								\
  */
 #define raw_spin_unlock_wait(lock)	arch_spin_unlock_wait(&(lock)->raw_lock)
 
+#ifndef ARCH_HAS_SPIN_UNLOCK_IRQ
+static inline void
+arch_spin_unlock_flags(arch_spinlock_t *lock, unsigned long flags)
+{
+	arch_spin_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void arch_spin_unlock_irq(arch_spinlock_t *lock)
+{
+	arch_spin_unlock(lock);
+	local_irq_enable();
+}
+#endif
+
 #ifdef CONFIG_DEBUG_SPINLOCK
  extern void do_raw_spin_lock(raw_spinlock_t *lock) __acquires(lock);
 #define do_raw_spin_lock_flags(lock, flags) do_raw_spin_lock(lock)
  extern int do_raw_spin_trylock(raw_spinlock_t *lock);
  extern void do_raw_spin_unlock(raw_spinlock_t *lock) __releases(lock);
+static inline void
+	do_raw_spin_unlock_flags(raw_spinlock_t *lock, unsigned long flags)
+	__releases(lock)
+{
+	do_raw_spin_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void do_raw_spin_unlock_irq(raw_spinlock_t *lock)
+	__releases(lock)
+{
+	do_raw_spin_unlock(lock);
+	local_irq_enable();
+}
 #else
 static inline void do_raw_spin_lock(raw_spinlock_t *lock) __acquires(lock)
 {
@@ -163,6 +192,21 @@ static inline int do_raw_spin_trylock(raw_spinlock_t *lock)
 static inline void do_raw_spin_unlock(raw_spinlock_t *lock) __releases(lock)
 {
 	arch_spin_unlock(&lock->raw_lock);
+	__release(lock);
+}
+
+static inline void
+	do_raw_spin_unlock_flags(raw_spinlock_t *lock, unsigned long flags)
+	__releases(lock)
+{
+	arch_spin_unlock_flags(&lock->raw_lock, flags);
+	__release(lock);
+}
+
+static inline void do_raw_spin_unlock_irq(raw_spinlock_t *lock)
+	__releases(lock)
+{
+	arch_spin_unlock_irq(&lock->raw_lock);
 	__release(lock);
 }
 #endif
