@@ -156,16 +156,14 @@ static inline void __raw_spin_unlock_irqrestore(raw_spinlock_t *lock,
 					    unsigned long flags)
 {
 	spin_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_spin_unlock(lock);
-	local_irq_restore(flags);
+	do_raw_spin_unlock_flags(lock, flags);
 	preempt_enable();
 }
 
 static inline void __raw_spin_unlock_irq(raw_spinlock_t *lock)
 {
 	spin_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_spin_unlock(lock);
-	local_irq_enable();
+	do_raw_spin_unlock_irq(lock);
 	preempt_enable();
 }
 
