@@ -14,6 +14,34 @@
  * Released under the General Public License (GPL).
  */
 
+#if !defined(ARCH_HAS_RWLOCK_UNLOCK_IRQ) && defined(CONFIG_SMP)
+static inline void arch_read_unlock_irqrestore(arch_rwlock_t *lock,
+					       unsigned long flags)
+{
+	arch_read_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void arch_read_unlock_irq(arch_rwlock_t *lock)
+{
+	arch_read_unlock(lock);
+	local_irq_enable();
+}
+
+static inline void arch_write_unlock_irqrestore(arch_rwlock_t *lock,
+						unsigned long flags)
+{
+	arch_write_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void arch_write_unlock_irq(arch_rwlock_t *lock)
+{
+	arch_write_unlock(lock);
+	local_irq_enable();
+}
+#endif
+
 #ifdef CONFIG_DEBUG_SPINLOCK
   extern void __rwlock_init(rwlock_t *lock, const char *name,
 			    struct lock_class_key *key);
@@ -37,17 +65,61 @@ do {								\
 #define do_raw_write_lock_flags(lock, flags) do_raw_write_lock(lock)
  extern int do_raw_write_trylock(rwlock_t *lock);
  extern void do_raw_write_unlock(rwlock_t *lock) __releases(lock);
+
+static inline void do_raw_write_unlock_irq(rwlock_t *lock) __releases(lock)
+{
+	do_raw_write_unlock(lock);
+	local_irq_enable();
+}
+
+static inline void do_raw_read_unlock_irq(rwlock_t *lock) __releases(lock)
+{
+	do_raw_read_unlock(lock);
+	local_irq_enable();
+}
+
+static inline void do_raw_write_unlock_irqrestore(rwlock_t *lock,
+						  unsigned long flags)
+	__releases(lock)
+{
+	do_raw_write_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void do_raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
+	__releases(lock)
+{
+	do_raw_read_unlock(lock);
+	local_irq_restore(flags);
+}
+
 #else
 # define do_raw_read_lock(rwlock)	do {__acquire(lock); arch_read_lock(&(rwlock)->raw_lock); } while (0)
-# define do_raw_read_lock_flags(lock, flags) \
-		do {__acquire(lock); arch_read_lock_flags(&(lock)->raw_lock, *(flags)); } while (0)
+# define do_raw_read_lock_flags(lock, flags)	\
+		do { __acquire(lock);		\
+		     arch_read_lock_flags(&(lock)->raw_lock, *(flags)); } while (0)
 # define do_raw_read_trylock(rwlock)	arch_read_trylock(&(rwlock)->raw_lock)
 # define do_raw_read_unlock(rwlock)	do {arch_read_unlock(&(rwlock)->raw_lock); __release(lock); } while (0)
+# define do_raw_read_unlock_irqrestore(rwlock, flags)			\
+	do {								\
+		arch_read_unlock_irqrestore(&(rwlock)->raw_lock, flags); \
+		__release(lock); \
+	} while (0)
+# define do_raw_read_unlock_irq(rwlock)	\
+	do {arch_read_unlock_irq(&(rwlock)->raw_lock); __release(lock); } while (0)
 # define do_raw_write_lock(rwlock)	do {__acquire(lock); arch_write_lock(&(rwlock)->raw_lock); } while (0)
 # define do_raw_write_lock_flags(lock, flags) \
 		do {__acquire(lock); arch_write_lock_flags(&(lock)->raw_lock, *(flags)); } while (0)
 # define do_raw_write_trylock(rwlock)	arch_write_trylock(&(rwlock)->raw_lock)
 # define do_raw_write_unlock(rwlock)	do {arch_write_unlock(&(rwlock)->raw_lock); __release(lock); } while (0)
+# define do_raw_write_unlock_irqrestore(rwlock, flags)			\
+	do {								\
+		arch_write_unlock_irqrestore(&(rwlock)->raw_lock, flags); \
+		__release(lock); \
+	} while (0)
+# define do_raw_write_unlock_irq(rwlock)		 \
+	do { arch_write_unlock_irq(&(rwlock)->raw_lock); \
+	     __release(lock); } while (0)
 #endif
 
 #define read_can_lock(rwlock)		arch_read_can_lock(&(rwlock)->raw_lock)
