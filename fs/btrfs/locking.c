@@ -19,10 +19,16 @@
 #include <linux/pagemap.h>
 #include <linux/spinlock.h>
 #include <linux/page-flags.h>
+#include <linux/elide.h>
+#include <linux/rtm.h>
+#include <linux/moduleparam.h>
 #include <asm/bug.h>
 #include "ctree.h"
 #include "extent_io.h"
 #include "locking.h"
+
+static struct static_key btrfs_elision = STATIC_KEY_INIT_FALSE;
+module_param(btrfs_elision, static_key, 0644);
 
 static void btrfs_assert_tree_read_locked(struct extent_buffer *eb);
 
@@ -33,6 +39,7 @@ static void btrfs_assert_tree_read_locked(struct extent_buffer *eb);
  */
 void btrfs_set_lock_blocking_rw(struct extent_buffer *eb, int rw)
 {
+	elide_abort();
 	if (eb->lock_nested) {
 		read_lock(&eb->lock);
 		if (eb->lock_nested && current->pid == eb->lock_owner) {
@@ -92,12 +99,29 @@ void btrfs_clear_lock_blocking_rw(struct extent_buffer *eb, int rw)
 	return;
 }
 
+/* Do we need all these checks or are less good enough ? */
+
+static inline bool btrfs_lock_free(struct extent_buffer *eb)
+{
+	if (!read_can_lock(&eb->lock) || !write_can_lock(&eb->lock))
+		return false;
+	if (atomic_read(&eb->blocking_writers) != 0)
+		return false;
+	if (atomic_read(&eb->read_locks) || atomic_read(&eb->spinning_readers))
+		return false;
+	if (atomic_read(&eb->spinning_writers) != 0)
+		return false;
+	return true;
+}
+
 /*
  * take a spinning read lock.  This will wait for any blocking
  * writers
  */
 void btrfs_tree_read_lock(struct extent_buffer *eb)
 {
+	if (elide_lock(btrfs_elision, btrfs_lock_free(eb)))
+		return;
 again:
 	read_lock(&eb->lock);
 	if (atomic_read(&eb->blocking_writers) &&
@@ -129,6 +153,8 @@ again:
  */
 int btrfs_try_tree_read_lock(struct extent_buffer *eb)
 {
+	if (elide_lock(btrfs_elision, btrfs_lock_free(eb)))
+		return 1;
 	if (atomic_read(&eb->blocking_writers))
 		return 0;
 
@@ -148,6 +174,8 @@ int btrfs_try_tree_read_lock(struct extent_buffer *eb)
  */
 int btrfs_try_tree_write_lock(struct extent_buffer *eb)
 {
+	if (elide_lock(btrfs_elision, btrfs_lock_free(eb)))
+		return 1;
 	if (atomic_read(&eb->blocking_writers) ||
 	    atomic_read(&eb->blocking_readers))
 		return 0;
@@ -168,6 +196,8 @@ int btrfs_try_tree_write_lock(struct extent_buffer *eb)
  */
 void btrfs_tree_read_unlock(struct extent_buffer *eb)
 {
+	if (elide_unlock(write_can_lock(&eb->lock)))
+		return;
 	if (eb->lock_nested) {
 		read_lock(&eb->lock);
 		if (eb->lock_nested && current->pid == eb->lock_owner) {
@@ -212,6 +242,8 @@ void btrfs_tree_read_unlock_blocking(struct extent_buffer *eb)
  */
 void btrfs_tree_lock(struct extent_buffer *eb)
 {
+	if (elide_lock(btrfs_elision, btrfs_lock_free(eb)))
+		return;
 again:
 	wait_event(eb->read_lock_wq, atomic_read(&eb->blocking_readers) == 0);
 	wait_event(eb->write_lock_wq, atomic_read(&eb->blocking_writers) == 0);
@@ -239,8 +271,12 @@ again:
  */
 void btrfs_tree_unlock(struct extent_buffer *eb)
 {
-	int blockers = atomic_read(&eb->blocking_writers);
+	int blockers;
 
+	if (elide_unlock(atomic_read(&eb->write_locks) == 0))
+		return;
+
+	blockers = atomic_read(&eb->blocking_writers);
 	BUG_ON(blockers > 1);
 
 	btrfs_assert_tree_locked(eb);
@@ -261,10 +297,12 @@ void btrfs_tree_unlock(struct extent_buffer *eb)
 
 void btrfs_assert_tree_locked(struct extent_buffer *eb)
 {
-	BUG_ON(!atomic_read(&eb->write_locks));
+	if (!_xtest())
+		BUG_ON(!atomic_read(&eb->write_locks));
 }
 
 static void btrfs_assert_tree_read_locked(struct extent_buffer *eb)
 {
-	BUG_ON(!atomic_read(&eb->read_locks));
+	if (!_xtest())
+		BUG_ON(!atomic_read(&eb->read_locks));
 }
