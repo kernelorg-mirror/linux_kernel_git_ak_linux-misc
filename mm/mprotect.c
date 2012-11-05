@@ -23,6 +23,7 @@
 #include <linux/mmu_notifier.h>
 #include <linux/migrate.h>
 #include <linux/perf_event.h>
+#include <linux/rtm.h>
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include <asm/cacheflush.h>
@@ -349,6 +350,9 @@ SYSCALL_DEFINE3(mprotect, unsigned long, start, size_t, len,
 
 	vm_flags = calc_vm_prot_bits(prot);
 
+	/* Usually flushes TLBs, so don't elide */
+	disable_txn();
+
 	down_write(&current->mm->mmap_sem);
 
 	vma = find_vma(current->mm, start);
@@ -415,5 +419,6 @@ SYSCALL_DEFINE3(mprotect, unsigned long, start, size_t, len,
 	}
 out:
 	up_write(&current->mm->mmap_sem);
+	reenable_txn();
 	return error;
 }
