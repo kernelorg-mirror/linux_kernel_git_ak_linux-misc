@@ -33,6 +33,7 @@
 #include <linux/uprobes.h>
 #include <linux/rbtree_augmented.h>
 #include <linux/sched/sysctl.h>
+#include <linux/rtm.h>
 
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
@@ -2520,9 +2521,12 @@ int vm_munmap(unsigned long start, size_t len)
 	int ret;
 	struct mm_struct *mm = current->mm;
 
+	/* Usually flushes TLBs, so don't elide */
+	disable_txn();
 	down_write(&mm->mmap_sem);
 	ret = do_munmap(mm, start, len);
 	up_write(&mm->mmap_sem);
+	reenable_txn();
 	return ret;
 }
 EXPORT_SYMBOL(vm_munmap);
