@@ -2723,10 +2723,12 @@ void complete(struct completion *x)
 {
 	unsigned long flags;
 
+	disable_txn();
 	spin_lock_irqsave(&x->wait.lock, flags);
 	x->done++;
 	__wake_up_common(&x->wait, TASK_NORMAL, 1, 0, NULL);
 	spin_unlock_irqrestore(&x->wait.lock, flags);
+	reenable_txn();
 }
 EXPORT_SYMBOL(complete);
 
@@ -2743,10 +2745,12 @@ void complete_all(struct completion *x)
 {
 	unsigned long flags;
 
+	disable_txn();
 	spin_lock_irqsave(&x->wait.lock, flags);
 	x->done += UINT_MAX/2;
 	__wake_up_common(&x->wait, TASK_NORMAL, 0, 0, NULL);
 	spin_unlock_irqrestore(&x->wait.lock, flags);
+	reenable_txn();
 }
 EXPORT_SYMBOL(complete_all);
 
@@ -2781,10 +2785,12 @@ __wait_for_common(struct completion *x,
 		  long (*action)(long), long timeout, int state)
 {
 	might_sleep();
+	disable_txn();
 
 	spin_lock_irq(&x->wait.lock);
 	timeout = do_wait_for_common(x, action, timeout, state);
 	spin_unlock_irq(&x->wait.lock);
+	reenable_txn();
 	return timeout;
 }
 
