@@ -656,8 +656,23 @@ config PARAVIRT_SPINLOCKS
 
 	  If you are unsure how to answer this question, answer N.
 
+config RTM_LOCKS
+       bool "RTM elided locks"
+       depends on PARAVIRT && SMP && !LOCKDEP
+       ---help---
+	  Use TSX enabled locks.
+	  This allows to elide locks systems that support Intel TSX.
+	  Eliding locks allows to run the locks in parallel when various
+	  conditions are met. On systems without TSX this will do nothing.
+	  This uses the same mechanisms as used for paravirtualized locks
+	  on Xen and other hypervisors and only either can be used.
+
 config PARAVIRT_CLOCK
 	bool
+
+config ARCH_HAS_ELISION
+       def_bool y
+       depends on RTM_LOCKS
 
 endif
 
