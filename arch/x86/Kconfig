@@ -656,6 +656,10 @@ config KVM_GUEST
 	  underlying device model, the host provides the guest with
 	  timing infrastructure such as time of day, and system time
 
+config ARCH_HAS_ELISION
+       def_bool y
+       depends on RTM_LOCKS
+
 source "arch/x86/lguest/Kconfig"
 
 config PARAVIRT_TIME_ACCOUNTING
@@ -674,6 +678,20 @@ config PARAVIRT_CLOCK
 	bool
 
 endif #HYPERVISOR_GUEST
+
+config RTM_LOCKS
+       bool "RTM elided locks"
+       depends on SMP && !LOCKDEP
+       select PARAVIRT
+       select PARAVIRT_SPINLOCKS
+       select HYPERVISOR_GUEST # XXX
+       ---help---
+	  Use TSX enabled locks.
+	  This allows to elide locks systems that support Intel TSX.
+	  Eliding locks allows to run the locks in parallel when various
+	  conditions are met. On systems without TSX this will do nothing.
+	  This uses the same mechanisms as used for paravirtualized locks
+	  on Xen and other hypervisors and only either can be used.
 
 config NO_BOOTMEM
 	def_bool y
