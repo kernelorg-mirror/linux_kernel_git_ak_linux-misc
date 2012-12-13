@@ -37,6 +37,12 @@ void vsmp_init(void);
 static inline void vsmp_init(void) { }
 #endif
 
+#ifdef CONFIG_RTM_LOCKS
+void init_rtm(void);
+#else
+static inline void init_rtm(void) { }
+#endif
+
 void setup_bios_corruption_check(void);
 
 extern unsigned long saved_video_mode;
