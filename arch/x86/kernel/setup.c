@@ -1123,6 +1123,7 @@ void __init setup_arch(char **cmdline_p)
 	reserve_crashkernel();
 
 	vsmp_init();
+	init_rtm();
 
 	io_delay_init();
 
