@@ -148,6 +148,12 @@ static inline bool test_and_clear_restore_sigmask(void)
 #error "no set_restore_sigmask() provided and default one won't work"
 #endif
 
+#ifndef CONFIG_RTM_LOCKS
+#define disable_txn() do {} while (0)
+#define reenable_txn() do {} while (0)
+#define txn_disabled() 0
+#endif
+
 #endif	/* __KERNEL__ */
 
 #endif /* _LINUX_THREAD_INFO_H */
