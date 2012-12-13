@@ -14,6 +14,7 @@ CFLAGS_REMOVE_pvclock.o = -pg
 CFLAGS_REMOVE_kvmclock.o = -pg
 CFLAGS_REMOVE_ftrace.o = -pg
 CFLAGS_REMOVE_early_printk.o = -pg
+CFLAGS_REMOVE_rtm-locks.o = -pg
 endif
 
 CFLAGS_irq.o := -I$(src)/../include/asm/trace
@@ -111,6 +112,8 @@ obj-$(CONFIG_EFI)			+= sysfb_efi.o
 
 obj-$(CONFIG_PERF_EVENTS)		+= perf_regs.o
 obj-$(CONFIG_TRACING)			+= tracepoint.o
+
+obj-$(CONFIG_RTM_LOCKS)		+= rtm-locks.o
 
 ###
 # 64 bit specific files

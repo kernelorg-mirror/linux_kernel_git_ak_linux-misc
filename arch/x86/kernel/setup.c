@@ -1122,6 +1122,7 @@ void __init setup_arch(char **cmdline_p)
 #endif
 
 	vsmp_init();
+	init_rtm();
 
 	io_delay_init();
 
