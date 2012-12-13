@@ -349,3 +349,6 @@ void __init init_rtm_spinlocks(void)
 	pv_irq_ops.restore_fl = PV_CALLEE_SAVE(rtm_restore_fl);
 	pv_init_ops.patch = rtm_patch;
 }
+
+__read_mostly bool mutex_elision = true;
+module_param(mutex_elision, bool, 0644);
