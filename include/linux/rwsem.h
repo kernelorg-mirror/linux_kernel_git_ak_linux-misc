@@ -16,6 +16,8 @@
 
 #include <linux/atomic.h>
 
+#include <linux/elide.h>
+
 struct rw_semaphore;
 
 #ifdef CONFIG_RWSEM_GENERIC_SPINLOCK
@@ -42,6 +44,7 @@ extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
 /* In all implementations count != 0 means locked */
 static inline int rwsem_is_locked(struct rw_semaphore *sem)
 {
+	elide_abort();
 	return sem->count != 0;
 }
 

@@ -352,3 +352,6 @@ void __init init_rtm_spinlocks(void)
 
 __read_mostly bool mutex_elision = true;
 module_param(mutex_elision, bool, 0644);
+
+__read_mostly bool rwsem_elision = true;
+module_param(rwsem_elision, bool, 0644);
