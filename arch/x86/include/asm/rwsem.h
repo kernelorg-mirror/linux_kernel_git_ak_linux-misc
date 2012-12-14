@@ -38,6 +38,7 @@
 
 #ifdef __KERNEL__
 #include <asm/asm.h>
+#include <linux/elide.h>
 
 /*
  * The bias values and the counter type limits the number of
@@ -57,11 +58,15 @@
 #define RWSEM_ACTIVE_READ_BIAS		RWSEM_ACTIVE_BIAS
 #define RWSEM_ACTIVE_WRITE_BIAS		(RWSEM_WAITING_BIAS + RWSEM_ACTIVE_BIAS)
 
+extern bool rwsem_elision;
+
 /*
  * lock for reading
  */
 static inline void __down_read(struct rw_semaphore *sem)
 {
+	if (elide_lock(rwsem_elision, sem->count == 0))
+		return;
 	asm volatile("# beginning down_read\n\t"
 		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
 		     /* adds 0x00000001 */
@@ -80,6 +85,9 @@ static inline void __down_read(struct rw_semaphore *sem)
 static inline int __down_read_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
+
+	if (elide_lock(rwsem_elision, sem->count == 0))
+		return 1;
 	asm volatile("# beginning __down_read_trylock\n\t"
 		     "  mov          %0,%1\n\t"
 		     "1:\n\t"
@@ -102,6 +110,9 @@ static inline int __down_read_trylock(struct rw_semaphore *sem)
 static inline void __down_write_nested(struct rw_semaphore *sem, int subclass)
 {
 	long tmp;
+
+	if (elide_lock(rwsem_elision, sem->count == 0))
+		return;
 	asm volatile("# beginning down_write\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* adds 0xffff0001, returns the old value */
@@ -127,6 +138,8 @@ static inline void __down_write(struct rw_semaphore *sem)
 static inline int __down_write_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
+	if (elide_lock(rwsem_elision, sem->count == 0))
+		return 1;
 	asm volatile("# beginning __down_write_trylock\n\t"
 		     "  mov          %0,%1\n\t"
 		     "1:\n\t"
@@ -153,6 +166,9 @@ static inline int __down_write_trylock(struct rw_semaphore *sem)
 static inline void __up_read(struct rw_semaphore *sem)
 {
 	long tmp;
+
+	if (elide_unlock(sem->count == 0))
+		return;
 	asm volatile("# beginning __up_read\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 1, returns the old value */
@@ -171,6 +187,9 @@ static inline void __up_read(struct rw_semaphore *sem)
 static inline void __up_write(struct rw_semaphore *sem)
 {
 	long tmp;
+
+	if (elide_unlock(sem->count == 0))
+		return;
 	asm volatile("# beginning __up_write\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 0xffff0001, returns the old value */
