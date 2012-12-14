@@ -374,6 +374,11 @@ static unsigned rtm_patch(u8 type, u16 clobbers, void *ibuf,
 	}
 }
 
+struct static_key rwsem_elision = STATIC_KEY_INIT_FALSE;
+module_param(rwsem_elision, static_key, 0644);
+DEFINE_ELISION_CONFIG(, readsem,  readsem_elision_config);
+DEFINE_ELISION_CONFIG(, writesem, writesem_elision_config);
+
 void __init init_rtm(void)
 {
 	if (!boot_cpu_has(X86_FEATURE_RTM))
@@ -401,6 +406,7 @@ static int __init init_rtm_late(void)
 	static_key_slow_inc(&spinlock_elision);
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&bitlock_elision);
+	static_key_slow_inc(&rwsem_elision);
 	return 0;
 }
 __initcall(init_rtm_late);
