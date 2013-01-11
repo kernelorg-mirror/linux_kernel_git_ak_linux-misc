@@ -84,7 +84,8 @@ struct buffer_head {
 #define BUFFER_FNS(bit, name)						\
 static inline void set_buffer_##name(struct buffer_head *bh)		\
 {									\
-	set_bit(BH_##bit, &(bh)->b_state);				\
+	if (!test_bit(BH_##bit, &(bh)->b_state))			\
+		set_bit(BH_##bit, &(bh)->b_state);			\
 }									\
 static inline void clear_buffer_##name(struct buffer_head *bh)		\
 {									\
