@@ -98,6 +98,10 @@ struct scsi_device {
 
 	unsigned long last_queue_ramp_up;	/* last queue ramp up time */
 
+	/* Mostly read fields below. Move to own cache line to avoid false 
+	 * sharing  */
+	char align1 __attribute__((aligned(SMP_CACHE_BYTES)));
+
 	unsigned int id, lun, channel;
 
 	unsigned int manufacturer;	/* Manufacturer of device, for using 
