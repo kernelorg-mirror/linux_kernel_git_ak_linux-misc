@@ -654,11 +654,7 @@ struct Scsi_Host {
 	short unsigned int sg_prot_tablesize;
 	short unsigned int max_sectors;
 	unsigned long dma_boundary;
-	/* 
-	 * Used to assign serial numbers to the cmds.
-	 * Protected by the host lock.
-	 */
-	unsigned long cmd_serial_number;
+
 	
 	unsigned active_mode:2;
 	unsigned unchecked_isa_dma:1;
@@ -759,6 +755,15 @@ struct Scsi_Host {
 	 * Needed just in case we have virtual hosts.
 	 */
 	struct device *dma_dev;
+
+	/*
+	 * Used to assign serial numbers to the cmds.
+	 * Protected by the host lock.
+	 * Hot cache line, keep separate from read only fields.
+	 */
+	unsigned long cmd_serial_number
+		__attribute__((aligned(SMP_CACHE_BYTES)));
+	char pad[SMP_CACHE_BYTES - sizeof(unsigned long)];
 
 	/*
 	 * We should ensure that this is aligned, both for better performance
