@@ -3951,6 +3951,8 @@ void ext4_get_inode_flags(struct ext4_inode_info *ei)
 			new_fl |= EXT4_NOATIME_FL;
 		if (vfs_fl & S_DIRSYNC)
 			new_fl |= EXT4_DIRSYNC_FL;
+		if (old_fl == new_fl)
+			break;
 	} while (cmpxchg(&ei->i_flags, old_fl, new_fl) != old_fl);
 }
 
