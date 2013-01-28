@@ -1623,13 +1623,14 @@ static int hsw_hw_config(struct perf_event *event)
 		return 0;
 	event->hw.config |= event->attr.config & (HSW_INTX|HSW_INTX_CHECKPOINTED);
 
-	/* 
+	/*
 	 * INTX/INTX-CP do not play well with PEBS or ANY thread mode.
 	 */
 	if ((event->hw.config & (HSW_INTX|HSW_INTX_CHECKPOINTED)) &&
 	     ((event->hw.config & ARCH_PERFMON_EVENTSEL_ANY) ||
 	      event->attr.precise_ip > 0))
-		return -EIO;
+		return -EOPNOTSUPP;
+
 	if (event->hw.config & HSW_INTX_CHECKPOINTED) {
 		/*
 		 * Sampling of checkpointed events can cause situations where
@@ -1647,7 +1648,7 @@ static int hsw_hw_config(struct perf_event *event)
 	return 0;
 }
 
-static struct event_constraint counter2_constraint = 
+static struct event_constraint counter2_constraint =
 			EVENT_CONSTRAINT(0, 0x4, 0);
 
 static struct event_constraint *
