@@ -36,6 +36,9 @@
 #include <asm/rtm.h>
 #include <asm/paravirt.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/elision.h>
+
 /*
  * We need a software in_tx marker, to answer the question
  * "Is this an inner nested transaction commit?" inside the transaction.
@@ -266,6 +269,97 @@ inline int __elide_lock(void)
 }
 EXPORT_SYMBOL(__elide_lock);
 
+/* XXX make per lock type */
+static DEFINE_PER_CPU(unsigned, lock_el_skip);
+static DEFINE_PER_CPU(unsigned, lock_el_start_skip);
+
+/*
+ * Implement a simple adaptive algorithm. When the lock aborts
+ * for an internal (not external) cause we stop eliding for some time.
+ * For a conflict we retry a defined number of times, then also skip.
+ * For other aborts we also skip. All the skip counts are individually
+ * configurable.
+ *
+ * The retry loop is in the caller, as it needs to wait for the lock
+ * to free itself first. Otherwise we would cycle too fast through
+ * the retries.
+ *
+ * The complex logic is generally in the slow path, when we would
+ * have blocked anyways.
+ */
+
+static inline void skip_update(short *count, short skip, unsigned status)
+{
+	__this_cpu_inc(lock_el_start_skip);
+	/* Can lose updates, but that is ok as this is just a hint. */
+	if (*count != skip) {
+		trace_elision_skip_start(count, status);
+		*count = skip;
+	}
+}
+
+static int
+__elide_lock_adapt_slow(short *count, struct elision_config *config,
+			int *retry, unsigned status)
+{
+	/* Internal abort? Adapt the mutex */
+	if (!(status & _XABORT_RETRY)) {
+		/* Lock busy is a special case */
+		if ((status & _XABORT_EXPLICIT) &&
+		    _XABORT_CODE(status) == 0xff) {
+			/* Do some retries on lock busy. */
+			if (*retry > 0) {
+				if (*retry == config->conflict_retry &&
+				    config->lock_busy_retry <
+				    config->conflict_retry)
+					*retry = config->lock_busy_retry;
+				(*retry)--;
+				return ELIDE_RETRY;
+			}
+			skip_update(count, config->lock_busy_skip, status);
+		} else
+			skip_update(count, config->internal_abort_skip, status);
+		return ELIDE_STOP;
+	}
+	if (!(status & _XABORT_CONFLICT)) {
+		/* No retries for capacity. Maybe later. */
+		skip_update(count, config->other_abort_skip, status);
+		return ELIDE_STOP;
+	}
+	/* Was a conflict. Do some retries. */
+	if (*retry > 0) {
+		/* In caller wait for lock becoming free and then retry. */
+		(*retry)--;
+		return ELIDE_RETRY;
+	}
+
+	skip_update(count, config->conflict_abort_skip, status);
+	return ELIDE_STOP;
+}
+
+inline int __elide_lock_adapt(short *count, struct elision_config *config,
+			      int *retry)
+{
+	unsigned status;
+
+	if (unlikely(txn_disabled()))
+		return ELIDE_STOP;
+	/* Adapted lock? */
+	if (unlikely(*count > 0)) {
+		/* Can lose updates, but that is ok as this is just a hint. */
+		(*count)--;
+		/* TBD should count this per lock type and per lock */
+		__this_cpu_inc(lock_el_skip);
+		return ELIDE_STOP;
+	}
+	if (likely((status = _xbegin()) == _XBEGIN_STARTED)) {
+		start_in_tx();
+		return ELIDE_TXN;
+	}
+	return __elide_lock_adapt_slow(count, config, retry, status);
+}
+EXPORT_SYMBOL(__elide_lock_adapt);
+
 inline void __elide_unlock(void)
 {
 	/*
@@ -355,3 +449,8 @@ module_param(mutex_elision, bool, 0644);
 
 __read_mostly bool rwsem_elision = true;
 module_param(rwsem_elision, bool, 0644);
+
+module_param_cb(lock_el_skip, &param_ops_percpu_uint, &lock_el_skip,
+		0644);
+module_param_cb(lock_el_start_skip, &param_ops_percpu_uint,
+		&lock_el_start_skip, 0644);
