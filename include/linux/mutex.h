@@ -54,6 +54,9 @@ struct mutex {
 #if defined(CONFIG_DEBUG_MUTEXES) || defined(CONFIG_SMP)
 	struct task_struct	*owner;
 #endif
+#ifdef CONFIG_ARCH_HAS_ELISION
+	short			elision_adapt;
+#endif
 #ifdef CONFIG_DEBUG_MUTEXES
 	const char 		*name;
 	void			*magic;

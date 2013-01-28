@@ -417,6 +417,9 @@ static unsigned rtm_patch(u8 type, u16 clobbers, void *ibuf,
 	}
 }
 
+struct static_key mutex_elision = STATIC_KEY_INIT_FALSE;
+module_param(mutex_elision, static_key, 0644);
+
 void __init init_rtm_spinlocks(void)
 {
 	if (!boot_cpu_has(X86_FEATURE_RTM))
@@ -442,10 +445,13 @@ void __init init_rtm_spinlocks(void)
 	pv_irq_ops.irq_enable = PV_CALLEE_SAVE(rtm_irq_enable);
 	pv_irq_ops.restore_fl = PV_CALLEE_SAVE(rtm_restore_fl);
 	pv_init_ops.patch = rtm_patch;
+
+	static_key_slow_inc(&mutex_elision);
 }
 
-__read_mostly bool mutex_elision = true;
-module_param(mutex_elision, bool, 0644);
+__read_mostly struct elision_config mutex_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(mutex, mutex_elision_config);
 
 __read_mostly bool rwsem_elision = true;
 module_param(rwsem_elision, bool, 0644);
