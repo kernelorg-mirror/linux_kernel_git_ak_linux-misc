@@ -57,6 +57,9 @@ struct mutex {
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 	void			*spin_mlock;	/* Spinner MCS lock */
 #endif
+#ifdef CONFIG_ARCH_HAS_ELISION
+	short			elision_adapt;
+#endif
 #ifdef CONFIG_DEBUG_MUTEXES
 	const char 		*name;
 	void			*magic;
