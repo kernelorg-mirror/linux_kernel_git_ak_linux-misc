@@ -102,7 +102,7 @@ static struct event_constraint intel_snb_event_constraints[] __read_mostly =
 	FIXED_EVENT_CONSTRAINT(0x00c0, 0), /* INST_RETIRED.ANY */
 	FIXED_EVENT_CONSTRAINT(0x003c, 1), /* CPU_CLK_UNHALTED.CORE */
 	FIXED_EVENT_CONSTRAINT(0x0300, 2), /* CPU_CLK_UNHALTED.REF */
-	INTEL_EVENT_CONSTRAINT(0x48, 0x4), /* L1D_PEND_MISS.PENDING */
+	INTEL_EVENT_CONSTRAINT(0x48, 0x4), /* L1D_PEND_MISS.* */
 	INTEL_UEVENT_CONSTRAINT(0x01c0, 0x2), /* INST_RETIRED.PREC_DIST */
 	INTEL_EVENT_CONSTRAINT(0xcd, 0x8), /* MEM_TRANS_RETIRED.LOAD_LATENCY */
 	EVENT_CONSTRAINT_END
@@ -1072,6 +1072,11 @@ static void intel_pmu_enable_event(struct perf_event *event)
 	__x86_pmu_enable_event(hwc, ARCH_PERFMON_EVENTSEL_ENABLE);
 }
 
+static inline bool event_is_checkpointed(struct perf_event *event)
+{
+	return (event->hw.config & HSW_INTX_CHECKPOINTED) != 0;
+}
+
 /*
  * Save and restart an expired event. Called by NMI contexts,
  * so it has to be careful about preempting normal event ops:
@@ -1085,7 +1090,7 @@ int intel_pmu_save_and_restart(struct perf_event *event)
 	 * transaction and is then set back to shortly before the
 	 * overflow, and overflows and aborts again.
 	 */
-	if (unlikely(event->hw.config & HSW_INTX_CHECKPOINTED)) {
+	if (unlikely(event_is_checkpointed(event))) {
 		/* No race with NMIs because the counter should not be armed */
 		wrmsrl(event->hw.event_base, 0);
 		local64_set(&event->hw.prev_count, 0);
@@ -1169,7 +1174,7 @@ again:
  	 *
 	 * XXX move somewhere else.
 	 */
-	if (cpuc->events[2] && (cpuc->events[2]->hw.config & HSW_INTX_CHECKPOINTED))
+	if (cpuc->events[2] && event_is_checkpointed(cpuc->events[2]))
 		status |= (1ULL << 2);
 
 	for_each_set_bit(bit, (unsigned long *)&status, X86_PMC_IDX_MAX) {
@@ -1626,14 +1631,15 @@ static int hsw_hw_config(struct perf_event *event)
 		return 0;
 	event->hw.config |= event->attr.config & (HSW_INTX|HSW_INTX_CHECKPOINTED);
 
-	/* 
+	/*
 	 * INTX/INTX-CP do not play well with PEBS or ANY thread mode.
 	 */
 	if ((event->hw.config & (HSW_INTX|HSW_INTX_CHECKPOINTED)) &&
 	     ((event->hw.config & ARCH_PERFMON_EVENTSEL_ANY) ||
 	      event->attr.precise_ip > 0))
-		return -EIO;
-	if (event->hw.config & HSW_INTX_CHECKPOINTED) {
+		return -EOPNOTSUPP;
+
+	if (event_is_checkpointed(event)) {
 		/*
 		 * Sampling of checkpointed events can cause situations where
 		 * the CPU constantly aborts because of a overflow, which is
@@ -1645,12 +1651,12 @@ static int hsw_hw_config(struct perf_event *event)
 		 */
 		if (event->attr.sample_period > 0 &&
 		    event->attr.sample_period < 0x7fffffff)
-			return -EIO;
+			return -EOPNOTSUPP;
 	}
 	return 0;
 }
 
-static struct event_constraint counter2_constraint = 
+static struct event_constraint counter2_constraint =
 			EVENT_CONSTRAINT(0, 0x4, 0);
 
 static struct event_constraint *
@@ -2263,7 +2269,7 @@ __init int intel_pmu_init(void)
 		memcpy(hw_cache_event_ids, snb_hw_cache_event_ids,
 		       sizeof(hw_cache_event_ids));
 
-		intel_pmu_lbr_init_nhm();
+		intel_pmu_lbr_init_snb();
 
 		x86_pmu.event_constraints = intel_hsw_event_constraints;
 		x86_pmu.pebs_constraints = intel_hsw_pebs_event_constraints;
