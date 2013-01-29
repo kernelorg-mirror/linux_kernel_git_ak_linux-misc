@@ -16,6 +16,14 @@ enum {
 	LBR_FORMAT_MAX_KNOWN	= LBR_FORMAT_EIP_FLAGS2,
 };
 
+static enum {
+	LBR_EIP_FLAGS 		= 1,
+	LBR_TSX			= 2,
+} lbr_desc[LBR_FORMAT_MAX_KNOWN + 1] = {
+	[LBR_FORMAT_EIP_FLAGS]  = LBR_EIP_FLAGS,
+	[LBR_FORMAT_EIP_FLAGS2] = LBR_EIP_FLAGS | LBR_TSX,
+};
+
 /*
  * Intel LBR_SELECT bits
  * Intel Vol3a, April 2011, Section 16.7 Table 16-10
@@ -280,22 +288,23 @@ static void intel_pmu_lbr_read_64(struct cpu_hw_events *cpuc)
 	for (i = 0; i < x86_pmu.lbr_nr; i++) {
 		unsigned long lbr_idx = (tos - i) & mask;
 		u64 from, to, mis = 0, pred = 0, intx = 0, abort = 0;
+		int skip = 0;
+		int lbr_flags = lbr_desc[lbr_format];
 
 		rdmsrl(x86_pmu.lbr_from + lbr_idx, from);
 		rdmsrl(x86_pmu.lbr_to   + lbr_idx, to);
 
-		if (lbr_format == LBR_FORMAT_EIP_FLAGS ||
-		    lbr_format == LBR_FORMAT_EIP_FLAGS2) {
+		if (lbr_flags & LBR_EIP_FLAGS) {
 			mis = !!(from & LBR_FROM_FLAG_MISPRED);
 			pred = !mis;
-			if (lbr_format == LBR_FORMAT_EIP_FLAGS)
-				from = (u64)((((s64)from) << 1) >> 1);
-			else if (lbr_format == LBR_FORMAT_EIP_FLAGS2) {
-				intx = !!(from & LBR_FROM_FLAG_INTX);
-				abort = !!(from & LBR_FROM_FLAG_ABORT);
-				from = (u64)((((s64)from) << 3) >> 3);
-			}
+			skip = 1;
 		}
+		if (lbr_flags & LBR_TSX) {
+			intx = !!(from & LBR_FROM_FLAG_INTX);
+			abort = !!(from & LBR_FROM_FLAG_ABORT);
+			skip = 3;
+		}
+		from = (u64)((((s64)from) << skip) >> skip);
 
 		cpuc->lbr_entries[i].from	= from;
 		cpuc->lbr_entries[i].to		= to;
