@@ -1072,6 +1072,11 @@ static void intel_pmu_enable_event(struct perf_event *event)
 	__x86_pmu_enable_event(hwc, ARCH_PERFMON_EVENTSEL_ENABLE);
 }
 
+static inline bool event_is_checkpointed(struct perf_event *event)
+{
+	return (event->hw.config & HSW_INTX_CHECKPOINTED) != 0;
+}
+
 /*
  * Save and restart an expired event. Called by NMI contexts,
  * so it has to be careful about preempting normal event ops:
@@ -1085,7 +1090,7 @@ int intel_pmu_save_and_restart(struct perf_event *event)
 	 * transaction and is then set back to shortly before the
 	 * overflow, and overflows and aborts again.
 	 */
-	if (unlikely(event->hw.config & HSW_INTX_CHECKPOINTED)) {
+	if (unlikely(event_is_checkpointed(event))) {
 		/* No race with NMIs because the counter should not be armed */
 		wrmsrl(event->hw.event_base, 0);
 		local64_set(&event->hw.prev_count, 0);
@@ -1169,7 +1174,7 @@ again:
  	 *
 	 * XXX move somewhere else.
 	 */
-	if (cpuc->events[2] && (cpuc->events[2]->hw.config & HSW_INTX_CHECKPOINTED))
+	if (cpuc->events[2] && event_is_checkpointed(cpuc->events[2]))
 		status |= (1ULL << 2);
 
 	for_each_set_bit(bit, (unsigned long *)&status, X86_PMC_IDX_MAX) {
@@ -1631,7 +1636,7 @@ static int hsw_hw_config(struct perf_event *event)
 	      event->attr.precise_ip > 0))
 		return -EOPNOTSUPP;
 
-	if (event->hw.config & HSW_INTX_CHECKPOINTED) {
+	if (event_is_checkpointed(event)) {
 		/*
 		 * Sampling of checkpointed events can cause situations where
 		 * the CPU constantly aborts because of a overflow, which is
@@ -1643,7 +1648,7 @@ static int hsw_hw_config(struct perf_event *event)
 		 */
 		if (event->attr.sample_period > 0 &&
 		    event->attr.sample_period < 0x7fffffff)
-			return -EIO;
+			return -EOPNOTSUPP;
 	}
 	return 0;
 }
