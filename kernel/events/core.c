@@ -39,6 +39,7 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/mm_types.h>
 #include <linux/cgroup.h>
+#include <linux/itrace.h>
 
 #include "internal.h"
 
@@ -120,7 +121,8 @@ static int cpu_function_call(int cpu, int (*func) (void *info), void *info)
 #define PERF_FLAG_ALL (PERF_FLAG_FD_NO_GROUP |\
 		       PERF_FLAG_FD_OUTPUT  |\
 		       PERF_FLAG_PID_CGROUP |\
-		       PERF_FLAG_FD_CLOEXEC)
+		       PERF_FLAG_FD_CLOEXEC |\
+		       PERF_FLAG_FD_ITRACE)
 
 /*
  * branch priv levels that need permission checks
@@ -3339,7 +3341,12 @@ static void put_event(struct perf_event *event)
 
 static int perf_release(struct inode *inode, struct file *file)
 {
-	put_event(file->private_data);
+	struct perf_event *event = file->private_data;
+
+	if (is_itrace_event(event) && event->hw.itrace_file == file)
+		event->hw.itrace_file = NULL;
+
+	put_event(event);
 	return 0;
 }
 
@@ -3806,7 +3813,10 @@ static int perf_mmap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct perf_event *event = vma->vm_file->private_data;
 	struct ring_buffer *rb;
-	int ret = VM_FAULT_SIGBUS;
+	int ret = VM_FAULT_SIGBUS, rbx = PERF_RB_MAIN;
+
+	if (is_itrace_event(event) && is_itrace_vma(vma))
+		rbx = PERF_RB_ITRACE;
 
 	if (vmf->flags & FAULT_FLAG_MKWRITE) {
 		if (vmf->pgoff == 0)
@@ -3815,7 +3825,7 @@ static int perf_mmap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	}
 
 	rcu_read_lock();
-	rb = rcu_dereference(event->rb[PERF_RB_MAIN]);
+	rb = rcu_dereference(event->rb[rbx]);
 	if (!rb)
 		goto unlock;
 
@@ -3840,7 +3850,8 @@ unlock:
 void ring_buffer_attach(struct perf_event *event,
 			struct ring_buffer *rb)
 {
-	struct list_head *head = &event->rb_entry[PERF_RB_MAIN];
+	int rbx = rb->priv ? PERF_RB_ITRACE : PERF_RB_MAIN;
+	struct list_head *head = &event->rb_entry[rbx];
 	unsigned long flags;
 
 	if (!list_empty(head))
@@ -3854,7 +3865,8 @@ void ring_buffer_attach(struct perf_event *event,
 
 void ring_buffer_detach(struct perf_event *event, struct ring_buffer *rb)
 {
-	struct list_head *head = &event->rb_entry[PERF_RB_MAIN];
+	int rbx = rb->priv ? PERF_RB_ITRACE : PERF_RB_MAIN;
+	struct list_head *head = &event->rb_entry[rbx];
 	unsigned long flags;
 
 	if (list_empty(head))
@@ -3919,9 +3931,10 @@ void ring_buffer_put(struct ring_buffer *rb)
 static void perf_mmap_open(struct vm_area_struct *vma)
 {
 	struct perf_event *event = vma->vm_file->private_data;
+	int rbx = is_itrace_vma(vma) ? PERF_RB_ITRACE : PERF_RB_MAIN;
 
-	atomic_inc(&event->mmap_count[PERF_RB_MAIN]);
-	atomic_inc(&event->rb[PERF_RB_MAIN]->mmap_count);
+	atomic_inc(&event->mmap_count[rbx]);
+	atomic_inc(&event->rb[rbx]->mmap_count);
 }
 
 /*
@@ -3935,7 +3948,7 @@ static void perf_mmap_open(struct vm_area_struct *vma)
 static void perf_mmap_close(struct vm_area_struct *vma)
 {
 	struct perf_event *event = vma->vm_file->private_data;
-	int rbx = PERF_RB_MAIN;
+	int rbx = is_itrace_vma(vma) ? PERF_RB_ITRACE : PERF_RB_MAIN;
 	struct ring_buffer *rb = event->rb[rbx];
 	struct user_struct *mmap_user = rb->mmap_user;
 	int mmap_locked = rb->mmap_locked;
@@ -4051,13 +4064,16 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 
 	vma_size = vma->vm_end - vma->vm_start;
 
+	if (is_itrace_event(event) && is_itrace_vma(vma))
+		rbx = PERF_RB_ITRACE;
+
 	nr_pages = (vma_size / PAGE_SIZE) - 1;
 
 	/*
 	 * If we have rb pages ensure they're a power-of-two number, so we
 	 * can do bitmasks instead of modulo.
 	 */
-	if (nr_pages != 0 && !is_power_of_2(nr_pages))
+	if (!rbx && nr_pages != 0 && !is_power_of_2(nr_pages))
 		return -EINVAL;
 
 	if (vma_size != PAGE_SIZE * (1 + nr_pages))
@@ -4120,7 +4136,7 @@ again:
 
 	rb = rb_alloc(event, nr_pages,
 		event->attr.watermark ? event->attr.wakeup_watermark : 0,
-		event->cpu, flags, NULL);
+		event->cpu, flags, rbx ? &itrace_rb_ops : NULL);
 
 	if (!rb) {
 		ret = -ENOMEM;
@@ -6728,6 +6744,8 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 
 		if (attr->type == PERF_TYPE_TRACEPOINT)
 			event->hw.tp_target = task;
+		else if (is_itrace_event(event))
+			event->hw.itrace_target = task;
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 		/*
 		 * hw_breakpoint is a bit difficult here..
@@ -6947,6 +6965,17 @@ perf_event_set_output(struct perf_event *event, struct perf_event *output_event)
 	 */
 	if (output_event->cpu == -1 && output_event->ctx != event->ctx)
 		goto out;
+	/*
+	 * Both itrace events must be on a same PMU; itrace events can
+	 * be only redirected to other itrace events.
+	 */
+	if (is_itrace_event(event)) {
+		if (!is_itrace_event(output_event))
+			goto out;
+
+		if (event->attr.type != output_event->attr.type)
+			goto out;
+	}
 
 set:
 	mutex_lock(&event->mmap_mutex);
@@ -6993,6 +7022,46 @@ out:
 	return ret;
 }
 
+static int do_perf_get_itrace_fd(int group_fd, int f_flags)
+{
+	struct fd group = {NULL, 0};
+	struct perf_event *event;
+	struct file *file = NULL;
+	int fd, err;
+
+	fd = get_unused_fd_flags(f_flags);
+	if (fd < 0)
+		return fd;
+
+	err = perf_fget_light(group_fd, &group);
+	if (err)
+		goto err_fd;
+
+	event = group.file->private_data;
+	if (!is_itrace_event(event)) {
+		err = -EINVAL;
+		goto err_group_fd;
+	}
+
+	file = anon_inode_getfile("[itrace]", &perf_fops, event, f_flags);
+	if (IS_ERR(file)) {
+		err = PTR_ERR(file);
+		goto err_group_fd;
+	}
+
+	event->hw.itrace_file = file;
+
+	fdput(group);
+	fd_install(fd, file);
+	return fd;
+
+err_group_fd:
+	fdput(group);
+err_fd:
+	put_unused_fd(fd);
+	return err;
+}
+
 /**
  * sys_perf_event_open - open a performance event, associate it to a task/cpu
  *
@@ -7022,6 +7091,18 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (flags & ~PERF_FLAG_ALL)
 		return -EINVAL;
 
+	if (flags & PERF_FLAG_FD_CLOEXEC)
+		f_flags |= O_CLOEXEC;
+
+	if (flags & PERF_FLAG_FD_ITRACE) {
+		/* only allowed to specify group_fd with this flag */
+		if (group_fd == -1 || attr_uptr || cpu != -1 || pid != -1 ||
+		    (flags & ~(PERF_FLAG_FD_ITRACE | PERF_FLAG_FD_CLOEXEC)))
+			return -EINVAL;
+
+		return do_perf_get_itrace_fd(group_fd, f_flags);
+	}
+
 	err = perf_copy_attr(attr_uptr, &attr);
 	if (err)
 		return err;
@@ -7044,9 +7125,6 @@ SYSCALL_DEFINE5(perf_event_open,
 	 */
 	if ((flags & PERF_FLAG_PID_CGROUP) && (pid == -1 || cpu == -1))
 		return -EINVAL;
-
-	if (flags & PERF_FLAG_FD_CLOEXEC)
-		f_flags |= O_CLOEXEC;
 
 	event_fd = get_unused_fd_flags(f_flags);
 	if (event_fd < 0)
@@ -7127,6 +7205,10 @@ SYSCALL_DEFINE5(perf_event_open,
 		err = PTR_ERR(ctx);
 		goto err_alloc;
 	}
+
+	err = itrace_event_installable(event, ctx);
+	if (err)
+		goto err_alloc;
 
 	if (task) {
 		put_task_struct(task);
@@ -7292,6 +7374,10 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 		err = PTR_ERR(ctx);
 		goto err_free;
 	}
+
+	err = itrace_event_installable(event, ctx);
+	if (err)
+		goto err_free;
 
 	WARN_ON_ONCE(ctx->parent_ctx);
 	mutex_lock(&ctx->mutex);
@@ -7583,6 +7669,7 @@ inherit_event(struct perf_event *parent_event,
 {
 	struct perf_event *child_event;
 	unsigned long flags;
+	int err;
 
 	/*
 	 * Instead of creating recursive hierarchies of events,
@@ -7601,10 +7688,12 @@ inherit_event(struct perf_event *parent_event,
 	if (IS_ERR(child_event))
 		return child_event;
 
-	if (!atomic_long_inc_not_zero(&parent_event->refcount)) {
-		free_event(child_event);
-		return NULL;
-	}
+	err = itrace_inherit_event(child_event, child);
+	if (err)
+		goto err_alloc;
+
+	if (!atomic_long_inc_not_zero(&parent_event->refcount))
+		goto err_alloc;
 
 	get_ctx(child_ctx);
 
@@ -7655,6 +7744,11 @@ inherit_event(struct perf_event *parent_event,
 	mutex_unlock(&parent_event->child_mutex);
 
 	return child_event;
+
+err_alloc:
+	free_event(child_event);
+
+	return NULL;
 }
 
 static int inherit_group(struct perf_event *parent_event,

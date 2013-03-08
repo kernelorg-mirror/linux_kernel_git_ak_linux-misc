@@ -126,6 +126,10 @@ struct hw_perf_event {
 			/* for tp_event->class */
 			struct list_head	tp_list;
 		};
+		struct { /* itrace */
+			struct file		*itrace_file;
+			struct task_struct	*itrace_target;
+		};
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 		struct { /* breakpoint */
 			/*
@@ -291,6 +295,7 @@ struct ring_buffer;
 
 enum perf_event_rb {
 	PERF_RB_MAIN = 0,
+	PERF_RB_ITRACE,
 	PERF_NR_RB,
 };
 

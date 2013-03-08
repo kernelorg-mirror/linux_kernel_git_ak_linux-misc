@@ -237,6 +237,10 @@ enum perf_event_read_format {
 #define PERF_ATTR_SIZE_VER2	80	/* add: branch_sample_type */
 #define PERF_ATTR_SIZE_VER3	96	/* add: sample_regs_user */
 					/* add: sample_stack_user */
+#define PERF_ATTR_SIZE_VER4	120	/* add: itrace_config */
+					/* add: itrace_watermark */
+					/* add: itrace_sample_type */
+					/* add: itrace_sample_size */
 
 /*
  * Hardware event_id to monitor via a performance monitoring event:
@@ -333,6 +337,11 @@ struct perf_event_attr {
 
 	/* Align to u64. */
 	__u32	__reserved_2;
+
+	__u64	itrace_config;
+	__u32	itrace_watermark;	/* wakeup every n pages */
+	__u32	itrace_sample_type;	/* pmu->type of the itrace PMU */
+	__u64	itrace_sample_size;
 };
 
 #define perf_flags(attr)	(*(&(attr)->read_format + 1))
@@ -705,6 +714,13 @@ enum perf_event_type {
 	 */
 	PERF_RECORD_MMAP2			= 10,
 
+	/*
+	 * struct {
+	 *   u64 offset;
+	 * }
+	 */
+	PERF_RECORD_ITRACE_LOST			= 11,
+
 	PERF_RECORD_MAX,			/* non-ABI */
 };
 
@@ -726,6 +742,7 @@ enum perf_callchain_context {
 #define PERF_FLAG_FD_OUTPUT		(1U << 1)
 #define PERF_FLAG_PID_CGROUP		(1U << 2) /* pid=cgroup id, per-cpu mode only */
 #define PERF_FLAG_FD_CLOEXEC		(1U << 3) /* O_CLOEXEC */
+#define PERF_FLAG_FD_ITRACE		(1U << 4) /* request itrace fd */
 
 union perf_mem_data_src {
 	__u64 val;
