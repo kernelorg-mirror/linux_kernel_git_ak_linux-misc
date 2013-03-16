@@ -609,6 +609,9 @@ intel_pmu_lbr_filter(struct cpu_hw_events *cpuc)
 	int i, j, type;
 	bool compress = false;
 
+	if (x86_pmu.lbr_no_sw_filter)
+		return;
+
 	/* if sampling all branches, then nothing to filter */
 	if ((br_sel & X86_BR_ALL) == X86_BR_ALL)
 		return;
@@ -728,12 +731,13 @@ void intel_pmu_lbr_init_snb(void)
 
 	x86_pmu.lbr_sel_mask = LBR_SEL_MASK;
 	x86_pmu.lbr_sel_map  = snb_lbr_sel_map;
+	x86_pmu.lbr_no_sw_filter = true;
 
 	/*
-	 * SW branch filter usage:
-	 * - support syscall, sysret capture.
-	 *   That requires LBR_FAR but that means far
-	 *   jmp need to be filtered out
+	 * We include interrupts/exceptions
+	 * with calls. While technically they are not,
+	 * it's not worth extra filtering just to
+	 * get rid of them.
 	 */
 	pr_cont("16-deep LBR, ");
 }
