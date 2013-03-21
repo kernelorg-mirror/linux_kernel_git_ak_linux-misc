@@ -2831,7 +2831,10 @@ sub process {
 		    $line =~ /\b(?:if|while|for)\s*\(/ && $line !~ /^.\s*#/) {
 			my ($s, $c) = ($stat, $cond);
 
-			if ($c =~ /\bif\s*\(.*[^<>!=]=[^=].*/s) {
+			# if ((status = _xbegin()) == _XBEGIN_STARTED) is natural,
+			# so don't warn about this case.
+			if ($c =~ /\bif\s*\(.*[^<>!=]=[^=].*/s &&
+			    $c !~ /_xbegin/) {
 				ERROR("ASSIGN_IN_IF",
 				      "do not use assignment in if condition\n" . $herecurr);
 			}
