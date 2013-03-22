@@ -28,6 +28,9 @@ struct rw_semaphore {
 	long			count;
 	raw_spinlock_t		wait_lock;
 	struct list_head	wait_list;
+#ifdef CONFIG_ARCH_HAS_ELISION
+	short			elision_adapt;
+#endif
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	struct lockdep_map	dep_map;
 #endif
