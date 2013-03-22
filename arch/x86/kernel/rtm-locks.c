@@ -400,7 +400,11 @@ static int __init init_rtm_late(void)
 		return 0;
 	static_key_slow_inc(&spinlock_elision);
 	static_key_slow_inc(&rwlock_elision);
+	static_key_slow_inc(&bitlock_elision);
 	return 0;
 }
 __initcall(init_rtm_late);
 
+struct static_key bitlock_elision = STATIC_KEY_INIT_FALSE;
+EXPORT_SYMBOL(bitlock_elision);
+module_param(bitlock_elision, static_key, 0644);

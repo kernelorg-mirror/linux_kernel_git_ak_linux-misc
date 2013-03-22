@@ -5,6 +5,10 @@
 #include <linux/preempt.h>
 #include <linux/atomic.h>
 #include <linux/bug.h>
+#include <linux/static_key.h>
+#include <linux/elide.h>
+
+extern struct static_key bitlock_elision;
 
 /*
  *  bit-based spin_lock()
@@ -14,6 +18,9 @@
  */
 static inline void bit_spin_lock(int bitnum, unsigned long *addr)
 {
+	if (elide_lock(bitlock_elision, test_bit(bitnum, addr) == 0))
+		return;
+
 	/*
 	 * Assuming the lock is uncontended, this never enters
 	 * the body of the outer loop. If it is contended, then
@@ -39,6 +46,9 @@ static inline void bit_spin_lock(int bitnum, unsigned long *addr)
  */
 static inline int bit_spin_trylock(int bitnum, unsigned long *addr)
 {
+	if (elide_lock(bitlock_elision, test_bit(bitnum, addr) == 0))
+		return 1;
+
 	preempt_disable();
 #if defined(CONFIG_SMP) || defined(CONFIG_DEBUG_SPINLOCK)
 	if (unlikely(test_and_set_bit_lock(bitnum, addr))) {
@@ -55,6 +65,9 @@ static inline int bit_spin_trylock(int bitnum, unsigned long *addr)
  */
 static inline void bit_spin_unlock(int bitnum, unsigned long *addr)
 {
+	if (elide_unlock(test_bit(bitnum, addr) == 0))
+		return;
+
 #ifdef CONFIG_DEBUG_SPINLOCK
 	BUG_ON(!test_bit(bitnum, addr));
 #endif
@@ -72,6 +85,9 @@ static inline void bit_spin_unlock(int bitnum, unsigned long *addr)
  */
 static inline void __bit_spin_unlock(int bitnum, unsigned long *addr)
 {
+	if (elide_unlock(test_bit(bitnum, addr) == 0))
+		return;
+
 #ifdef CONFIG_DEBUG_SPINLOCK
 	BUG_ON(!test_bit(bitnum, addr));
 #endif
@@ -87,6 +103,7 @@ static inline void __bit_spin_unlock(int bitnum, unsigned long *addr)
  */
 static inline int bit_spin_is_locked(int bitnum, unsigned long *addr)
 {
+	elide_abort();
 #if defined(CONFIG_SMP) || defined(CONFIG_DEBUG_SPINLOCK)
 	return test_bit(bitnum, addr);
 #elif defined CONFIG_PREEMPT_COUNT
