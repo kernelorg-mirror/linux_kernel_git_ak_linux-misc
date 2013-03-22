@@ -77,16 +77,22 @@ static DEFINE_PER_CPU(bool, cli_elided);
 static struct static_key spinlock_elision = STATIC_KEY_INIT_TRUE;
 module_param(spinlock_elision, static_key, 0644);
 
+static __read_mostly struct elision_config spinlock_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(spinlock, spinlock_elision_config);
+
 static int rtm_spin_trylock(struct arch_spinlock *lock)
 {
-	if (elide_lock(spinlock_elision, !__ticket_spin_is_locked(lock)))
+	if (elide_lock_adapt(spinlock_elision, !__ticket_spin_is_locked(lock),
+			     &lock->elision_adapt, &spinlock_elision_config))
 		return 1;
 	return __ticket_spin_trylock(lock);
 }
 
 static inline void rtm_spin_lock(struct arch_spinlock *lock)
 {
-	if (!elide_lock(spinlock_elision, !__ticket_spin_is_locked(lock)))
+	if (!elide_lock_adapt(spinlock_elision, !__ticket_spin_is_locked(lock),
+			      &lock->elision_adapt, &spinlock_elision_config))
 		__ticket_spin_lock(lock);
 }
 
