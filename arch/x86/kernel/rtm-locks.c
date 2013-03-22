@@ -108,16 +108,20 @@ PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_enable);
 static struct static_key spinlock_elision = STATIC_KEY_INIT_TRUE;
 module_param(spinlock_elision, static_key, 0644);
 
+DEFINE_ELISION_CONFIG(static, spinlock, spinlock_elision_config);
+
 static int rtm_spin_trylock(struct arch_spinlock *lock)
 {
-	if (elide_lock(spinlock_elision, !__ticket_spin_is_locked(lock)))
+	if (elide_lock_adapt(spinlock_elision, !__ticket_spin_is_locked(lock),
+			     &lock->elision_adapt, &spinlock_elision_config))
 		return 1;
 	return __ticket_spin_trylock(lock);
 }
 
 static inline void rtm_spin_lock(struct arch_spinlock *lock)
 {
-	if (!elide_lock(spinlock_elision, !__ticket_spin_is_locked(lock)))
+	if (!elide_lock_adapt(spinlock_elision, !__ticket_spin_is_locked(lock),
+			      &lock->elision_adapt, &spinlock_elision_config))
 		__ticket_spin_lock(lock);
 }
 
