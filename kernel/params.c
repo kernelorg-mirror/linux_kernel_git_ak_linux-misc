@@ -499,6 +499,34 @@ struct kernel_param_ops param_ops_string = {
 };
 EXPORT_SYMBOL(param_ops_string);
 
+/* Per CPU read only module param. */
+
+static int param_percpu_uint_set(const char *val, const struct kernel_param *kp)
+{
+	int cpu;
+
+	/* just clear on any write */
+	for_each_possible_cpu(cpu)
+		*per_cpu_ptr((unsigned * __percpu)(kp->arg), cpu) = 0;
+	return 0;
+}
+
+static int param_percpu_uint_get(char *buffer, const struct kernel_param *kp)
+{
+	int cpu;
+	unsigned count = 0;
+
+	for_each_possible_cpu(cpu)
+		count += *per_cpu_ptr((unsigned * __percpu)(kp->arg), cpu);
+	return sprintf(buffer, "%u", count);
+}
+
+struct kernel_param_ops param_ops_percpu_uint = {
+	.set = param_percpu_uint_set,
+	.get = param_percpu_uint_get,
+};
+EXPORT_SYMBOL(param_ops_percpu_uint);
+
 /* sysfs output in /sys/modules/XYZ/parameters/ */
 #define to_module_attr(n) container_of(n, struct module_attribute, attr)
 #define to_module_kobject(n) container_of(n, struct module_kobject, kobj)
