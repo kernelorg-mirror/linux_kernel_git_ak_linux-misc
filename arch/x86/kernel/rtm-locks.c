@@ -465,6 +465,7 @@ void __init init_rtm_spinlocks(void)
 
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&mutex_elision);
+	bitlock_elision = true;
 }
 
 __read_mostly struct elision_config mutex_elision_config =
@@ -473,6 +474,9 @@ TUNE_ELISION_CONFIG(mutex, mutex_elision_config);
 
 __read_mostly bool rwsem_elision = true;
 module_param(rwsem_elision, bool, 0644);
+
+__read_mostly bool bitlock_elision;
+module_param(bitlock_elision, bool, 0644);
 
 module_param_cb(lock_el_skip, &param_ops_percpu_uint, &lock_el_skip,
 		0644);
