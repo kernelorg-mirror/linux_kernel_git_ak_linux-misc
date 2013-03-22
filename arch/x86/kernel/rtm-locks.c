@@ -156,8 +156,16 @@ static int rtm_spin_is_locked(struct arch_spinlock *lock)
  * This uses direct calls with static patching, not pvops.
  */
 
-__read_mostly bool rwlock_elision = true;
-module_param(rwlock_elision, bool, 0644);
+static struct static_key rwlock_elision = STATIC_KEY_INIT_FALSE;
+module_param(rwlock_elision, static_key, 0644);
+
+static __read_mostly struct elision_config readlock_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(readlock, readlock_elision_config);
+
+static __read_mostly struct elision_config writelock_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(writelock, writelock_elision_config);
 
 void rtm_read_lock(arch_rwlock_t *rw)
 {
@@ -168,7 +176,8 @@ void rtm_read_lock(arch_rwlock_t *rw)
 	 * would abort anyways.
 	 */
 
-	if (!elide_lock(rwlock_elision, !arch_rwlock_is_locked(rw)))
+	if (!elide_lock_adapt(rwlock_elision, !arch_rwlock_is_locked(rw),
+			      &rw->elision_adapt, &readlock_elision_config))
 		arch_do_read_lock(rw);
 }
 EXPORT_SYMBOL(rtm_read_lock);
@@ -211,7 +220,8 @@ EXPORT_SYMBOL(rtm_read_unlock_irqrestore);
 
 int rtm_read_trylock(arch_rwlock_t *rw)
 {
-	if (elide_lock(rwlock_elision, !arch_rwlock_is_locked(rw)))
+	if (elide_lock_adapt(rwlock_elision, !arch_rwlock_is_locked(rw),
+			     &rw->elision_adapt, &readlock_elision_config))
 		return 1;
 	return arch_do_read_trylock(rw);
 }
@@ -219,7 +229,8 @@ EXPORT_SYMBOL(rtm_read_trylock);
 
 void rtm_write_lock(arch_rwlock_t *rw)
 {
-	if (!elide_lock(rwlock_elision, !arch_write_can_lock(rw)))
+	if (!elide_lock_adapt(rwlock_elision, !arch_write_can_lock(rw),
+			      &rw->elision_adapt, &writelock_elision_config))
 		arch_do_write_lock(rw);
 }
 EXPORT_SYMBOL(rtm_write_lock);
@@ -452,6 +463,7 @@ void __init init_rtm_spinlocks(void)
 	pv_irq_ops.restore_fl = PV_CALLEE_SAVE(rtm_restore_fl);
 	pv_init_ops.patch = rtm_patch;
 
+	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&mutex_elision);
 }
 
