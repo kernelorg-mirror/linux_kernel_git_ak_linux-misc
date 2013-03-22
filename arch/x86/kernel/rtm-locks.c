@@ -455,10 +455,12 @@ void __init init_rtm_spinlocks(void)
 	pv_init_ops.patch = rtm_patch;
 
 	static_key_slow_inc(&rwlock_elision);
+	static_key_slow_inc(&bitlock_elision);
 }
 
 __read_mostly bool rwsem_elision = true;
 module_param(rwsem_elision, bool, 0644);
 
-__read_mostly bool bitlock_elision;
-module_param(bitlock_elision, bool, 0644);
+struct static_key bitlock_elision = STATIC_KEY_INIT_FALSE;
+EXPORT_SYMBOL(bitlock_elision);
+module_param(bitlock_elision, static_key, 0644);
