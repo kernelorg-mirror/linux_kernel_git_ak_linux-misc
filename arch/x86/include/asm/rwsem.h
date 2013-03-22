@@ -39,6 +39,7 @@
 #ifdef __KERNEL__
 #include <asm/asm.h>
 #include <linux/elide.h>
+#include <linux/jump_label.h>
 
 /*
  * The bias values and the counter type limits the number of
@@ -58,14 +59,18 @@
 #define RWSEM_ACTIVE_READ_BIAS		RWSEM_ACTIVE_BIAS
 #define RWSEM_ACTIVE_WRITE_BIAS		(RWSEM_WAITING_BIAS + RWSEM_ACTIVE_BIAS)
 
-extern bool rwsem_elision;
+extern struct static_key rwsem_elision;
+extern struct elision_config readsem_elision_config;
+extern struct elision_config writesem_elision_config;
 
 /*
  * lock for reading
  */
 static inline void __down_read(struct rw_semaphore *sem)
 {
-	if (elide_lock(rwsem_elision, sem->count == 0))
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
 		return;
 	asm volatile("# beginning down_read\n\t"
 		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
@@ -86,7 +91,9 @@ static inline int __down_read_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
 
-	if (elide_lock(rwsem_elision, sem->count == 0))
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
 		return 1;
 	asm volatile("# beginning __down_read_trylock\n\t"
 		     "  mov          %0,%1\n\t"
@@ -111,7 +118,9 @@ static inline void __down_write_nested(struct rw_semaphore *sem, int subclass)
 {
 	long tmp;
 
-	if (elide_lock(rwsem_elision, sem->count == 0))
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
 		return;
 	asm volatile("# beginning down_write\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
@@ -138,7 +147,9 @@ static inline void __down_write(struct rw_semaphore *sem)
 static inline int __down_write_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
-	if (elide_lock(rwsem_elision, sem->count == 0))
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &writesem_elision_config))
 		return 1;
 	asm volatile("# beginning __down_write_trylock\n\t"
 		     "  mov          %0,%1\n\t"
@@ -207,6 +218,7 @@ static inline void __up_write(struct rw_semaphore *sem)
  */
 static inline void __downgrade_write(struct rw_semaphore *sem)
 {
+	/* if (sem->count == 0) return; */
 	asm volatile("# beginning __downgrade_write\n\t"
 		     LOCK_PREFIX _ASM_ADD "%2,(%1)\n\t"
 		     /*
