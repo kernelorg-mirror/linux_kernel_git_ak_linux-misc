@@ -437,6 +437,15 @@ static unsigned rtm_patch(u8 type, u16 clobbers, void *ibuf,
 struct static_key mutex_elision = STATIC_KEY_INIT_FALSE;
 module_param(mutex_elision, static_key, 0644);
 
+struct static_key rwsem_elision = STATIC_KEY_INIT_FALSE;
+module_param(rwsem_elision, static_key, 0644);
+__read_mostly struct elision_config readsem_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(readsem, readsem_elision_config);
+__read_mostly struct elision_config writesem_elision_config =
+	DEFAULT_ELISION_CONFIG;
+TUNE_ELISION_CONFIG(writesem, writesem_elision_config);
+
 void __init init_rtm_spinlocks(void)
 {
 	if (!boot_cpu_has(X86_FEATURE_RTM))
@@ -465,15 +474,13 @@ void __init init_rtm_spinlocks(void)
 
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&mutex_elision);
+	static_key_slow_inc(&rwsem_elision);
 	bitlock_elision = true;
 }
 
 __read_mostly struct elision_config mutex_elision_config =
 	DEFAULT_ELISION_CONFIG;
 TUNE_ELISION_CONFIG(mutex, mutex_elision_config);
-
-__read_mostly bool rwsem_elision = true;
-module_param(rwsem_elision, bool, 0644);
 
 __read_mostly bool bitlock_elision;
 module_param(bitlock_elision, bool, 0644);
