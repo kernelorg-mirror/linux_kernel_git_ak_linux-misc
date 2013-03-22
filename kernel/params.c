@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/ctype.h>
+#include <linux/jump_label.h>
 
 /* Protects all parameters, and incidentally kmalloced_param list. */
 static DEFINE_MUTEX(param_lock);
@@ -522,6 +523,40 @@ struct kernel_param_ops param_ops_percpu_uint = {
 	.get = param_percpu_uint_get,
 };
 EXPORT_SYMBOL(param_ops_percpu_uint);
+
+/* Static key module params. Like a bool, but allows patching the jumps. */
+
+/* Noone else should change */
+static int param_static_key_set(const char *val, const struct kernel_param *kp)
+{
+	static DEFINE_SPINLOCK(lock);
+	bool l;
+	struct static_key *key = (struct static_key *)(kp->arg);
+	int ret = strtobool(val, &l);
+
+	if (ret < 0)
+		return ret;
+	/* Work around racy static key interface */
+	spin_lock(&lock);
+	if (l && !atomic_read(&key->enabled))
+		static_key_slow_inc(key);
+	if (!l && atomic_read(&key->enabled))
+		static_key_slow_dec(key);
+	spin_unlock(&lock);
+	return ret;
+}
+
+static int param_static_key_get(char *buffer, const struct kernel_param *kp)
+{
+	struct static_key *key = kp->arg;
+	return sprintf(buffer, "%u", atomic_read(&key->enabled) > 0);
+}
+
+struct kernel_param_ops param_ops_static_key = {
+	.set = param_static_key_set,
+	.get = param_static_key_get,
+};
+EXPORT_SYMBOL(param_ops_static_key);
 
 /* sysfs output in /sys/modules/XYZ/parameters/ */
 #define to_module_attr(n) container_of(n, struct module_attribute, attr)

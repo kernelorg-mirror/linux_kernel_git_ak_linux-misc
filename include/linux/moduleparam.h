@@ -407,6 +407,12 @@ extern int param_set_bint(const char *val, const struct kernel_param *kp);
 extern struct kernel_param_ops param_ops_percpu_uint;
 #define param_check_percpu_uint(name, p) param_check_uint
 
+/* Static key module params. Useful for time critical flags. */
+struct static_key;
+extern struct kernel_param_ops param_ops_static_key;
+#define param_check_static_key(name, p) \
+	__param_check(name, p, struct static_key)
+
 /**
  * module_param_array - a parameter which is an array of some type
  * @name: the name of the array variable
