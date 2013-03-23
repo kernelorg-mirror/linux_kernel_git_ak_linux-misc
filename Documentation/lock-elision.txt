@@ -1,0 +1,131 @@
+
+The Linux kernel uses Intel TSX lock elision for most of its locking primitives,
+when the hardware supports TSX.
+
+This allows to run lock regions that follow specific conditions to run
+in parallel without explicit blocking in a memory transaction. If the
+transaction fails the code falls back to the normal lock.
+
+The memory transaction acts like a fast path to improve scalability of the
+lock.
+
+The lock elision is implemented using RTM.
+
+The elision code is mostly adaptive, that is the lock predicts whether
+it should elide or not based on the history.
+
+To measure transaction success the TSX perf extensions should be used.
+
+(At the time of this writing this requires unmerged perf patches,
+as in the full Haswell PMU patch series in hsw/pmu* in
+git://git.kernel.org/pub/scm/linux/kernel/git/ak/linux-misc.git)
+
+To measure general transaction success (transactional and aborted cycles):
+perf stat -T -a sleep 1
+
+To measure abort points. This also reports the cost of an abort (weight)
+and the abort type:
+
+perf record -g --transaction -W -e tx-aborts -a sleep 1
+perf report --sort symbol,dso,transaction,weight
+
+To measure critical sections aborting. This is useful for asynchronous
+aborts, like conflicts, as they often require looking at the whole
+critical section.  The critical section is the caller.
+
+perf record -g -t tx-aborts-count -a sleep 1
+
+To measure lock adaption:
+
+perf record -g -e elision:elision_skip_start
+perf report
+	Histogram
+perf script 
+	The status parameter is the EAX RTM abort code that caused the skip.
+	See the TSX specification for more details.
+
+There are various tunables available in /sys/module/rtm_locks/parameters.
+The tunables are grouped by lock types.
+
+Elision can be enabled by lock types:
+
+rwsem_elision		Enable elision for read-write semaphores
+mutex_elision		Enable elision for mutexes
+spinlock_elision	Enable elision for spinlocks
+rwlock_elision		Enable elision for read-write spinlocks
+bitlock_elision		Enable elision for bit spinlocks
+
+Some lock types use adaptive algorithms. The adaptive algorithm
+has a number of tunables which can be tuned. Each tunable 
+is named LOCKTYPE_TUNABLE. For example to tune the conflict retries
+for mutexes do
+
+echo NUMBER > /sys/module/rtm_locks/parameters/mutex_conflict_retry
+
+Valid adaptive lock types are:
+mutex, readlock, writelock, readsem, writesem, spinlock
+
+The current tunables are (subject to change):
+
+In general increasing the skip counts makes lock elision more conservative,
+while increasing retries or timeout makes it more aggressive.
+
+*_elision 			Global elision enable for the lock type.
+*_conflict_abort_skip		Number of elisions to skip when a transaction
+				failed due to a number of retried conflicts.
+*_conflict_retry		Number of retries on memory conflicts
+*_internal_abort_skip		Number of elision to skip when a transaction
+				failed due to a reason inside the transaction
+				(that is not caused by another CPU)
+*_lock_busy_retry		How often to retry wen the lock is busy on
+				elision.
+*_lock_busy_skip		How often to skip elision when retries on
+				lock busy failed.
+*_other_abort_skip		How often to skip elision when the transaction
+				failed for other reasons (e.g. capacity overflow)
+*_retry_timeout			How often to spin while waiting for a lock to free
+				before retrying.
+
+Note these tunables do not present an ABI and may change as the internals
+evolve.
+
+Additional statistics:
+
+lock_el_skip			Number of times a lock didn't elide due to skipping
+lock_el_skip_start		Number of times a lock started skipping
+
+The average skip is lock_el_skip / lock_el_start_skip
+
+There is also a elision:elision_skip_start trace point that triggers every time
+a lock starts skipping elision due to non success. 
+
+References:
+"Adding Lock elision to Linux"
+http://halobates.de/adding-lock-elision-to-linux.pdf
+
+"Adding lock elision to the GNU C Library"
+http://lwn.net/Articles/533894/
+
+Full TSX specification:
+http://software.intel.com/file/41417 (chapter 8)
+
+Glossary:
+abort		Rolling back the transaction and undoing its side effect
+adaptation	Predictive algorithm whether a transaction succeeds and should
+		be tried
+cache line	Aligned 64 byte region. All memory state tracking with TSX
+		happens on cache line sized chunks.
+capacity	The amount of memory that can be read or written in a memory
+		transaction. Exceeding that leads to an abort.
+conflict	Another CPU writes to a cache line read in a transactional region,
+		or reads from a cache line written to in the region. This
+		leads a transaction abort.
+lock elision	Applying memory transactions to improve lock scaling. The programing
+		model does not change.
+transaction	(memory transaction)
+		Code region that executes transactionally. All memory side effects
+		are buffered and only made visible atomically to other CPUs when
+		the transaction commits. When the transaction does not commit,
+		all its memory changes are undone.
+
+Andi Kleen
