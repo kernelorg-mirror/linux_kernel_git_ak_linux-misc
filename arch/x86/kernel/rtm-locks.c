@@ -279,10 +279,6 @@ inline int __elide_lock(void)
 }
 EXPORT_SYMBOL(__elide_lock);
 
-/* XXX make per lock type */
-static DEFINE_PER_CPU(unsigned, lock_el_skip);
-static DEFINE_PER_CPU(unsigned, lock_el_start_skip);
-
 /*
  * Implement a simple adaptive algorithm. When the lock aborts
  * for an internal (not external) cause we stop eliding for some time.
@@ -298,11 +294,12 @@ static DEFINE_PER_CPU(unsigned, lock_el_start_skip);
  * have blocked anyways.
  */
 
-static inline void skip_update(short *count, short skip, unsigned status)
+static inline void skip_update(short *count, short skip, unsigned status,
+			       struct elision_config *config)
 {
-	__this_cpu_inc(lock_el_start_skip);
 	/* Can lose updates, but that is ok as this is just a hint. */
 	if (*count != skip) {
+		__this_cpu_inc(config->stat->start_skips);
 		trace_elision_skip_start(count, status);
 		*count = skip;
 	}
@@ -326,14 +323,16 @@ __elide_lock_adapt_slow(short *count, struct elision_config *config,
 				(*retry)--;
 				return ELIDE_RETRY;
 			}
-			skip_update(count, config->lock_busy_skip, status);
+			skip_update(count, config->lock_busy_skip, status,
+				    config);
 		} else
-			skip_update(count, config->internal_abort_skip, status);
+			skip_update(count, config->internal_abort_skip, status,
+				    config);
 		return ELIDE_STOP;
 	}
 	if (!(status & _XABORT_CONFLICT)) {
 		/* No retries for capacity. Maybe later. */
-		skip_update(count, config->other_abort_skip, status);
+		skip_update(count, config->other_abort_skip, status, config);
 		return ELIDE_STOP;
 	}
 	/* Was a conflict. Do some retries. */
@@ -343,7 +342,7 @@ __elide_lock_adapt_slow(short *count, struct elision_config *config,
 		return ELIDE_RETRY;
 	}
 
-	skip_update(count, config->conflict_abort_skip, status);
+	skip_update(count, config->conflict_abort_skip, status, config);
 	return ELIDE_STOP;
 }
 
@@ -358,8 +357,7 @@ inline int __elide_lock_adapt(short *count, struct elision_config *config,
 	if (unlikely(*count > 0)) {
 		/* Can lose updates, but that is ok as this is just a hint. */
 		(*count)--;
-		/* TBD should count this per lock type and per lock */
-		__this_cpu_inc(lock_el_skip);
+		__this_cpu_inc(config->stat->total_skips);
 		return ELIDE_STOP;
 	}
 	if (likely((status = _xbegin()) == _XBEGIN_STARTED)) {
