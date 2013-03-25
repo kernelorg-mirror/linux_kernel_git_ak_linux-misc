@@ -469,8 +469,3 @@ DEFINE_ELISION_CONFIG(, mutex, mutex_elision_config);
 
 __read_mostly bool bitlock_elision;
 module_param(bitlock_elision, bool, 0644);
-
-module_param_cb(lock_el_skip, &param_ops_percpu_uint, &lock_el_skip,
-		0644);
-module_param_cb(lock_el_start_skip, &param_ops_percpu_uint,
-		&lock_el_start_skip, 0644);
