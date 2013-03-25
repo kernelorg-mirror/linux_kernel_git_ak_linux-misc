@@ -4,18 +4,28 @@
 #ifdef CONFIG_RTM_LOCKS
 #include <asm/rtm.h>
 
+/* Per CPU statistics */
+struct elision_stat {
+	int total_skips;		/* total number of skips */
+	int start_skips;		/* number of start skippings */
+};
+
+/* Configuration parameters for adaptive elision algorithm */
 struct elision_config {
-	short internal_abort_skip;
-	short lock_busy_skip;
-	short other_abort_skip;
-	short conflict_abort_skip;
-	int conflict_retry;
-	int retry_timeout;
-	int lock_busy_retry;
+	/* skipping means not eliding the lock for the next N invocations. */
+	short internal_abort_skip;	/* skip on internal abort. */
+	short lock_busy_skip;		/* skip on lock-busy */
+	short other_abort_skip;		/* skip on other aborts */
+	short conflict_abort_skip;	/* skip on conflicts */
+	int conflict_retry;		/* number of retries on conflict */
+	int retry_timeout;		/* number of spins waiting for lock
+					   free on retry. */
+	int lock_busy_retry;		/* number of retries on lock busy */
+	struct elision_stat *stat __percpu;
 };
 
 /* Tuning preliminary */
-#define DEFAULT_ELISION_CONFIG {	\
+#define DEFAULT_ELISION_CONFIG(prefix, ...) {	\
 	.internal_abort_skip = 5,	\
 	.lock_busy_skip = 3,		\
 	.other_abort_skip = 3,		\
@@ -23,11 +33,13 @@ struct elision_config {
 	.conflict_retry = 3,		\
 	.retry_timeout = 500,		\
 	.lock_busy_retry = 3,		\
+	.stat = &prefix ## _el_stat, ## __VA_ARGS__ \
 }
 
-#define TUNE_ELISION_CONFIG(prefix, name)				\
+#define DEFINE_ELISION_CONFIG(ST, prefix, name, ...)			\
+	ST __read_mostly struct elision_config name;			\
 	module_param_named(prefix ## _internal_abort_skip,		\
-			   name.internal_abort_skip, short, 0644);	\
+			   name.internal_abort_skip, short, 0644);\
 	module_param_named(prefix ## _lock_busy_skip,			\
 			   name.lock_busy_skip, short, 0644);		\
 	module_param_named(prefix ## _other_abort_skip,			\
@@ -39,8 +51,14 @@ struct elision_config {
 	module_param_named(prefix ## _retry_timeout,			\
 			   name.retry_timeout, int, 0644);		\
 	module_param_named(prefix ## _lock_busy_retry,			\
-			   name.lock_busy_retry, int, 0644)
-
+			   name.lock_busy_retry, int, 0644);		\
+	static DEFINE_PER_CPU(struct elision_stat, prefix ## _el_stat);	\
+	module_param_cb(prefix ## _total_skips, &param_ops_percpu_uint,	\
+			&prefix ## _el_stat.total_skips, 0644);		\
+	module_param_cb(prefix ## _start_skips, &param_ops_percpu_uint,	\
+			&prefix ## _el_stat.start_skips, 0644);		\
+	ST __read_mostly struct elision_config name =			\
+		DEFAULT_ELISION_CONFIG(prefix, ## __VA_ARGS__)
 
 /*
  * These are out of line unfortunately, just to avoid
