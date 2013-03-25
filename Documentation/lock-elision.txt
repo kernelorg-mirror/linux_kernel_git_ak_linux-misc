@@ -86,18 +86,22 @@ while increasing retries or timeout makes it more aggressive.
 *_retry_timeout			How often to spin while waiting for a lock to free
 				before retrying.
 
-Note these tunables do not present an ABI and may change as the internals
+Note these tunables do not represent an ABI and may change as the internals
 evolve.
 
-Additional statistics:
+Per lock type statistics:
 
-lock_el_skip			Number of times a lock didn't elide due to skipping
-lock_el_skip_start		Number of times a lock started skipping
+These can be read and aggregate all CPUs. Any write clears.
 
-The average skip is lock_el_skip / lock_el_start_skip
+*_start_skips			Lock started skipping due to abort
+*_total_skips			Lock skipped that many times
+
+The average skip per lock is total_skips / start_skips
 
 There is also a elision:elision_skip_start trace point that triggers every time
 a lock starts skipping elision due to non success. 
+
+These statistics do not represent an ABI and are subject to change.
 
 References:
 "Adding Lock elision to Linux"
@@ -122,6 +126,7 @@ conflict	Another CPU writes to a cache line read in a transactional region,
 		leads a transaction abort.
 lock elision	Applying memory transactions to improve lock scaling. The programing
 		model does not change.
+skipping	Not eliding a lock due to previous aborts.
 transaction	(memory transaction)
 		Code region that executes transactionally. All memory side effects
 		are buffered and only made visible atomically to other CPUs when
