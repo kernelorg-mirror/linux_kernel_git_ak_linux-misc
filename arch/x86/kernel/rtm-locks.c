@@ -74,6 +74,37 @@ static DEFINE_PER_CPU(bool, cli_elided);
 #define end_in_tx() __this_cpu_dec(in_tx)
 #define is_in_tx() __this_cpu_read(in_tx)
 
+/*
+ * CLI aborts, so avoid it inside transactions
+ * We don't need it because interrupts aborts anyways.
+ */
+
+static inline void rtm_restore_fl(unsigned long flags)
+{
+	if (flags & X86_EFLAGS_IF)
+		this_cpu_write(cli_elided, false);
+	if (!is_in_tx())
+		native_restore_fl(flags);
+}
+PV_CALLEE_SAVE_REGS_THUNK(rtm_restore_fl);
+
+static inline void rtm_irq_disable(void)
+{
+	if (!is_in_tx())
+		native_irq_disable();
+	else if (native_save_fl() & X86_EFLAGS_IF)
+		this_cpu_write(cli_elided, true);
+}
+PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_disable);
+
+static inline void rtm_irq_enable(void)
+{
+	if (!is_in_tx())
+		native_irq_enable();
+	this_cpu_write(cli_elided, false);
+}
+PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_enable);
+
 static struct static_key spinlock_elision = STATIC_KEY_INIT_TRUE;
 module_param(spinlock_elision, static_key, 0644);
 
@@ -130,13 +161,13 @@ static void rtm_spin_unlock_flags(struct arch_spinlock *lock,
 				  unsigned long flags)
 {
 	rtm_spin_unlock_check(lock, !(flags & X86_EFLAGS_IF));
-	local_irq_restore(flags);
+	rtm_restore_fl(flags);
 }
 
 static void rtm_spin_unlock_irq(struct arch_spinlock *lock)
 {
 	rtm_spin_unlock_check(lock, false);
-	local_irq_enable();
+	rtm_irq_enable();
 }
 
 static int rtm_spin_is_locked(struct arch_spinlock *lock)
@@ -200,14 +231,14 @@ EXPORT_SYMBOL(rtm_read_unlock);
 void rtm_read_unlock_irq(arch_rwlock_t *rw)
 {
 	rtm_read_unlock_check(rw, false);
-	local_irq_enable();
+	rtm_irq_enable();
 }
 EXPORT_SYMBOL(rtm_read_unlock_irq);
 
 void rtm_read_unlock_irqrestore(arch_rwlock_t *rw, unsigned long flags)
 {
 	rtm_read_unlock_check(rw, !(flags & X86_EFLAGS_IF));
-	local_irq_restore(flags);
+	rtm_restore_fl(flags);
 }
 EXPORT_SYMBOL(rtm_read_unlock_irqrestore);
 
@@ -253,14 +284,14 @@ EXPORT_SYMBOL(rtm_write_unlock);
 void rtm_write_unlock_irq(arch_rwlock_t *rw)
 {
 	rtm_write_unlock_check(rw, false);
-	local_irq_enable();
+	rtm_irq_enable();
 }
 EXPORT_SYMBOL(rtm_write_unlock_irq);
 
 void rtm_write_unlock_irqrestore(arch_rwlock_t *rw, unsigned long flags)
 {
 	rtm_write_unlock_check(rw, !(flags & X86_EFLAGS_IF));
-	local_irq_restore(flags);
+	rtm_restore_fl(flags);
 }
 EXPORT_SYMBOL(rtm_write_unlock_irqrestore);
 
@@ -378,39 +409,6 @@ inline void __elide_unlock(void)
 	_xend();
 }
 EXPORT_SYMBOL(__elide_unlock);
-
-
-/*
- * CLI aborts, so avoid it inside transactions
- *
- * Could also turn non txn cli into transactions?
- */
-
-static void rtm_restore_fl(unsigned long flags)
-{
-	if (flags & X86_EFLAGS_IF)
-		this_cpu_write(cli_elided, false);
-	if (!_xtest())
-		native_restore_fl(flags);
-}
-PV_CALLEE_SAVE_REGS_THUNK(rtm_restore_fl);
-
-static void rtm_irq_disable(void)
-{
-	if (!_xtest())
-		native_irq_disable();
-	else if (native_save_fl() & X86_EFLAGS_IF)
-		this_cpu_write(cli_elided, true);
-}
-PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_disable);
-
-static void rtm_irq_enable(void)
-{
-	if (!_xtest())
-		native_irq_enable();
-	this_cpu_write(cli_elided, false);
-}
-PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_enable);
 
 static unsigned rtm_patch(u8 type, u16 clobbers, void *ibuf,
 			  unsigned long addr, unsigned len)
