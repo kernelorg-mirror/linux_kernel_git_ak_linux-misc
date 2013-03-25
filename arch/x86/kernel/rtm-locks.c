@@ -465,9 +465,7 @@ void __init init_rtm_spinlocks(void)
 	bitlock_elision = true;
 }
 
-__read_mostly struct elision_config mutex_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(mutex, mutex_elision_config);
+DEFINE_ELISION_CONFIG(, mutex, mutex_elision_config);
 
 __read_mostly bool bitlock_elision;
 module_param(bitlock_elision, bool, 0644);
