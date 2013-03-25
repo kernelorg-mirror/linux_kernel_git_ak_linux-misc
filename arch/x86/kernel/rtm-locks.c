@@ -77,9 +77,7 @@ static DEFINE_PER_CPU(bool, cli_elided);
 static struct static_key spinlock_elision = STATIC_KEY_INIT_TRUE;
 module_param(spinlock_elision, static_key, 0644);
 
-static __read_mostly struct elision_config spinlock_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(spinlock, spinlock_elision_config);
+DEFINE_ELISION_CONFIG(static, spinlock, spinlock_elision_config);
 
 static int rtm_spin_trylock(struct arch_spinlock *lock)
 {
