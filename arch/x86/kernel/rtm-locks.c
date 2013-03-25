@@ -430,12 +430,8 @@ module_param(mutex_elision, static_key, 0644);
 
 struct static_key rwsem_elision = STATIC_KEY_INIT_FALSE;
 module_param(rwsem_elision, static_key, 0644);
-__read_mostly struct elision_config readsem_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(readsem, readsem_elision_config);
-__read_mostly struct elision_config writesem_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(writesem, writesem_elision_config);
+DEFINE_ELISION_CONFIG(, readsem,  readsem_elision_config);
+DEFINE_ELISION_CONFIG(, writesem, writesem_elision_config);
 
 void __init init_rtm_spinlocks(void)
 {
