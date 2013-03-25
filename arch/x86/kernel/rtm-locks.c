@@ -157,13 +157,8 @@ static int rtm_spin_is_locked(struct arch_spinlock *lock)
 static struct static_key rwlock_elision = STATIC_KEY_INIT_FALSE;
 module_param(rwlock_elision, static_key, 0644);
 
-static __read_mostly struct elision_config readlock_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(readlock, readlock_elision_config);
-
-static __read_mostly struct elision_config writelock_elision_config =
-	DEFAULT_ELISION_CONFIG;
-TUNE_ELISION_CONFIG(writelock, writelock_elision_config);
+DEFINE_ELISION_CONFIG(static, readlock, readlock_elision_config);
+DEFINE_ELISION_CONFIG(static, writelock, writelock_elision_config);
 
 void rtm_read_lock(arch_rwlock_t *rw)
 {
