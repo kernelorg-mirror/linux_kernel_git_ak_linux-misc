@@ -91,7 +91,7 @@ extern void __elide_unlock(void);
 	flag;				\
 })
 
-enum { ELIDE_TXN, ELIDE_STOP, ELIDE_RETRY };
+enum { ELIDE_TXN, ELIDE_STOP, ELIDE_RETRY_WAIT, ELIDE_RETRY_FAST };
 
 /*
  * Adaptive elision lock wrapper
@@ -115,13 +115,18 @@ enum { ELIDE_TXN, ELIDE_STOP, ELIDE_RETRY };
 		int status;					\
 		again:						\
 		status = __elide_lock_adapt(a, config, &retry); \
-		/* Retries wait until the lock is free. */	\
-		if (unlikely(status == ELIDE_RETRY)) {		\
+		/* lock-busy retries wait until the lock is free. */ \
+		/* Right now we just spin, even for sleeping locks*/ \
+		/* To prevent wasting too much time use a timeout */ \
+		if (unlikely(status == ELIDE_RETRY_WAIT)) {	\
 			while (!(l) && --timeout > 0)		\
 				cpu_relax();			\
 			if (timeout > 0)			\
 				goto again;			\
 		}						\
+		/* Conflict retries retry immediately */	\
+		if (unlikely(status == ELIDE_RETRY_FAST)) 	\
+			goto again;				\
 		if (likely(status != ELIDE_STOP)) {		\
 			/* in transaction. check now if the lock is free. */ \
 			if (likely(l))				\

@@ -352,7 +352,7 @@ __elide_lock_adapt_slow(short *count, struct elision_config *config,
 				    config->conflict_retry)
 					*retry = config->lock_busy_retry;
 				(*retry)--;
-				return ELIDE_RETRY;
+				return ELIDE_RETRY_WAIT;
 			}
 			skip_update(count, config->lock_busy_skip, status,
 				    config);
@@ -370,7 +370,7 @@ __elide_lock_adapt_slow(short *count, struct elision_config *config,
 	if (*retry > 0) {
 		/* In caller wait for lock becoming free and then retry. */
 		(*retry)--;
-		return ELIDE_RETRY;
+		return ELIDE_RETRY_FAST;
 	}
 
 	skip_update(count, config->conflict_abort_skip, status, config);
