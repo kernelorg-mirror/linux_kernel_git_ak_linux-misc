@@ -6,7 +6,7 @@
 #include "parse-options.h"
 #include "parse-events.h"
 #include "exec_cmd.h"
-#include "string.h"
+#include "linux/string.h"
 #include "symbol.h"
 #include "cache.h"
 #include "header.h"
@@ -568,6 +568,12 @@ do {								\
 	case PARSE_EVENTS__TERM_TYPE_NAME:
 		CHECK_TYPE_VAL(STR);
 		break;
+	case PARSE_EVENTS__TERM_TYPE_PRECISE:
+		CHECK_TYPE_VAL(NUM);
+		if ((unsigned)term->val.num > 3)
+			return -EINVAL;
+		attr->precise_ip = term->val.num;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -820,6 +826,32 @@ int parse_events_name(struct list_head *list, char *name)
 	return 0;
 }
 
+static int parse_events__scanner(const char *str, void *data, int start_token);
+
+static int parse_events_fixup(int ret, const char *str, void *data,
+			      int start_token)
+{
+	char *o = strdup(str);
+	char *s = NULL;
+	char *t = o;
+	char *p;
+	int len = 0;
+
+	if (!o)
+		return ret;
+	while ((p = strsep(&t, ",")) != NULL) {
+		if (s)
+			str_append(&s, &len, ",");
+		str_append(&s, &len, "cpu/");
+		str_append(&s, &len, p);
+		str_append(&s, &len, "/");
+	}
+	free(o);
+	if (!s)
+		return -ENOMEM;
+	return parse_events__scanner(s, data, start_token);
+}
+
 static int parse_events__scanner(const char *str, void *data, int start_token)
 {
 	YY_BUFFER_STATE buffer;
@@ -840,6 +872,8 @@ static int parse_events__scanner(const char *str, void *data, int start_token)
 	parse_events__flush_buffer(buffer, scanner);
 	parse_events__delete_buffer(buffer, scanner);
 	parse_events_lex_destroy(scanner);
+	if (ret && !strchr(str, '/'))
+		ret = parse_events_fixup(ret, str, data, start_token);
 	return ret;
 }
 
@@ -1078,6 +1112,8 @@ int print_hwcache_events(const char *event_glob, bool name_only)
 		}
 	}
 
+	if (printed)
+		printf("\n");
 	return printed;
 }
 
@@ -1132,11 +1168,12 @@ void print_events(const char *event_glob, bool name_only)
 
 	print_hwcache_events(event_glob, name_only);
 
+	print_pmu_events(event_glob, name_only);
+
 	if (event_glob != NULL)
 		return;
 
 	if (!name_only) {
-		printf("\n");
 		printf("  %-50s [%s]\n",
 		       "rNNN",
 		       event_type_descriptors[PERF_TYPE_RAW]);

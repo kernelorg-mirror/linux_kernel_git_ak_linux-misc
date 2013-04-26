@@ -12,6 +12,16 @@ enum {
 	LBR_FORMAT_LIP		= 0x01,
 	LBR_FORMAT_EIP		= 0x02,
 	LBR_FORMAT_EIP_FLAGS	= 0x03,
+	LBR_FORMAT_EIP_FLAGS2	= 0x04,
+	LBR_FORMAT_MAX_KNOWN	= LBR_FORMAT_EIP_FLAGS2,
+};
+
+static enum {
+	LBR_EIP_FLAGS		= 1,
+	LBR_TSX			= 2,
+} lbr_desc[LBR_FORMAT_MAX_KNOWN + 1] = {
+	[LBR_FORMAT_EIP_FLAGS]  = LBR_EIP_FLAGS,
+	[LBR_FORMAT_EIP_FLAGS2] = LBR_EIP_FLAGS | LBR_TSX,
 };
 
 /*
@@ -56,6 +66,8 @@ enum {
 	 LBR_FAR)
 
 #define LBR_FROM_FLAG_MISPRED  (1ULL << 63)
+#define LBR_FROM_FLAG_INTX     (1ULL << 62)
+#define LBR_FROM_FLAG_ABORT    (1ULL << 61)
 
 #define for_each_branch_sample_type(x) \
 	for ((x) = PERF_SAMPLE_BRANCH_USER; \
@@ -81,9 +93,13 @@ enum {
 	X86_BR_JMP      = 1 << 9, /* jump */
 	X86_BR_IRQ      = 1 << 10,/* hw interrupt or trap or fault */
 	X86_BR_IND_CALL = 1 << 11,/* indirect calls */
+	X86_BR_ABORT    = 1 << 12,/* transaction abort */
+	X86_BR_INTX     = 1 << 13,/* in transaction */
+	X86_BR_NOTX     = 1 << 14,/* not in transaction */
 };
 
 #define X86_BR_PLM (X86_BR_USER | X86_BR_KERNEL)
+#define X86_BR_ANYTX (X86_BR_NOTX | X86_BR_INTX)
 
 #define X86_BR_ANY       \
 	(X86_BR_CALL    |\
@@ -95,6 +111,7 @@ enum {
 	 X86_BR_JCC     |\
 	 X86_BR_JMP	 |\
 	 X86_BR_IRQ	 |\
+	 X86_BR_ABORT	 |\
 	 X86_BR_IND_CALL)
 
 #define X86_BR_ALL (X86_BR_PLM | X86_BR_ANY)
@@ -267,27 +284,50 @@ static void intel_pmu_lbr_read_64(struct cpu_hw_events *cpuc)
 	int lbr_format = x86_pmu.intel_cap.lbr_format;
 	u64 tos = intel_pmu_lbr_tos();
 	int i;
+	int out = 0;
 
 	for (i = 0; i < x86_pmu.lbr_nr; i++) {
 		unsigned long lbr_idx = (tos - i) & mask;
-		u64 from, to, mis = 0, pred = 0;
+		u64 from, to, mis = 0, pred = 0, intx = 0, abort = 0;
+		int skip = 0;
+		int lbr_flags = lbr_desc[lbr_format];
 
 		rdmsrl(x86_pmu.lbr_from + lbr_idx, from);
 		rdmsrl(x86_pmu.lbr_to   + lbr_idx, to);
 
-		if (lbr_format == LBR_FORMAT_EIP_FLAGS) {
+		if (lbr_flags & LBR_EIP_FLAGS) {
 			mis = !!(from & LBR_FROM_FLAG_MISPRED);
 			pred = !mis;
-			from = (u64)((((s64)from) << 1) >> 1);
+			skip = 1;
 		}
+		if (lbr_flags & LBR_TSX) {
+			intx = !!(from & LBR_FROM_FLAG_INTX);
+			abort = !!(from & LBR_FROM_FLAG_ABORT);
+			skip = 3;
+		}
+		from = (u64)((((s64)from) << skip) >> skip);
 
-		cpuc->lbr_entries[i].from	= from;
-		cpuc->lbr_entries[i].to		= to;
-		cpuc->lbr_entries[i].mispred	= mis;
-		cpuc->lbr_entries[i].predicted	= pred;
-		cpuc->lbr_entries[i].reserved	= 0;
+		/*
+		 * Some CPUs report duplicated abort records,
+		 * with the second entry not having an abort bit set.
+		 * Skip them here. This loop runs backwards,
+		 * so we need to undo the previous record.
+		 * If the abort just happened outside the window
+		 * the extra entry cannot be removed.
+		 */
+		if (abort && x86_pmu.lbr_double_abort && out > 0)
+			out--;
+
+		cpuc->lbr_entries[out].from	= from;
+		cpuc->lbr_entries[out].to	= to;
+		cpuc->lbr_entries[out].mispred	= mis;
+		cpuc->lbr_entries[out].predicted = pred;
+		cpuc->lbr_entries[out].intx	= intx;
+		cpuc->lbr_entries[out].abort	= abort;
+		cpuc->lbr_entries[out].reserved	= 0;
+		out++;
 	}
-	cpuc->lbr_stack.nr = i;
+	cpuc->lbr_stack.nr = out;
 }
 
 void intel_pmu_lbr_read(void)
@@ -334,6 +374,16 @@ static void intel_pmu_setup_sw_lbr_filter(struct perf_event *event)
 
 	if (br_type & PERF_SAMPLE_BRANCH_IND_CALL)
 		mask |= X86_BR_IND_CALL;
+
+	if (br_type & PERF_SAMPLE_BRANCH_ABORTTX)
+		mask |= X86_BR_ABORT;
+
+	if (br_type & PERF_SAMPLE_BRANCH_INTX)
+		mask |= X86_BR_INTX;
+
+	if (br_type & PERF_SAMPLE_BRANCH_NOTX)
+		mask |= X86_BR_NOTX;
+
 	/*
 	 * stash actual user request into reg, it may
 	 * be used by fixup code for some CPU
@@ -380,7 +430,8 @@ int intel_pmu_setup_lbr_filter(struct perf_event *event)
 	/*
 	 * no LBR on this PMU
 	 */
-	if (!x86_pmu.lbr_nr)
+	if (!x86_pmu.lbr_nr ||
+	    x86_pmu.intel_cap.lbr_format > LBR_FORMAT_MAX_KNOWN)
 		return -EOPNOTSUPP;
 
 	/*
@@ -408,7 +459,7 @@ int intel_pmu_setup_lbr_filter(struct perf_event *event)
  * decoded (e.g., text page not present), then X86_BR_NONE is
  * returned.
  */
-static int branch_type(unsigned long from, unsigned long to)
+static int branch_type(unsigned long from, unsigned long to, int abort)
 {
 	struct insn insn;
 	void *addr;
@@ -427,6 +478,9 @@ static int branch_type(unsigned long from, unsigned long to)
 	 */
 	if (from == 0 || to == 0)
 		return X86_BR_NONE;
+
+	if (abort)
+		return X86_BR_ABORT | to_plm;
 
 	if (from_plm == X86_BR_USER) {
 		/*
@@ -555,6 +609,9 @@ intel_pmu_lbr_filter(struct cpu_hw_events *cpuc)
 	int i, j, type;
 	bool compress = false;
 
+	if (x86_pmu.lbr_no_sw_filter)
+		return;
+
 	/* if sampling all branches, then nothing to filter */
 	if ((br_sel & X86_BR_ALL) == X86_BR_ALL)
 		return;
@@ -564,7 +621,13 @@ intel_pmu_lbr_filter(struct cpu_hw_events *cpuc)
 		from = cpuc->lbr_entries[i].from;
 		to = cpuc->lbr_entries[i].to;
 
-		type = branch_type(from, to);
+		type = branch_type(from, to, cpuc->lbr_entries[i].abort);
+		if (type != X86_BR_NONE && (br_sel & X86_BR_ANYTX)) {
+			if (cpuc->lbr_entries[i].intx)
+				type |= X86_BR_INTX;
+			else
+				type |= X86_BR_NOTX;
+		}
 
 		/* if type does not correspond, then discard */
 		if (type == X86_BR_NONE || (br_sel & type) != type) {
@@ -668,12 +731,13 @@ void intel_pmu_lbr_init_snb(void)
 
 	x86_pmu.lbr_sel_mask = LBR_SEL_MASK;
 	x86_pmu.lbr_sel_map  = snb_lbr_sel_map;
+	x86_pmu.lbr_no_sw_filter = true;
 
 	/*
-	 * SW branch filter usage:
-	 * - support syscall, sysret capture.
-	 *   That requires LBR_FAR but that means far
-	 *   jmp need to be filtered out
+	 * We include interrupts/exceptions
+	 * with calls. While technically they are not,
+	 * it's not worth extra filtering just to
+	 * get rid of them.
 	 */
 	pr_cont("16-deep LBR, ");
 }

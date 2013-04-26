@@ -464,6 +464,171 @@ struct sort_entry sort_mispredict = {
 	.se_width_idx	= HISTC_MISPREDICT,
 };
 
+static int64_t
+sort__abort_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->branch_info->flags.abort !=
+		right->branch_info->flags.abort;
+}
+
+static int hist_entry__abort_snprintf(struct hist_entry *self, char *bf,
+				    size_t size, unsigned int width)
+{
+	static const char *out = ".";
+
+	if (self->branch_info->flags.abort)
+		out = "A";
+	return repsep_snprintf(bf, size, "%-*s", width, out);
+}
+
+struct sort_entry sort_abort = {
+	.se_header	= "Transaction abort",
+	.se_cmp		= sort__abort_cmp,
+	.se_snprintf	= hist_entry__abort_snprintf,
+	.se_width_idx	= HISTC_ABORT,
+};
+
+static int64_t
+sort__intx_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->branch_info->flags.intx !=
+		right->branch_info->flags.intx;
+}
+
+static int hist_entry__intx_snprintf(struct hist_entry *self, char *bf,
+				    size_t size, unsigned int width)
+{
+	static const char *out = ".";
+
+	if (self->branch_info->flags.intx)
+		out = "T";
+
+	return repsep_snprintf(bf, size, "%-*s", width, out);
+}
+
+struct sort_entry sort_intx = {
+	.se_header	= "Branch in transaction",
+	.se_cmp		= sort__intx_cmp,
+	.se_snprintf	= hist_entry__intx_snprintf,
+	.se_width_idx	= HISTC_INTX,
+};
+
+static u64 he_weight(struct hist_entry *he)
+{
+	return he->stat.nr_events ? he->stat.weight / he->stat.nr_events : 0;
+}
+
+static int64_t
+sort__local_weight_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return he_weight(left) - he_weight(right);
+}
+
+static int hist_entry__local_weight_snprintf(struct hist_entry *self, char *bf,
+				    size_t size, unsigned int width)
+{
+	return repsep_snprintf(bf, size, "%-*llu", width, he_weight(self));
+}
+
+struct sort_entry sort_local_weight = {
+	.se_header	= "Local Weight",
+	.se_cmp		= sort__local_weight_cmp,
+	.se_snprintf	= hist_entry__local_weight_snprintf,
+	.se_width_idx	= HISTC_LOCAL_WEIGHT,
+};
+
+static int64_t
+sort__global_weight_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->stat.weight - right->stat.weight;
+}
+
+static int hist_entry__global_weight_snprintf(struct hist_entry *self, char *bf,
+					      size_t size, unsigned int width)
+{
+	return repsep_snprintf(bf, size, "%-*llu", width, self->stat.weight);
+}
+
+struct sort_entry sort_global_weight = {
+	.se_header	= "Weight",
+	.se_cmp		= sort__global_weight_cmp,
+	.se_snprintf	= hist_entry__global_weight_snprintf,
+	.se_width_idx	= HISTC_GLOBAL_WEIGHT,
+};
+
+static int64_t
+sort__transaction_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+	return left->transaction - right->transaction;
+}
+
+static inline char *add_str(char *p, const char *str)
+{
+	strcpy(p, str);
+	return p + strlen(str);
+}
+
+static struct txbit {
+	unsigned flag;
+	const char *name;
+	int skip_for_len;
+} txbits[] = {
+	{ PERF_SAMPLE_TXN_ELISION,     "EL ", 0 },
+	{ PERF_SAMPLE_TXN_TRANSACTION, "TX ", 1 },
+	{ PERF_SAMPLE_TXN_SYNC,        "SYNC ", 1 },
+	{ PERF_SAMPLE_TXN_ASYNC,       "ASYNC ", 0 },
+	{ PERF_SAMPLE_TXN_RETRY,       "RETRY ", 0 },
+	{ PERF_SAMPLE_TXN_CONFLICT,    "CON ", 0 },
+	{ PERF_SAMPLE_TXN_CAPACITY,    "CAP ", 1 },
+	{ PERF_SAMPLE_TXN_MEMORY,      "MEM ", 0 },
+	{ PERF_SAMPLE_TXN_MISC,        "MISC ", 0 },
+	{ 0, NULL, 0 }
+};
+
+int hist_entry__transaction_len(void)
+{
+	int i;
+	int len = 0;
+
+	for (i = 0; txbits[i].name; i++) {
+		if (!txbits[i].skip_for_len)
+			len += strlen(txbits[i].name);
+	}
+	len += 4; /* :XX<space> */
+	return len;
+}
+
+static int hist_entry__transaction_snprintf(struct hist_entry *self, char *bf,
+					    size_t size, unsigned int width)
+{
+	u64 t = self->transaction;
+	char buf[128];
+	char *p = buf;
+	int i;
+
+	buf[0] = 0;
+	for (i = 0; txbits[i].name; i++)
+		if (txbits[i].flag & t)
+			p = add_str(p, txbits[i].name);
+	if (t && !(t & (PERF_SAMPLE_TXN_SYNC|PERF_SAMPLE_TXN_ASYNC)))
+		p = add_str(p, "NEITHER ");
+	if (t & PERF_SAMPLE_TXN_ABORT_MASK) {
+		sprintf(p, ":%" PRIx64,
+			(t & PERF_SAMPLE_TXN_ABORT_MASK) >>
+			PERF_SAMPLE_TXN_ABORT_SHIFT);
+		p += strlen(p);
+	}
+
+	return repsep_snprintf(bf, size, "%-*s", width, buf);
+}
+
+struct sort_entry sort_transaction = {
+	.se_header	= "Transaction                ",
+	.se_cmp		= sort__transaction_cmp,
+	.se_snprintf	= hist_entry__transaction_snprintf,
+	.se_width_idx	= HISTC_TRANSACTION,
+};
+
 struct sort_dimension {
 	const char		*name;
 	struct sort_entry	*entry;
@@ -480,6 +645,9 @@ static struct sort_dimension common_sort_dimensions[] = {
 	DIM(SORT_PARENT, "parent", sort_parent),
 	DIM(SORT_CPU, "cpu", sort_cpu),
 	DIM(SORT_SRCLINE, "srcline", sort_srcline),
+	DIM(SORT_LOCAL_WEIGHT, "local_weight", sort_local_weight),
+	DIM(SORT_GLOBAL_WEIGHT, "weight", sort_global_weight),
+	DIM(SORT_TRANSACTION, "transaction", sort_transaction),
 };
 
 #undef DIM
@@ -492,6 +660,8 @@ static struct sort_dimension bstack_sort_dimensions[] = {
 	DIM(SORT_SYM_FROM, "symbol_from", sort_sym_from),
 	DIM(SORT_SYM_TO, "symbol_to", sort_sym_to),
 	DIM(SORT_MISPREDICT, "mispredict", sort_mispredict),
+	DIM(SORT_ABORT, "abort", sort_abort),
+	DIM(SORT_INTX, "intx", sort_intx),
 };
 
 #undef DIM

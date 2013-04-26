@@ -168,6 +168,7 @@ struct cpu_hw_events {
 	u64				perf_ctr_virt_mask;
 
 	void				*kfree_on_online;
+	u8				*memory_latency_events;
 };
 
 #define __EVENT_CONSTRAINT(c, n, m, w, o) {\
@@ -219,11 +220,14 @@ struct cpu_hw_events {
  *  - inv
  *  - edge
  *  - cnt-mask
+ *  - intx
+ *  - intx_checkpointed
  *  The other filters are supported by fixed counters.
  *  The any-thread option is supported starting with v3.
  */
+#define FIXED_EVENT_FLAGS (X86_RAW_EVENT_MASK|HSW_INTX|HSW_INTX_CHECKPOINTED)
 #define FIXED_EVENT_CONSTRAINT(c, n)	\
-	EVENT_CONSTRAINT(c, (1ULL << (32+n)), X86_RAW_EVENT_MASK)
+	EVENT_CONSTRAINT(c, (1ULL << (32+n)), FIXED_EVENT_FLAGS)
 
 /*
  * Constraint on the Event code + UMask
@@ -275,6 +279,11 @@ union perf_capabilities {
 		u64	pebs_arch_reg:1;
 		u64	pebs_format:4;
 		u64	smm_freeze:1;
+		/*
+		 * PMU supports separate counter range for writing
+		 * values > 32bit.
+		 */
+		u64	full_width_write:1;
 	};
 	u64	capabilities;
 };
@@ -357,6 +366,7 @@ struct x86_pmu {
 	struct attribute **format_attrs;
 
 	ssize_t		(*events_sysfs_show)(char *page, u64 config);
+	struct attribute **cpu_events;		/* CPU specific sysfs events */
 
 	/*
 	 * CPU Hotplug hooks
@@ -388,6 +398,7 @@ struct x86_pmu {
 	struct event_constraint *pebs_constraints;
 	void		(*pebs_aliases)(struct perf_event *event);
 	int 		max_pebs_events;
+	struct event_constraint *memory_lat_events;
 
 	/*
 	 * Intel LBR
@@ -396,6 +407,8 @@ struct x86_pmu {
 	int		lbr_nr;			   /* hardware stack size */
 	u64		lbr_sel_mask;		   /* LBR_SELECT valid bits */
 	const int	*lbr_sel_map;		   /* lbr_select mappings */
+	bool		lbr_double_abort;	   /* duplicated lbr aborts */
+	bool		lbr_no_sw_filter;	   /* HW does all filters */
 
 	/*
 	 * Extra registers for events
@@ -587,6 +600,10 @@ extern struct event_constraint intel_westmere_pebs_event_constraints[];
 extern struct event_constraint intel_snb_pebs_event_constraints[];
 
 extern struct event_constraint intel_ivb_pebs_event_constraints[];
+
+extern struct event_constraint intel_hsw_pebs_event_constraints[];
+
+extern struct event_constraint intel_hsw_memory_latency_events[];
 
 struct event_constraint *intel_pebs_constraints(struct perf_event *event);
 
