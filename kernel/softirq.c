@@ -319,8 +319,6 @@ void irq_enter(void)
 	}
 
 	__irq_enter();
-	/* For now */
-	disable_txn();	
 }
 
 static inline void invoke_softirq(void)
@@ -354,7 +352,6 @@ void irq_exit(void)
 		tick_nohz_irq_exit();
 #endif
 	rcu_irq_exit();
-	reenable_txn();
 }
 
 /*

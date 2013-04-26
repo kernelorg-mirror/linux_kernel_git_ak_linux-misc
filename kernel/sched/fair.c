@@ -5555,8 +5555,6 @@ static void nohz_idle_balance(int this_cpu, enum cpu_idle_type idle)
 	    !test_bit(NOHZ_BALANCE_KICK, nohz_flags(this_cpu)))
 		goto end;
 
-	disable_txn();
-
 	for_each_cpu(balance_cpu, nohz.idle_cpus_mask) {
 		if (balance_cpu == this_cpu || !idle_cpu(balance_cpu))
 			continue;
@@ -5582,7 +5580,6 @@ static void nohz_idle_balance(int this_cpu, enum cpu_idle_type idle)
 			this_rq->next_balance = rq->next_balance;
 	}
 	nohz.next_balance = this_rq->next_balance;
-	reenable_txn();
 end:
 	clear_bit(NOHZ_BALANCE_KICK, nohz_flags(this_cpu));
 }
@@ -5664,9 +5661,7 @@ static void run_rebalance_domains(struct softirq_action *h)
 	enum cpu_idle_type idle = this_rq->idle_balance ?
 						CPU_IDLE : CPU_NOT_IDLE;
 
-	disable_txn();
 	rebalance_domains(this_cpu, idle);
-	reenable_txn();
 
 	/*
 	 * If this cpu has a pending nohz_balance_kick, then do the
