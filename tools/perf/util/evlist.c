@@ -1251,6 +1251,18 @@ int perf_evlist__parse_sample(struct perf_evlist *evlist, union perf_event *even
 	return perf_evsel__parse_sample(evsel, event, sample);
 }
 
+int __perf_evlist__parse_sample(struct perf_evlist *evlist,
+				union perf_event *event,
+				struct perf_sample *sample,
+				bool fix_swap)
+{
+	struct perf_evsel *evsel = perf_evlist__event2evsel(evlist, event);
+
+	if (!evsel)
+		return -EFAULT;
+	return __perf_evsel__parse_sample(evsel, event, sample, fix_swap);
+}
+
 size_t perf_evlist__fprintf(struct perf_evlist *evlist, FILE *fp)
 {
 	struct perf_evsel *evsel;

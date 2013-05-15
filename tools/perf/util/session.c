@@ -1091,7 +1091,8 @@ static s64 perf_session__process_event(struct perf_session *session,
 	/*
 	 * For all kernel events we get the sample data
 	 */
-	ret = perf_evlist__parse_sample(session->evlist, event, &sample);
+	ret = __perf_evlist__parse_sample(session->evlist, event, &sample,
+					  true);
 	if (ret)
 		return ret;
 

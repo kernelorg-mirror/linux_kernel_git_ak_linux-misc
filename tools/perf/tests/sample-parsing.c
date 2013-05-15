@@ -155,6 +155,7 @@ static int do_test(u64 sample_type, u64 sample_regs_user, u64 read_format)
 	u64 user_regs[64];
 	const u64 raw_data[] = {0x123456780a0b0c0dULL, 0x1102030405060708ULL};
 	const u64 data[] = {0x2211443366558877ULL, 0, 0xaabbccddeeff4321ULL};
+	const u64 itrace_data[] = {0xa55a, 0, 0xeeddee, 0x0282028202820282};
 	struct perf_sample sample = {
 		.ip		= 101,
 		.pid		= 102,
@@ -183,6 +184,10 @@ static int do_test(u64 sample_type, u64 sample_regs_user, u64 read_format)
 		.read		= {
 			.time_enabled = 0x030a59d664fca7deULL,
 			.time_running = 0x011b6ae553eb98edULL,
+		},
+		.itrace_sample	= {
+			.size	= sizeof(itrace_data),
+			.data	= (void *)itrace_data,
 		},
 	};
 	struct sample_read_value values[] = {{1, 5}, {9, 3}, {2, 7}, {6, 4},};
@@ -280,7 +285,7 @@ int test__sample_parsing(void)
 	 * were added.  Please actually update the test rather than just change
 	 * the condition below.
 	 */
-	if (PERF_SAMPLE_MAX > PERF_SAMPLE_TRANSACTION << 1) {
+	if (PERF_SAMPLE_MAX > PERF_SAMPLE_ITRACE << 1) {
 		pr_debug("sample format has changed, some new PERF_SAMPLE_ bit was introduced - test needs updating\n");
 		return -1;
 	}

@@ -280,8 +280,17 @@ static inline int perf_evsel__read_scaled(struct perf_evsel *evsel,
 
 void hists__init(struct hists *hists);
 
-int perf_evsel__parse_sample(struct perf_evsel *evsel, union perf_event *event,
-			     struct perf_sample *sample);
+int __perf_evsel__parse_sample(struct perf_evsel *evsel,
+			       union perf_event *event,
+			       struct perf_sample *data,
+			       bool fix_swap);
+
+static inline int perf_evsel__parse_sample(struct perf_evsel *evsel,
+					   union perf_event *event,
+					   struct perf_sample *data)
+{
+	return __perf_evsel__parse_sample(evsel, event, data, false);
+}
 
 static inline struct perf_evsel *perf_evsel__next(struct perf_evsel *evsel)
 {

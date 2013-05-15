@@ -1232,8 +1232,10 @@ static inline bool overflow(const void *endp, u16 max_size, const void *offset,
 #define OVERFLOW_CHECK_u64(offset) \
 	OVERFLOW_CHECK(offset, sizeof(u64), sizeof(u64))
 
-int perf_evsel__parse_sample(struct perf_evsel *evsel, union perf_event *event,
-			     struct perf_sample *data)
+int __perf_evsel__parse_sample(struct perf_evsel *evsel,
+			       union perf_event *event,
+			       struct perf_sample *data,
+			       bool fix_swap)
 {
 	u64 type = evsel->attr.sample_type;
 	bool swapped = evsel->needs_swap;
@@ -1478,6 +1480,19 @@ int perf_evsel__parse_sample(struct perf_evsel *evsel, union perf_event *event,
 		array++;
 	}
 
+	if (type & PERF_SAMPLE_ITRACE) {
+		OVERFLOW_CHECK_u64(array);
+		sz = *array++;
+
+		OVERFLOW_CHECK(array, sz, max_size);
+		/* Undo swap of data */
+		if (fix_swap && swapped)
+			mem_bswap_64((char *)array, sz);
+		data->itrace_sample.size = sz;
+		data->itrace_sample.data = (char *)array;
+		array = (void *)array + sz;
+	}
+
 	return 0;
 }
 
@@ -1572,6 +1587,11 @@ size_t perf_event__sample_event_size(const struct perf_sample *sample, u64 type,
 
 	if (type & PERF_SAMPLE_TRANSACTION)
 		result += sizeof(u64);
+
+	if (type & PERF_SAMPLE_ITRACE) {
+		result += sizeof(u64);
+		result += sample->itrace_sample.size;
+	}
 
 	return result;
 }
@@ -1749,6 +1769,15 @@ int perf_event__synthesize_sample(union perf_event *event, u64 type,
 	if (type & PERF_SAMPLE_TRANSACTION) {
 		*array = sample->transaction;
 		array++;
+	}
+
+	if (type & PERF_SAMPLE_ITRACE) {
+		sz = sample->itrace_sample.size;
+		*array++ = sz;
+		memcpy(array, sample->itrace_sample.data, sz);
+		if (swapped)
+			mem_bswap_64((char *)array, sz);
+		array = (void *)array + sz;
 	}
 
 	return 0;
