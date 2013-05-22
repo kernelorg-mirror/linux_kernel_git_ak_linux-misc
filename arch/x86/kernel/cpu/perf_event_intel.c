@@ -176,9 +176,12 @@ static struct extra_reg intel_snbep_extra_regs[] __read_mostly = {
 	EVENT_EXTRA_END
 };
 
-EVENT_ATTR_STR(mem-loads, mem_ld_nhm, "event=0x0b,umask=0x10,ldlat=3");
-EVENT_ATTR_STR(mem-loads, mem_ld_snb, "event=0xcd,umask=0x1,ldlat=3");
-EVENT_ATTR_STR(mem-stores, mem_st_snb, "event=0xcd,umask=0x2");
+EVENT_ATTR_STR(mem-loads, mem_ld_nhm,
+		"event=0x0b,umask=0x10,ldlat=3,precise=2");
+EVENT_ATTR_STR(mem-loads, mem_ld_snb,
+		"event=0xcd,umask=0x1,ldlat=3,precise=2");
+EVENT_ATTR_STR(mem-stores, mem_st_snb,
+		"event=0xcd,umask=0x2,precise=2");
 
 struct attribute *nhm_events_attrs[] = {
 	EVENT_PTR(mem_ld_nhm),
@@ -2034,8 +2037,9 @@ static __init void intel_nehalem_quirk(void)
 	}
 }
 
-EVENT_ATTR_STR(mem-loads,      mem_ld_hsw,     "event=0xcd,umask=0x1,ldlat=3");
-EVENT_ATTR_STR(mem-stores,     mem_st_hsw,     "event=0xd0,umask=0x82")
+EVENT_ATTR_STR(mem-loads,      mem_ld_hsw,
+		"event=0xcd,umask=0x1,ldlat=3,precise=2");
+EVENT_ATTR_STR(mem-stores,     mem_st_hsw,  "event=0xd0,umask=0x82,precise=2")
 
 static struct attribute *hsw_events_attrs[] = {
 	EVENT_PTR(mem_ld_hsw),
