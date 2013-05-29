@@ -1078,6 +1078,8 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 
 again:
 	init_rss_vec(rss);
+
+	disable_txn();	/* Likely to exceed capacity */
 	start_pte = pte_offset_map_lock(mm, pmd, addr, &ptl);
 	pte = start_pte;
 	arch_enter_lazy_mmu_mode();
@@ -1173,6 +1175,7 @@ again:
 	add_mm_rss_vec(mm, rss);
 	arch_leave_lazy_mmu_mode();
 	pte_unmap_unlock(start_pte, ptl);
+	reenable_txn();
 
 	/*
 	 * mmu_gather ran out of room to batch pages, we break out of
