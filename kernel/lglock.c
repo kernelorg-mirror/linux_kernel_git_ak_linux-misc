@@ -23,7 +23,13 @@ void lg_local_lock(struct lglock *lg)
 	preempt_disable();
 	lock_acquire_shared(&lg->lock_dep_map, 0, 0, NULL, _RET_IP_);
 	lock = this_cpu_ptr(lg->lock);
+	/*
+	 * Don't elide these locks, because they are not expected
+	 * to be contended much, but may abort.
+	 */
+	disable_txn();
 	arch_spin_lock(lock);
+	reenable_txn();
 }
 EXPORT_SYMBOL(lg_local_lock);
 
@@ -45,7 +51,9 @@ void lg_local_lock_cpu(struct lglock *lg, int cpu)
 	preempt_disable();
 	lock_acquire_shared(&lg->lock_dep_map, 0, 0, NULL, _RET_IP_);
 	lock = per_cpu_ptr(lg->lock, cpu);
+	disable_txn();
 	arch_spin_lock(lock);
+	reenable_txn();
 }
 EXPORT_SYMBOL(lg_local_lock_cpu);
 
