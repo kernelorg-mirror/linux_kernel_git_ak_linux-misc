@@ -14,6 +14,7 @@
 #include <linux/spinlock_types.h>
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
+#include <linux/elide.h>
 
 #include <linux/atomic.h>
 
@@ -55,6 +56,9 @@ struct mutex {
 #endif
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 	void			*spin_mlock;	/* Spinner MCS lock */
+#endif
+#ifdef CONFIG_ARCH_HAS_ELISION
+	short			elision_adapt;
 #endif
 #ifdef CONFIG_DEBUG_MUTEXES
 	const char 		*name;
@@ -126,6 +130,7 @@ extern void __mutex_init(struct mutex *lock, const char *name,
  */
 static inline int mutex_is_locked(struct mutex *lock)
 {
+	elide_abort();
 	return atomic_read(&lock->count) != 1;
 }
 

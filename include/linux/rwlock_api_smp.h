@@ -233,16 +233,14 @@ static inline void
 __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
 {
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_read_unlock(lock);
-	local_irq_restore(flags);
+	do_raw_read_unlock_irqrestore(lock, flags);
 	preempt_enable();
 }
 
 static inline void __raw_read_unlock_irq(rwlock_t *lock)
 {
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_read_unlock(lock);
-	local_irq_enable();
+	do_raw_read_unlock_irq(lock);
 	preempt_enable();
 }
 
@@ -258,16 +256,14 @@ static inline void __raw_write_unlock_irqrestore(rwlock_t *lock,
 					     unsigned long flags)
 {
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_write_unlock(lock);
-	local_irq_restore(flags);
+	do_raw_write_unlock_irqrestore(lock, flags);
 	preempt_enable();
 }
 
 static inline void __raw_write_unlock_irq(rwlock_t *lock)
 {
 	rwlock_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_write_unlock(lock);
-	local_irq_enable();
+	do_raw_write_unlock_irq(lock);
 	preempt_enable();
 }
 

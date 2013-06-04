@@ -14,6 +14,7 @@ CFLAGS_REMOVE_pvclock.o = -pg
 CFLAGS_REMOVE_kvmclock.o = -pg
 CFLAGS_REMOVE_ftrace.o = -pg
 CFLAGS_REMOVE_early_printk.o = -pg
+CFLAGS_REMOVE_rtm-locks.o = -pg
 endif
 
 obj-y			:= process_$(BITS).o signal.o entry_$(BITS).o
@@ -102,6 +103,8 @@ obj-$(CONFIG_OF)			+= devicetree.o
 obj-$(CONFIG_UPROBES)			+= uprobes.o
 
 obj-$(CONFIG_PERF_EVENTS)		+= perf_regs.o
+
+obj-$(CONFIG_RTM_LOCKS)		+= rtm-locks.o
 
 ###
 # 64 bit specific files

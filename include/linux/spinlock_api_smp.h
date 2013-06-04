@@ -5,6 +5,8 @@
 # error "please don't include this file directly"
 #endif
 
+#include <linux/rtm.h>
+
 /*
  * include/linux/spinlock_api_smp.h
  *
@@ -17,7 +19,10 @@
 
 int in_lock_functions(unsigned long addr);
 
-#define assert_raw_spin_locked(x)	BUG_ON(!raw_spin_is_locked(x))
+#define assert_raw_spin_locked(x) do {			\
+	if (!_xtest())					\
+		BUG_ON(!raw_spin_is_locked(x));		\
+	} while (0)
 
 void __lockfunc _raw_spin_lock(raw_spinlock_t *lock)		__acquires(lock);
 void __lockfunc _raw_spin_lock_nested(raw_spinlock_t *lock, int subclass)
@@ -157,16 +162,14 @@ static inline void __raw_spin_unlock_irqrestore(raw_spinlock_t *lock,
 					    unsigned long flags)
 {
 	spin_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_spin_unlock(lock);
-	local_irq_restore(flags);
+	do_raw_spin_unlock_flags(lock, flags);
 	preempt_enable();
 }
 
 static inline void __raw_spin_unlock_irq(raw_spinlock_t *lock)
 {
 	spin_release(&lock->dep_map, 1, _RET_IP_);
-	do_raw_spin_unlock(lock);
-	local_irq_enable();
+	do_raw_spin_unlock_irq(lock);
 	preempt_enable();
 }
 
