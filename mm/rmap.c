@@ -57,6 +57,7 @@
 #include <linux/migrate.h>
 #include <linux/hugetlb.h>
 #include <linux/backing-dev.h>
+#include <linux/rtm.h>
 
 #include <asm/tlbflush.h>
 
@@ -102,8 +103,12 @@ static inline void anon_vma_free(struct anon_vma *anon_vma)
 	 *
 	 * LOCK should suffice since the actual taking of the lock must
 	 * happen _before_ what follows.
+	 *
+	 * Don't need to do that if we're in a transaction. The refcount
+	 * will be in our write-set, and anyone else reading it will
+	 * abort us.
 	 */
-	if (rwsem_is_locked(&anon_vma->root->rwsem)) {
+	if (!_xtest() && rwsem_is_locked(&anon_vma->root->rwsem)) {
 		anon_vma_lock_write(anon_vma);
 		anon_vma_unlock_write(anon_vma);
 	}
