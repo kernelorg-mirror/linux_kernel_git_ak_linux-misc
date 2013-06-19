@@ -46,6 +46,7 @@
 #include "util/util.h"
 #include "util/parse-options.h"
 #include "util/parse-events.h"
+#include "util/pmu.h"
 #include "util/event.h"
 #include "util/evlist.h"
 #include "util/evsel.h"
@@ -77,9 +78,20 @@ static const char * const transaction_attrs[] = {
 	"instructions,"
 	"cycles,"
 	"cpu/cycles-t/,"
-	"cpu/cycles-ct/,"
 	"cpu/tx-start/,"
-	"cpu/el-start/"
+	"cpu/el-start/,"
+	"cpu/cycles-ct/"
+	"}"
+};
+
+/* More limited version when the CPU does not have all events. */
+static const char * const transaction_limited_attrs[] = {
+	"task-clock",
+	"{"
+	"instructions,"
+	"cycles,"
+	"cpu/cycles-t/,"
+	"cpu/tx-start/"
 	"}"
 };
 
@@ -89,9 +101,9 @@ enum {
 	T_INSTRUCTIONS,
 	T_CYCLES,
 	T_CYCLES_IN_TX,
-	T_CYCLES_IN_TX_CP,
 	T_TRANSACTION_START,
-	T_ELISION_START
+	T_ELISION_START,
+	T_CYCLES_IN_TX_CP,
 };
 
 static struct perf_evlist	*evsel_list;
@@ -264,6 +276,10 @@ static void perf_stat__reset_stats(struct perf_evlist *evlist)
 	memset(runtime_ll_cache_stats, 0, sizeof(runtime_ll_cache_stats));
 	memset(runtime_itlb_cache_stats, 0, sizeof(runtime_itlb_cache_stats));
 	memset(runtime_dtlb_cache_stats, 0, sizeof(runtime_dtlb_cache_stats));
+	memset(runtime_cycles_in_tx_stats, 0, sizeof(runtime_cycles_in_tx_stats));
+	memset(runtime_cycles_in_txcp_stats, 0, sizeof(runtime_cycles_in_txcp_stats));
+	memset(runtime_transaction_stats, 0, sizeof(runtime_transaction_stats));
+	memset(runtime_elision_stats, 0, sizeof(runtime_elision_stats));
 	memset(&walltime_nsecs_stats, 0, sizeof(walltime_nsecs_stats));
 }
 
@@ -1300,6 +1316,16 @@ static int perf_stat_init_aggr_mode(void)
 	return 0;
 }
 
+static int setup_events(const char * const *attrs, unsigned len)
+{
+	unsigned i;
+
+	for (i = 0; i < len; i++) {
+		if (parse_events(evsel_list, attrs[i]))
+			return -1;
+	}
+	return 0;
+}
 
 /*
  * Add default attributes, if there were no attributes specified or
@@ -1419,14 +1445,17 @@ static int add_default_attributes(void)
 		return 0;
 
 	if (transaction_run) {
-		unsigned i;
-
-		for (i = 0; i < ARRAY_SIZE(transaction_attrs); i++) {
-			if (parse_events(evsel_list, transaction_attrs[i])) {
-				fprintf(stderr,
-					"Cannot set up transaction events\n");
-				return -1;
-			}
+		int err;
+		if (pmu_have_event("cpu", "cycles-ct") &&
+		    pmu_have_event("cpu", "el-start"))
+			err = setup_events(transaction_attrs,
+					   ARRAY_SIZE(transaction_attrs));
+		else
+		    	err = setup_events(transaction_limited_attrs,
+				 ARRAY_SIZE(transaction_limited_attrs));
+		if (err < 0) {
+			fprintf(stderr, "Cannot set up transaction events\n");
+			return -1;
 		}
 		return 0;
 	}
