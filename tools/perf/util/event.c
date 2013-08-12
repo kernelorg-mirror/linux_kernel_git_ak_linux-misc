@@ -21,6 +21,7 @@ static const char *perf_event__names[] = {
 	[PERF_RECORD_FORK]			= "FORK",
 	[PERF_RECORD_READ]			= "READ",
 	[PERF_RECORD_SAMPLE]			= "SAMPLE",
+	[PERF_RECORD_ITRACE_LOST]		= "ITRACE_LOST",
 	[PERF_RECORD_HEADER_ATTR]		= "ATTR",
 	[PERF_RECORD_HEADER_EVENT_TYPE]		= "EVENT_TYPE",
 	[PERF_RECORD_HEADER_TRACING_DATA]	= "TRACING_DATA",
@@ -558,6 +559,14 @@ int perf_event__process_lost(struct perf_tool *tool __maybe_unused,
 	return machine__process_lost_event(machine, event, sample);
 }
 
+int perf_event__process_itrace_lost(struct perf_tool *tool __maybe_unused,
+				    union perf_event *event,
+				    struct perf_sample *sample __maybe_unused,
+				    struct machine *machine)
+{
+	return machine__process_itrace_lost_event(machine, event);
+}
+
 size_t perf_event__fprintf_mmap(union perf_event *event, FILE *fp)
 {
 	return fprintf(fp, " %d/%d: [%#" PRIx64 "(%#" PRIx64 ") @ %#" PRIx64 "]: %c %s\n",
@@ -618,6 +627,11 @@ int perf_event__process_exit(struct perf_tool *tool __maybe_unused,
 	return machine__process_exit_event(machine, event, sample);
 }
 
+size_t perf_event__fprintf_itrace_lost(union perf_event *event, FILE *fp)
+{
+	return fprintf(fp, " offset: %#"PRIx64"\n", event->itrace_lost.offset);
+}
+
 size_t perf_event__fprintf(union perf_event *event, FILE *fp)
 {
 	size_t ret = fprintf(fp, "PERF_RECORD_%s",
@@ -636,6 +650,9 @@ size_t perf_event__fprintf(union perf_event *event, FILE *fp)
 		break;
 	case PERF_RECORD_MMAP2:
 		ret += perf_event__fprintf_mmap2(event, fp);
+		break;
+	case PERF_RECORD_ITRACE_LOST:
+		ret += perf_event__fprintf_itrace_lost(event, fp);
 		break;
 	default:
 		ret += fprintf(fp, "\n");

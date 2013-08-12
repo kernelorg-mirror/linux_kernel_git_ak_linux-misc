@@ -34,6 +34,7 @@ struct perf_tool {
 			fork,
 			exit,
 			lost,
+			itrace_lost,
 			throttle,
 			unthrottle;
 	event_attr_op	attr;

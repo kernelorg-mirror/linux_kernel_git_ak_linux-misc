@@ -193,6 +193,11 @@ struct id_index_event {
 	struct id_index_entry entries[0];
 };
 
+struct itrace_lost_event {
+	struct perf_event_header header;
+	u64 offset;
+};
+
 union perf_event {
 	struct perf_event_header	header;
 	struct mmap_event		mmap;
@@ -208,6 +213,7 @@ union perf_event {
 	struct tracing_data_event	tracing_data;
 	struct build_id_event		build_id;
 	struct id_index_event		id_index;
+	struct itrace_lost_event	itrace_lost;
 };
 
 void perf_event__print_totals(void);
@@ -244,6 +250,10 @@ int perf_event__process_lost(struct perf_tool *tool,
 			     union perf_event *event,
 			     struct perf_sample *sample,
 			     struct machine *machine);
+int perf_event__process_itrace_lost(struct perf_tool *tool,
+				    union perf_event *event,
+				    struct perf_sample *sample,
+				    struct machine *machine);
 int perf_event__process_mmap(struct perf_tool *tool,
 			     union perf_event *event,
 			     struct perf_sample *sample,
@@ -292,6 +302,7 @@ size_t perf_event__fprintf_comm(union perf_event *event, FILE *fp);
 size_t perf_event__fprintf_mmap(union perf_event *event, FILE *fp);
 size_t perf_event__fprintf_mmap2(union perf_event *event, FILE *fp);
 size_t perf_event__fprintf_task(union perf_event *event, FILE *fp);
+size_t perf_event__fprintf_itrace_lost(union perf_event *event, FILE *fp);
 size_t perf_event__fprintf(union perf_event *event, FILE *fp);
 
 #endif /* __PERF_RECORD_H */

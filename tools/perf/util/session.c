@@ -236,6 +236,8 @@ void perf_tool__fill_defaults(struct perf_tool *tool)
 		tool->exit = process_event_stub;
 	if (tool->lost == NULL)
 		tool->lost = perf_event__process_lost;
+	if (tool->itrace_lost == NULL)
+		tool->itrace_lost = perf_event__process_itrace_lost;
 	if (tool->read == NULL)
 		tool->read = process_event_sample_stub;
 	if (tool->throttle == NULL)
@@ -454,6 +456,7 @@ static perf_event__swap_op perf_event__swap_ops[] = {
 	[PERF_RECORD_THROTTLE]		  = perf_event__throttle_swap,
 	[PERF_RECORD_UNTHROTTLE]	  = perf_event__throttle_swap,
 	[PERF_RECORD_SAMPLE]		  = perf_event__all64_swap,
+	[PERF_RECORD_ITRACE_LOST]	  = perf_event__all64_swap,
 	[PERF_RECORD_HEADER_ATTR]	  = perf_event__hdr_attr_swap,
 	[PERF_RECORD_HEADER_EVENT_TYPE]	  = perf_event__event_type_swap,
 	[PERF_RECORD_HEADER_TRACING_DATA] = perf_event__tracing_data_swap,
@@ -1003,6 +1006,8 @@ static int perf_session_deliver_event(struct perf_session *session,
 		return tool->throttle(tool, event, sample, machine);
 	case PERF_RECORD_UNTHROTTLE:
 		return tool->unthrottle(tool, event, sample, machine);
+	case PERF_RECORD_ITRACE_LOST:
+		return tool->itrace_lost(tool, event, sample, machine);
 	default:
 		++session->stats.nr_unknown_events;
 		return -1;
