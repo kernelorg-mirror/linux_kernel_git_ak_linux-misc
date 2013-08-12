@@ -29,6 +29,7 @@ num_dec         [0-9]+
 config		{ return PP_CONFIG; }
 config1		{ return PP_CONFIG1; }
 config2		{ return PP_CONFIG2; }
+itrace_config	{ return PP_ITRACE_CONFIG; }
 -		{ return '-'; }
 :		{ return ':'; }
 ,		{ return ','; }

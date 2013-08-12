@@ -576,6 +576,10 @@ do {								\
 	case PARSE_EVENTS__TERM_TYPE_NAME:
 		CHECK_TYPE_VAL(STR);
 		break;
+	case PARSE_EVENTS__TERM_TYPE_ITRACE_CONFIG:
+		CHECK_TYPE_VAL(NUM);
+		attr->itrace_config = term->val.num;
+		break;
 	default:
 		return -EINVAL;
 	}

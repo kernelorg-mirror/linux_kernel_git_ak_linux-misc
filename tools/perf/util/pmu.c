@@ -547,6 +547,9 @@ static int pmu_config_term(struct list_head *formats,
 	case PERF_PMU_FORMAT_VALUE_CONFIG2:
 		vp = &attr->config2;
 		break;
+	case PERF_PMU_FORMAT_VALUE_ITRACE_CONFIG:
+		vp = &attr->itrace_config;
+		break;
 	default:
 		return -EINVAL;
 	}
