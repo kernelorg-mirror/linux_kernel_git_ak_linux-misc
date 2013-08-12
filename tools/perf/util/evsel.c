@@ -980,6 +980,10 @@ static size_t perf_event_attr__fprintf(struct perf_event_attr *attr, FILE *fp)
 	ret += PRINT_ATTR_X64(branch_sample_type);
 	ret += PRINT_ATTR_X64(sample_regs_user);
 	ret += PRINT_ATTR_U32(sample_stack_user);
+	ret += PRINT_ATTR_X64(itrace_config);
+	ret += PRINT_ATTR_U32(itrace_watermark);
+	ret += PRINT_ATTR_U32(itrace_sample_type);
+	ret += PRINT_ATTR_U64(itrace_sample_size);
 
 	ret += fprintf(fp, "%.60s\n", graph_dotted_line);
 
