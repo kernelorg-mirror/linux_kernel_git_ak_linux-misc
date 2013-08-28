@@ -7,6 +7,7 @@
 #include "event.h"
 #include "evsel.h"
 #include "util.h"
+#include "itrace.h"
 #include <unistd.h>
 
 struct pollfd;
@@ -21,6 +22,7 @@ struct perf_mmap {
 	void		 *base;
 	int		 mask;
 	unsigned int	 prev;
+	struct itrace_mmap itrace_mmap;
 	char		 event_copy[PERF_SAMPLE_MAX_SIZE];
 };
 
@@ -111,6 +113,9 @@ int perf_evlist__parse_mmap_pages(const struct option *opt,
 				  const char *str,
 				  int unset);
 
+int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
+			 bool overwrite, unsigned int itrace_pages,
+			 bool itrace_overwrite);
 int perf_evlist__mmap(struct perf_evlist *evlist, unsigned int pages,
 		      bool overwrite);
 void perf_evlist__munmap(struct perf_evlist *evlist);
