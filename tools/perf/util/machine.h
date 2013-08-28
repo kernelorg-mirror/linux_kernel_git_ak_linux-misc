@@ -31,6 +31,7 @@ struct machine {
 	struct map_groups kmaps;
 	struct map	  *vmlinux_maps[MAP__NR_TYPES];
 	symbol_filter_t	  symbol_filter;
+	pid_t		  *current_tid;
 };
 
 static inline
@@ -191,5 +192,9 @@ int machine__synthesize_threads(struct machine *machine, struct target *target,
 }
 
 pid_t machine__get_thread_pid(struct machine *machine, pid_t tid);
+
+pid_t machine__get_current_tid(struct machine *machine, int cpu);
+int machine__set_current_tid(struct machine *machine, int cpu, pid_t pid,
+			     pid_t tid);
 
 #endif /* __PERF_MACHINE_H */
