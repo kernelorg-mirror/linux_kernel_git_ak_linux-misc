@@ -1398,3 +1398,13 @@ int __machine__synthesize_threads(struct machine *machine, struct perf_tool *too
 	/* command specified */
 	return 0;
 }
+
+pid_t machine__get_thread_pid(struct machine *machine, pid_t tid)
+{
+	struct thread *thread = machine__find_thread(machine, tid);
+
+	if (!thread)
+		return -1;
+
+	return thread->pid_;
+}

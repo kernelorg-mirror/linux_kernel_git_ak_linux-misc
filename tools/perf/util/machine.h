@@ -190,4 +190,6 @@ int machine__synthesize_threads(struct machine *machine, struct target *target,
 					     perf_event__process, data_mmap);
 }
 
+pid_t machine__get_thread_pid(struct machine *machine, pid_t tid);
+
 #endif /* __PERF_MACHINE_H */
