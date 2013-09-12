@@ -379,6 +379,10 @@ module_param(rwsem_elision, static_key, 0644);
 DEFINE_ELISION_CONFIG(, readsem,  readsem_elision_config);
 DEFINE_ELISION_CONFIG(, writesem, writesem_elision_config);
 
+struct static_key mutex_elision = STATIC_KEY_INIT_FALSE;
+module_param(mutex_elision, static_key, 0644);
+DEFINE_ELISION_CONFIG(, mutex, mutex_elision_config);
+
 void __init init_rtm(void)
 {
 	if (!boot_cpu_has(X86_FEATURE_RTM))
@@ -407,6 +411,7 @@ static int __init init_rtm_late(void)
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&bitlock_elision);
 	static_key_slow_inc(&rwsem_elision);
+	static_key_slow_inc(&mutex_elision);
 	return 0;
 }
 __initcall(init_rtm_late);

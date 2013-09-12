@@ -16,6 +16,7 @@
 #include <linux/linkage.h>
 #include <linux/lockdep.h>
 #include <linux/atomic.h>
+#include <linux/elide.h>
 #include <asm/processor.h>
 
 /*
@@ -57,6 +58,9 @@ struct mutex {
 #endif
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 	struct optimistic_spin_queue	*osq;	/* Spinner MCS lock */
+#endif
+#ifdef CONFIG_ARCH_HAS_ELISION
+	short			elision_adapt;
 #endif
 #ifdef CONFIG_DEBUG_MUTEXES
 	const char 		*name;
@@ -120,6 +124,9 @@ static inline void mutex_destroy(struct mutex *lock) {}
 extern void __mutex_init(struct mutex *lock, const char *name,
 			 struct lock_class_key *key);
 
+extern struct static_key mutex_elision;
+extern struct elision_config mutex_elision_config;
+
 /**
  * mutex_is_locked - is the mutex locked
  * @lock: the mutex to be queried
@@ -128,6 +135,7 @@ extern void __mutex_init(struct mutex *lock, const char *name,
  */
 static inline int mutex_is_locked(struct mutex *lock)
 {
+	elide_abort();
 	return atomic_read(&lock->count) != 1;
 }
 
