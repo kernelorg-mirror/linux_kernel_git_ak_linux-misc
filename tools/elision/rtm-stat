@@ -1,0 +1,13 @@
+#!/bin/bash
+# show kernel TSX rtm statistics
+# with "reset" zero them
+
+if [ "$1" == "reset" ] ; then
+	for i in /sys/module/rtm_locks/parameters/*_{start,total}_skips ; do
+		echo 0 > $i
+	done
+else
+	for i in /sys/module/rtm_locks/parameters/*_{start,total}_skips ; do
+		printf "%-25s: %10d\n" $(basename $i) $(<$i)
+	done
+fi
