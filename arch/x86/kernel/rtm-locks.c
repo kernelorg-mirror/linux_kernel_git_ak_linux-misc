@@ -157,6 +157,90 @@ void rtm_spin_unlock_irq(struct arch_spinlock *lock)
 }
 EXPORT_SYMBOL(rtm_spin_unlock_irq);
 
+
+/*
+ * rwlocks: both readers and writers freely speculate.
+ * This uses direct calls with static patching, not pvops.
+ */
+
+struct static_key rwlock_elision = STATIC_KEY_INIT_FALSE;
+module_param(rwlock_elision, static_key, 0644);
+
+DEFINE_ELISION_CONFIG(, readlock, readlock_elision_config);
+DEFINE_ELISION_CONFIG(, writelock, writelock_elision_config);
+
+static inline void rtm_read_unlock_check(arch_rwlock_t *rw, bool not_enabling)
+{
+	/*
+	 * Note when you get a #GP here this usually means that you
+	 * unlocked a lock that was not locked. Please fix your code.
+	 */
+	if (!arch_rwlock_is_locked(rw)) {
+		if (not_enabling && this_cpu_read(cli_elided) &&
+		    this_cpu_read(in_tx) == 1)
+			_xabort(0xfd);
+		end_in_tx();
+		_xend();
+	} else
+		arch_do_read_unlock(rw);
+}
+
+void rtm_read_unlock(arch_rwlock_t *rw)
+{
+	rtm_read_unlock_check(rw, true);
+}
+EXPORT_SYMBOL(rtm_read_unlock);
+
+void rtm_read_unlock_irq(arch_rwlock_t *rw)
+{
+	rtm_read_unlock_check(rw, false);
+	rtm_irq_enable();
+}
+EXPORT_SYMBOL(rtm_read_unlock_irq);
+
+void rtm_read_unlock_irqrestore(arch_rwlock_t *rw, unsigned long flags)
+{
+	rtm_read_unlock_check(rw, !(flags & X86_EFLAGS_IF));
+	rtm_restore_fl(flags);
+}
+EXPORT_SYMBOL(rtm_read_unlock_irqrestore);
+
+static inline void rtm_write_unlock_check(arch_rwlock_t *rw, bool not_enabling)
+{
+	/*
+	 * Note when you get a #GP here this usually means that you
+	 * unlocked a lock that was not locked. Please fix your code.
+	 */
+	if (!arch_rwlock_is_locked(rw)) {
+		if (not_enabling && this_cpu_read(cli_elided) &&
+		    this_cpu_read(in_tx) == 1)
+			_xabort(0xfd);
+		end_in_tx();
+		_xend();
+	} else
+		arch_do_write_unlock(rw);
+}
+
+void rtm_write_unlock(arch_rwlock_t *rw)
+{
+	rtm_write_unlock_check(rw, true);
+}
+EXPORT_SYMBOL(rtm_write_unlock);
+
+void rtm_write_unlock_irq(arch_rwlock_t *rw)
+{
+	rtm_write_unlock_check(rw, false);
+	rtm_irq_enable();
+}
+EXPORT_SYMBOL(rtm_write_unlock_irq);
+
+void rtm_write_unlock_irqrestore(arch_rwlock_t *rw, unsigned long flags)
+{
+	rtm_write_unlock_check(rw, !(flags & X86_EFLAGS_IF));
+	rtm_restore_fl(flags);
+}
+EXPORT_SYMBOL(rtm_write_unlock_irqrestore);
+
 /*
  * This should be in the headers for inlining, but include loop hell
  * prevents it.
@@ -315,6 +399,7 @@ static int __init init_rtm_late(void)
 	if (strcmp(pv_info.name, "rtm locking"))
 		return 0;
 	static_key_slow_inc(&spinlock_elision);
+	static_key_slow_inc(&rwlock_elision);
 	return 0;
 }
 __initcall(init_rtm_late);

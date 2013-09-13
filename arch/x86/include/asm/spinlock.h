@@ -8,6 +8,8 @@
 #include <linux/compiler.h>
 #include <asm/paravirt.h>
 #include <asm/bitops.h>
+#include <asm/rtm-locks.h>
+#include <linux/elide.h>
 
 /*
  * Your basic SMP spinlocks, allowing only a single CPU anywhere
@@ -267,6 +269,9 @@ static inline void arch_spin_unlock_flags(struct arch_spinlock *lock,
  * with the high bit (sign) being the "contended" bit.
  */
 
+extern struct static_key rwlock_elision;
+extern struct elision_config readlock_elision_config;
+
 /**
  * read_can_lock - would read_trylock() succeed?
  * @lock: the rwlock in question.
@@ -285,8 +290,26 @@ static inline int arch_write_can_lock(arch_rwlock_t *lock)
 	return lock->write == WRITE_LOCK_CMP;
 }
 
+static inline int arch_rwlock_is_locked(arch_rwlock_t *lock)
+{
+	elide_abort();
+	return lock->lock != RW_LOCK_BIAS;
+}
+
+#define ARCH_HAS_RWLOCK_UNLOCK_IRQ 1
+
 static inline void arch_read_lock(arch_rwlock_t *rw)
 {
+	/*
+	 * Abort when there is a writer.
+	 * In principle we don't care about readers here,
+	 * but since they are on the same cache line they
+	 * would abort anyways.
+	 */
+	if (elide_lock_adapt(rwlock_elision, rw->lock == RW_LOCK_BIAS,
+				     &rw->elision_adapt, &readlock_elision_config))
+		return;
+
 	asm volatile(LOCK_PREFIX READ_LOCK_SIZE(dec) " (%0)\n\t"
 		     "jns 1f\n"
 		     "call __read_lock_failed\n\t"
@@ -296,6 +319,10 @@ static inline void arch_read_lock(arch_rwlock_t *rw)
 
 static inline void arch_write_lock(arch_rwlock_t *rw)
 {
+	if (elide_lock_adapt(rwlock_elision, rw->lock == WRITE_LOCK_CMP,
+				     &rw->elision_adapt, &readlock_elision_config))
+		return;
+
 	asm volatile(LOCK_PREFIX WRITE_LOCK_SUB(%1) "(%0)\n\t"
 		     "jz 1f\n"
 		     "call __write_lock_failed\n\t"
@@ -304,9 +331,14 @@ static inline void arch_write_lock(arch_rwlock_t *rw)
 		     : "memory");
 }
 
+
 static inline int arch_read_trylock(arch_rwlock_t *lock)
 {
 	READ_LOCK_ATOMIC(t) *count = (READ_LOCK_ATOMIC(t) *)lock;
+
+	if (elide_lock_adapt(rwlock_elision, lock->lock == RW_LOCK_BIAS,
+				     &lock->elision_adapt, &readlock_elision_config))
+		return 1;
 
 	if (READ_LOCK_ATOMIC(dec_return)(count) >= 0)
 		return 1;
@@ -318,22 +350,86 @@ static inline int arch_write_trylock(arch_rwlock_t *lock)
 {
 	atomic_t *count = (atomic_t *)&lock->write;
 
+	if (elide_lock_adapt(rwlock_elision, lock->lock == WRITE_LOCK_CMP,
+				     &lock->elision_adapt, &readlock_elision_config))
+		return 1;
+
 	if (atomic_sub_and_test(WRITE_LOCK_CMP, count))
 		return 1;
 	atomic_add(WRITE_LOCK_CMP, count);
 	return 0;
 }
 
-static inline void arch_read_unlock(arch_rwlock_t *rw)
+static inline void arch_do_read_unlock(arch_rwlock_t *rw)
 {
 	asm volatile(LOCK_PREFIX READ_LOCK_SIZE(inc) " %0"
 		     :"+m" (rw->lock) : : "memory");
 }
 
-static inline void arch_write_unlock(arch_rwlock_t *rw)
+static inline void arch_do_write_unlock(arch_rwlock_t *rw)
 {
 	asm volatile(LOCK_PREFIX WRITE_LOCK_ADD(%1) "%0"
 		     : "+m" (rw->write) : "i" (RW_LOCK_BIAS) : "memory");
+}
+
+static inline void arch_read_unlock(arch_rwlock_t *rw)
+{
+	RTM_OR_NORMAL(arch_do_read_unlock(rw), rtm_read_unlock(rw));
+}
+
+static inline void arch_write_unlock(arch_rwlock_t *rw)
+{
+	RTM_OR_NORMAL(arch_do_write_unlock(rw), rtm_write_unlock(rw));
+}
+
+static inline void arch_do_read_unlock_irqrestore(arch_rwlock_t *rw,
+						  unsigned long flags)
+{
+	arch_do_read_unlock(rw);
+	local_irq_restore(flags);
+}
+
+static inline void arch_do_write_unlock_irqrestore(arch_rwlock_t *rw,
+						   unsigned long flags)
+{
+	arch_do_write_unlock(rw);
+	local_irq_restore(flags);
+}
+
+static inline void arch_read_unlock_irqrestore(arch_rwlock_t *rw,
+					       unsigned long flags)
+{
+	RTM_OR_NORMAL(arch_do_read_unlock_irqrestore(rw, flags),
+		      rtm_read_unlock_irqrestore(rw, flags));
+}
+
+static inline void arch_write_unlock_irqrestore(arch_rwlock_t *rw,
+						unsigned long flags)
+{
+	RTM_OR_NORMAL(arch_do_write_unlock_irqrestore(rw, flags),
+		      rtm_write_unlock_irqrestore(rw, flags));
+}
+
+static inline void arch_do_read_unlock_irq(arch_rwlock_t *rw)
+{
+	arch_do_read_unlock(rw);
+	local_irq_enable();
+}
+
+static inline void arch_do_write_unlock_irq(arch_rwlock_t *rw)
+{
+	arch_do_write_unlock(rw);
+	local_irq_enable();
+}
+
+static inline void arch_read_unlock_irq(arch_rwlock_t *rw)
+{
+	RTM_OR_NORMAL(arch_do_read_unlock_irq(rw), rtm_read_unlock_irq(rw));
+}
+
+static inline void arch_write_unlock_irq(arch_rwlock_t *rw)
+{
+	RTM_OR_NORMAL(arch_do_write_unlock_irq(rw), rtm_write_unlock_irq(rw));
 }
 
 #define arch_read_lock_flags(lock, flags) arch_read_lock(lock)
