@@ -6,9 +6,15 @@
 #if CONFIG_NR_CPUS <= 2048
 
 #ifndef __ASSEMBLY__
-typedef union {
-	s32 lock;
-	s32 write;
+typedef struct {
+	union {
+		s32 lock;
+		s32 write;
+	};
+#ifdef CONFIG_RTM_LOCKS
+	short	elision_adapt;
+	/* 2 bytes padding */
+#endif
 } arch_rwlock_t;
 #endif
 
@@ -24,12 +30,18 @@ typedef union {
 #include <linux/const.h>
 
 #ifndef __ASSEMBLY__
-typedef union {
-	s64 lock;
-	struct {
-		u32 read;
-		s32 write;
+typedef struct {
+	union {
+		s64 lock;
+		struct {
+			u32 read;
+			s32 write;
+		};
 	};
+#ifdef CONFIG_RTM_LOCKS
+	short	elision_adapt;
+	/* 6 bytes padding for now */
+#endif
 } arch_rwlock_t;
 #endif
 
@@ -42,7 +54,7 @@ typedef union {
 
 #endif /* CONFIG_NR_CPUS */
 
-#define __ARCH_RW_LOCK_UNLOCKED		{ RW_LOCK_BIAS }
+#define __ARCH_RW_LOCK_UNLOCKED		{ { RW_LOCK_BIAS } }
 
 /* Actual code is in asm/spinlock.h or in arch/x86/lib/rwlock.S */
 
