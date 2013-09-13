@@ -462,13 +462,17 @@ void __init init_rtm_spinlocks(void)
 	pv_irq_ops.irq_enable = PV_CALLEE_SAVE(rtm_irq_enable);
 	pv_irq_ops.restore_fl = PV_CALLEE_SAVE(rtm_restore_fl);
 	pv_init_ops.patch = rtm_patch;
+}
 
+static void __init rtm_init_late(void)
+{
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&bitlock_elision);
 	static_key_slow_inc(&rwsem_elision);
 	static_key_slow_inc(&mutex_elision);
 	static_key_slow_inc(&spinlock_elision);
 }
+__initcall(rtm_init_late);
 
 struct static_key bitlock_elision = STATIC_KEY_INIT_FALSE;
 EXPORT_SYMBOL(bitlock_elision);
