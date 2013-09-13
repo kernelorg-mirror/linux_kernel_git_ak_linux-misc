@@ -1109,6 +1109,10 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code)
 		return;
 	}
 
+	/* Write faults tend to abort for now because of the flush (FIXME) */
+	if (error_code & PF_WRITE)
+		disable_txn();
+
 	/*
 	 * When running in the kernel we expect faults to occur only to
 	 * addresses in user space.  All other faults represent errors in
@@ -1129,7 +1133,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code)
 		if ((error_code & PF_USER) == 0 &&
 		    !search_exception_tables(regs->ip)) {
 			bad_area_nosemaphore(regs, error_code, address);
-			return;
+			goto out;
 		}
 retry:
 		down_read(&mm->mmap_sem);
@@ -1145,13 +1149,13 @@ retry:
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
 		bad_area(regs, error_code, address);
-		return;
+		goto out;
 	}
 	if (likely(vma->vm_start <= address))
 		goto good_area;
 	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
 		bad_area(regs, error_code, address);
-		return;
+		goto out;
 	}
 	if (error_code & PF_USER) {
 		/*
@@ -1162,12 +1166,12 @@ retry:
 		 */
 		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
 			bad_area(regs, error_code, address);
-			return;
+			goto out;
 		}
 	}
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, error_code, address);
-		return;
+		goto out;
 	}
 
 	/*
@@ -1177,7 +1181,7 @@ retry:
 good_area:
 	if (unlikely(access_error(error_code, vma))) {
 		bad_area_access_error(regs, error_code, address);
-		return;
+		goto out;
 	}
 
 	/*
@@ -1189,7 +1193,7 @@ good_area:
 
 	if (unlikely(fault & (VM_FAULT_RETRY|VM_FAULT_ERROR))) {
 		if (mm_fault_error(regs, error_code, address, fault))
-			return;
+			goto out;
 	}
 
 	/*
@@ -1219,6 +1223,10 @@ good_area:
 	check_v8086_mode(regs, address, tsk);
 
 	up_read(&mm->mmap_sem);
+
+out:
+	if (error_code & PF_WRITE)
+		reenable_txn();
 }
 
 dotraplinkage void __kprobes
