@@ -464,13 +464,16 @@ void __init init_rtm_spinlocks(void)
 	pv_init_ops.patch = rtm_patch;
 }
 
-static void __init rtm_init_late(void)
+static int __init rtm_init_late(void)
 {
+	if (strcmp(pv_info.name, "rtm locking"))
+		return 0;
 	static_key_slow_inc(&rwlock_elision);
 	static_key_slow_inc(&bitlock_elision);
 	static_key_slow_inc(&rwsem_elision);
 	static_key_slow_inc(&mutex_elision);
 	static_key_slow_inc(&spinlock_elision);
+	return 0;
 }
 __initcall(rtm_init_late);
 
