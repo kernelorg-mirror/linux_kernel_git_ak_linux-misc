@@ -37,11 +37,20 @@
 # define UNLOCK_LOCK_PREFIX
 #endif
 
+#ifdef CONFIG_RTM_LOCKS
+#define RTM_OR_NORMAL(n, r) (static_cpu_has(X86_FEATURE_RTM) ? (r) : (n))
+#else
+#define RTM_OR_NORMAL(n, r) n
+#endif
+
 /* How long a lock should spin before we consider blocking */
 #define SPIN_THRESHOLD	(1 << 15)
 
 extern struct static_key paravirt_ticketlocks_enabled;
 static __always_inline bool static_key_false(struct static_key *key);
+
+extern struct static_key spinlock_elision;
+extern struct elision_config spinlock_elision_config;
 
 #ifdef CONFIG_PARAVIRT_SPINLOCKS
 
@@ -67,6 +76,14 @@ static __always_inline int arch_spin_value_unlocked(arch_spinlock_t lock)
 	return lock.tickets.head == lock.tickets.tail;
 }
 
+static __always_inline int elide_spinlock(arch_spinlock_t *l)
+{
+	return elide_lock_adapt(spinlock_elision,
+				arch_spin_value_unlocked(*l),
+				&l->elision_adapt,
+				&spinlock_elision_config);
+}
+
 /*
  * Ticket locks are conceptually two parts, one indicating the current head of
  * the queue, and the other indicating the current tail. The lock is acquired
@@ -83,6 +100,9 @@ static __always_inline int arch_spin_value_unlocked(arch_spinlock_t lock)
 static __always_inline void arch_spin_lock(arch_spinlock_t *lock)
 {
 	register struct __raw_tickets inc = { .tail = TICKET_LOCK_INC };
+
+	if (elide_spinlock(lock))
+		return;
 
 	inc = xadd(&lock->tickets, inc);
 	if (likely(inc.head == inc.tail))
@@ -106,6 +126,9 @@ static __always_inline int arch_spin_trylock(arch_spinlock_t *lock)
 {
 	arch_spinlock_t old, new;
 
+	if (elide_spinlock(lock))
+		return 1;
+	
 	old.tickets = ACCESS_ONCE(lock->tickets);
 	if (old.tickets.head != (old.tickets.tail & ~TICKET_SLOWPATH_FLAG))
 		return 0;
@@ -144,7 +167,7 @@ static inline void __ticket_unlock_slowpath(arch_spinlock_t *lock,
 	}
 }
 
-static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
+static __always_inline void arch_do_spin_unlock(arch_spinlock_t *lock)
 {
 	if (TICKET_SLOWPATH_FLAG &&
 	    static_key_false(&paravirt_ticketlocks_enabled)) {
@@ -161,10 +184,17 @@ static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
 		__add(&lock->tickets.head, TICKET_LOCK_INC, UNLOCK_LOCK_PREFIX);
 }
 
+static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
+{
+	RTM_OR_NORMAL(arch_do_spin_unlock(lock),
+		      rtm_spin_unlock(lock));
+}
+
 static inline int arch_spin_is_locked(arch_spinlock_t *lock)
 {
 	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
 
+	elide_abort();
 	return tmp.tail != tmp.head;
 }
 
@@ -186,6 +216,41 @@ static inline void arch_spin_unlock_wait(arch_spinlock_t *lock)
 {
 	while (arch_spin_is_locked(lock))
 		cpu_relax();
+}
+
+#define ARCH_HAS_SPIN_UNLOCK_IRQ 1
+
+
+static inline void arch_do_spin_unlock_irq(struct arch_spinlock *lock)
+{
+	arch_spin_unlock(lock);
+	local_irq_enable();
+}
+
+/* 
+ * The RTM code for unlock has to be out of line, because it needs to
+ * access per CPU variables, which would cause a really nasty include
+ * loop inline here. LTO would inline it again.
+ */
+
+static inline void arch_spin_unlock_irq(struct arch_spinlock *lock)
+{
+	RTM_OR_NORMAL(arch_do_spin_unlock_irq(lock),
+		      rtm_spin_unlock_irq(lock));
+}
+
+static inline void arch_do_spin_unlock_flags(struct arch_spinlock *lock,
+					     unsigned long flags)
+{
+	arch_spin_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static inline void arch_spin_unlock_flags(struct arch_spinlock *lock,
+					  unsigned long flags)
+{
+	RTM_OR_NORMAL(arch_do_spin_unlock_flags(lock, flags),
+		      rtm_spin_unlock_flags(lock, flags));
 }
 
 /*

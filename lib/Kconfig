@@ -49,6 +49,8 @@ config PERCPU_RWSEM
 	boolean
 
 config ARCH_USE_CMPXCHG_LOCKREF
+	# could be made to work with some work
+	depends on !RTM_LOCKS
 	bool
 
 config CRC_CCITT

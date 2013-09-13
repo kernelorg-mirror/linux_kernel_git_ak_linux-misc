@@ -109,6 +109,54 @@ static inline void rtm_irq_enable(void)
 }
 PV_CALLEE_SAVE_REGS_THUNK(rtm_irq_enable);
 
+struct static_key spinlock_elision;
+module_param(spinlock_elision, static_key, 0644);
+
+DEFINE_ELISION_CONFIG(, spinlock, spinlock_elision_config);
+
+static inline void
+rtm_spin_unlock_check(struct arch_spinlock *lock, bool not_enabling)
+{
+	/*
+	 * Note when you get a #GP here this usually means that you
+	 * unlocked a lock that was not locked. Please fix your code.
+	 */
+	if (arch_spin_value_unlocked(*lock)) {
+		/*
+		 * Unlock without restoring interrupts without restoring
+		 * interrupts that were disabled nested.
+		 * In this case we have to abort.
+		 */
+		if (not_enabling && this_cpu_read(cli_elided) &&
+		    this_cpu_read(in_tx) == 1)
+			_xabort(0xfc);
+		end_in_tx();
+		_xend();
+	} else
+		arch_do_spin_unlock(lock);
+}
+
+void rtm_spin_unlock(struct arch_spinlock *lock)
+{
+	rtm_spin_unlock_check(lock, true);
+}
+EXPORT_SYMBOL(rtm_spin_unlock);
+
+void rtm_spin_unlock_flags(struct arch_spinlock *lock,
+				  unsigned long flags)
+{
+	rtm_spin_unlock_check(lock, !(flags & X86_EFLAGS_IF));
+	rtm_restore_fl(flags);
+}
+EXPORT_SYMBOL(rtm_spin_unlock_flags);
+
+void rtm_spin_unlock_irq(struct arch_spinlock *lock)
+{
+	rtm_spin_unlock_check(lock, false);
+	rtm_irq_enable();
+}
+EXPORT_SYMBOL(rtm_spin_unlock_irq);
+
 /*
  * This should be in the headers for inlining, but include loop hell
  * prevents it.
@@ -266,6 +314,7 @@ static int __init init_rtm_late(void)
 {
 	if (strcmp(pv_info.name, "rtm locking"))
 		return 0;
+	static_key_slow_inc(&spinlock_elision);
 	return 0;
 }
 __initcall(init_rtm_late);
