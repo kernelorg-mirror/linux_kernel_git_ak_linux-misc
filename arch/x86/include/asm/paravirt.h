@@ -744,6 +744,19 @@ static __always_inline void arch_spin_unlock(struct arch_spinlock *lock)
 	PVOP_VCALL1(pv_lock_ops.spin_unlock, lock);
 }
 
+static __always_inline void arch_spin_unlock_flags(struct arch_spinlock *lock,
+						   unsigned long flags)
+{
+	PVOP_VCALL2(pv_lock_ops.spin_unlock_flags, lock, flags);
+}
+
+static __always_inline void arch_spin_unlock_irq(struct arch_spinlock *lock)
+{
+	PVOP_VCALL1(pv_lock_ops.spin_unlock_irq, lock);
+}
+
+#define ARCH_HAS_SPIN_UNLOCK_IRQ 1
+
 #endif
 
 #ifdef CONFIG_X86_32

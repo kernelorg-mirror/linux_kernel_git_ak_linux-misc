@@ -34,6 +34,12 @@ void vsmp_init(void);
 static inline void vsmp_init(void) { }
 #endif
 
+#ifdef CONFIG_RTM_LOCKS
+void init_rtm_spinlocks(void);
+#else
+static inline void init_rtm_spinlocks(void) { }
+#endif
+
 void setup_bios_corruption_check(void);
 
 #ifdef CONFIG_X86_VISWS

@@ -355,6 +355,21 @@ static void xen_spin_unlock(struct arch_spinlock *lock)
 		xen_spin_unlock_slow(xl);
 }
 
+/* inline the Xen functions for irqs? */
+
+static void xen_spin_unlock_flags(struct arch_spinlock *lock,
+				  unsigned long flags)
+{
+	xen_spin_unlock(lock);
+	local_irq_restore(flags);
+}
+
+static void xen_spin_unlock_irq(struct arch_spinlock *lock)
+{
+	xen_spin_unlock(lock);
+	local_irq_enable();
+}
+
 static irqreturn_t dummy_handler(int irq, void *dev_id)
 {
 	BUG();
@@ -425,6 +440,8 @@ void __init xen_init_spinlocks(void)
 	pv_lock_ops.spin_lock_flags = xen_spin_lock_flags;
 	pv_lock_ops.spin_trylock = xen_spin_trylock;
 	pv_lock_ops.spin_unlock = xen_spin_unlock;
+	pv_lock_ops.spin_unlock_flags = xen_spin_unlock_flags;
+	pv_lock_ops.spin_unlock_irq = xen_spin_unlock_irq;
 }
 
 #ifdef CONFIG_XEN_DEBUG_FS

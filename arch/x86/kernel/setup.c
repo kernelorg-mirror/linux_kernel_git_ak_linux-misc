@@ -1126,6 +1126,7 @@ void __init setup_arch(char **cmdline_p)
 	reserve_crashkernel();
 
 	vsmp_init();
+	init_rtm_spinlocks();
 
 	io_delay_init();
 
