@@ -466,6 +466,7 @@ void __init init_rtm_spinlocks(void)
 	static_key_slow_inc(&mutex_elision);
 	static_key_slow_inc(&bitlock_elision);
 	static_key_slow_inc(&rwsem_elision);
+	static_key_slow_inc(&spinlock_elision);
 }
 
 DEFINE_ELISION_CONFIG(, mutex, mutex_elision_config);
