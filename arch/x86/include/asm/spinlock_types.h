@@ -30,6 +30,9 @@ typedef struct arch_spinlock {
 			__ticket_t head, tail;
 		} tickets;
 	};
+#ifdef CONFIG_RTM_LOCKS
+	short  elision_adapt;
+#endif
 } arch_spinlock_t;
 
 #define __ARCH_SPIN_LOCK_UNLOCKED	{ { 0 } }
