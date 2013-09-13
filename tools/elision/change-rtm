@@ -1,0 +1,12 @@
+#!/bin/sh
+# change-rtm 1 enable TSX for kernel
+# change-rtm 0 disable TSX for kernel
+# also shows current state
+
+for i in /sys/module/rtm_locks/parameters/*_elision ;  do
+	[ "$1" != "" ] &&
+	echo $1 > $i
+
+	echo -n "$i: "
+	cat $i
+done
