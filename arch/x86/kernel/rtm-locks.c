@@ -467,6 +467,7 @@ void __init init_rtm_spinlocks(void)
 	static_key_slow_inc(&bitlock_elision);
 	static_key_slow_inc(&rwsem_elision);
 	static_key_slow_inc(&mutex_elision);
+	static_key_slow_inc(&spinlock_elision);
 }
 
 struct static_key bitlock_elision = STATIC_KEY_INIT_FALSE;
