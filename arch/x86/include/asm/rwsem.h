@@ -92,12 +92,13 @@ static inline void __down_read(struct rw_semaphore *sem)
 static inline void __down_read_state(struct rw_semaphore *sem, int *state)
 {
 	if (elide_lock_adapt(rwsem_elision,
-			     sem->count < RWSEM_ACTIVE_WRITE_BIAS,
+			     1,
 			     &sem->elision_adapt,
 			     &readsem_elision_config)) {
 		*state = 1;
 		return;
 	}
+	*state = 0;
 	___down_read(sem);
 }
 
@@ -140,7 +141,8 @@ static inline int __down_read_trylock(struct rw_semaphore *sem)
 
 static inline int __down_read_trylock_state(struct rw_semaphore *sem, int *state)
 {
-	if (elide_lock_adapt(rwsem_elision, sem->count < RWSEM_ACTIVE_WRITE_BIAS,
+	if (elide_lock_adapt(rwsem_elision,
+			     1,
 			     &sem->elision_adapt,
 			     &readsem_elision_config)) {
 		*state = 1;
@@ -238,7 +240,11 @@ static inline void __up_read(struct rw_semaphore *sem)
 
 static inline void __up_read_state(struct rw_semaphore *sem, int state)
 {
-	if (elide_unlock(state != 0))
+	/* 
+	 * Late lock check. This limits the conflict overlap window
+	 * with locking readers changing the count.
+	 */
+	if (elide_unlock_check(state, sem->count < RWSEM_ACTIVE_WRITE_BIAS))
 		return;
 	___up_read(sem);
 }
