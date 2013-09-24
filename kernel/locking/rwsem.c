@@ -25,6 +25,19 @@ void __sched down_read(struct rw_semaphore *sem)
 
 EXPORT_SYMBOL(down_read);
 
+#ifdef ARCH_HAS_RWSEM_STATE
+void __sched down_read_state(struct rw_semaphore *sem, int *state)
+{
+	might_sleep();
+	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
+
+	LOCK_CONTENDED_STATE(sem, 
+			     __down_read_trylock_state,
+			     __down_read_state, state);
+}
+EXPORT_SYMBOL(down_read_state);
+#endif
+
 /*
  * trylock for reading -- returns 1 if successful, 0 if contention
  */
@@ -38,6 +51,18 @@ int down_read_trylock(struct rw_semaphore *sem)
 }
 
 EXPORT_SYMBOL(down_read_trylock);
+
+#ifdef ARCH_HAS_RWSEM_STATE
+int down_read_trylock_state(struct rw_semaphore *sem, int *state)
+{
+	int ret = __down_read_trylock_state(sem, state);
+
+	if (ret == 1)
+		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
+	return ret;
+}
+EXPORT_SYMBOL(down_read_trylock_state);
+#endif
 
 /*
  * lock for writing
@@ -77,6 +102,17 @@ void up_read(struct rw_semaphore *sem)
 }
 
 EXPORT_SYMBOL(up_read);
+
+#ifdef ARCH_HAS_RWSEM_STATE
+void up_read_state(struct rw_semaphore *sem, int state)
+{
+	rwsem_release(&sem->dep_map, 1, _RET_IP_);
+
+	__up_read_state(sem, state);
+}
+
+EXPORT_SYMBOL(up_read_state);
+#endif
 
 /*
  * release a write lock
