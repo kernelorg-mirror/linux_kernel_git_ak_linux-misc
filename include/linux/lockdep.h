@@ -431,6 +431,16 @@ do {								\
 	lock_acquired(&(_lock)->dep_map, _RET_IP_);			\
 } while (0)
 
+#define LOCK_CONTENDED_STATE(_lock, try, lock, state)		\
+do {								\
+	if (!try(_lock, state)) {				\
+		lock_contended(&(_lock)->dep_map, _RET_IP_);	\
+		lock(_lock, state);				\
+	}							\
+	lock_acquired(&(_lock)->dep_map, _RET_IP_);		\
+} while (0)
+
+
 #else /* CONFIG_LOCK_STAT */
 
 #define lock_contended(lockdep_map, ip) do {} while (0)
@@ -438,6 +448,9 @@ do {								\
 
 #define LOCK_CONTENDED(_lock, try, lock) \
 	lock(_lock)
+
+#define LOCK_CONTENDED_STATE(_lock, try, lock, state) \
+	lock(_lock, state)
 
 #endif /* CONFIG_LOCK_STAT */
 
