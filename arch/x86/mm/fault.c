@@ -14,6 +14,7 @@
 #include <linux/hugetlb.h>		/* hstate_index_to_shift	*/
 #include <linux/prefetch.h>		/* prefetchw			*/
 #include <linux/context_tracking.h>	/* exception_enter(), ...	*/
+#include <linux/elide.h>		/* elide_abort 			*/
 
 #include <asm/traps.h>			/* dotraplinkage, ...		*/
 #include <asm/pgalloc.h>		/* pgd_*(), ...			*/
@@ -811,6 +812,9 @@ __bad_area(struct pt_regs *regs, unsigned long error_code,
 {
 	struct mm_struct *mm = current->mm;
 
+	/* Forget about elision state on error. */
+	elide_abort();
+
 	/*
 	 * Something tried to access memory that isn't in our memory map..
 	 * Fix it, but check if it's kernel or user first..
@@ -872,6 +876,8 @@ static noinline void
 mm_fault_error(struct pt_regs *regs, unsigned long error_code,
 	       unsigned long address, unsigned int fault)
 {
+	elide_abort(); /* Forget about elision state for errors */
+
 	if (fatal_signal_pending(current) && !(error_code & PF_USER)) {
 		up_read(&current->mm->mmap_sem);
 		no_context(regs, error_code, address, 0, 0);
@@ -1039,6 +1045,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	struct mm_struct *mm;
 	int fault;
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
+	int eliding;
 
 	tsk = current;
 	mm = tsk->mm;
@@ -1152,14 +1159,14 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 * validate the source. If this is invalid we can skip the address
 	 * space check, thus avoiding the deadlock:
 	 */
-	if (unlikely(!down_read_trylock(&mm->mmap_sem))) {
+	if (unlikely(!down_read_trylock_state(&mm->mmap_sem, &eliding))) {
 		if ((error_code & PF_USER) == 0 &&
 		    !search_exception_tables(regs->ip)) {
 			bad_area_nosemaphore(regs, error_code, address);
 			return;
 		}
 retry:
-		down_read(&mm->mmap_sem);
+		down_read_state(&mm->mmap_sem, &eliding);
 	} else {
 		/*
 		 * The above down_read_trylock() might have succeeded in
@@ -1168,6 +1175,8 @@ retry:
 		 */
 		might_sleep();
 	}
+	if (eliding)
+		flags |= FAULT_FLAG_ELIDING;
 
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
@@ -1259,7 +1268,7 @@ good_area:
 
 	check_v8086_mode(regs, address, tsk);
 
-	up_read(&mm->mmap_sem);
+	up_read_state(&mm->mmap_sem, eliding);
 }
 
 dotraplinkage void __kprobes notrace

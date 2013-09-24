@@ -797,7 +797,7 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
 		if (flags & FAULT_FLAG_RETRY_NOWAIT)
 			return 0;
 
-		up_read(&mm->mmap_sem);
+		up_read_state(&mm->mmap_sem, flags & FAULT_FLAG_ELIDING);
 		if (flags & FAULT_FLAG_KILLABLE)
 			wait_on_page_locked_killable(page);
 		else
@@ -809,7 +809,8 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
 
 			ret = __lock_page_killable(page);
 			if (ret) {
-				up_read(&mm->mmap_sem);
+				up_read_state(&mm->mmap_sem,
+						flags & FAULT_FLAG_ELIDING);
 				return 0;
 			}
 		} else
