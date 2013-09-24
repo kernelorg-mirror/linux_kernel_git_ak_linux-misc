@@ -39,6 +39,12 @@ extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
 /* Include the arch specific part */
 #include <asm/rwsem.h>
 
+#ifndef ARCH_HAS_RWSEM_STATE
+#define down_read_state(a, b) down_read(a)
+#define down_read_trylock_state(a, b) down_read_trylock(a)
+#define up_read_state(a, b) up_read(a)
+#endif
+
 /* In all implementations count != 0 means locked */
 static inline int rwsem_is_locked(struct rw_semaphore *sem)
 {
@@ -83,6 +89,20 @@ extern void down_read(struct rw_semaphore *sem);
  * trylock for reading -- returns 1 if successful, 0 if contention
  */
 extern int down_read_trylock(struct rw_semaphore *sem);
+
+/* 
+ * Stateful readers.
+ *
+ * The state is used to optimize lock elision (allow
+ * independent reader speculation). When a lock is acquired
+ * with state it has to be freed with the same state.
+ * This is optional.
+ */
+#ifdef ARCH_HAS_RWSEM_STATE
+extern void down_read_state(struct rw_semaphore *sem, int *state);
+extern int down_read_trylock_state(struct rw_semaphore *sem, int *state);
+extern void up_read_state(struct rw_semaphore *sem, int state);
+#endif
 
 /*
  * lock for writing
