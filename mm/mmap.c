@@ -783,6 +783,11 @@ again:			remove_next = 1 + (end > next->vm_end);
 	if (anon_vma) {
 		VM_BUG_ON(adjust_next && next->anon_vma &&
 			  anon_vma != next->anon_vma);
+		/*
+		 * For now to avoid too many transactions.
+		 * TBD batch this lock.
+		 */
+		disable_txn();
 		anon_vma_lock_write(anon_vma);
 		anon_vma_interval_tree_pre_update_vma(vma);
 		if (adjust_next)
@@ -848,6 +853,7 @@ again:			remove_next = 1 + (end > next->vm_end);
 		if (adjust_next)
 			anon_vma_interval_tree_post_update_vma(next);
 		anon_vma_unlock_write(anon_vma);
+		reenable_txn();
 	}
 	if (mapping)
 		mutex_unlock(&mapping->i_mmap_mutex);
