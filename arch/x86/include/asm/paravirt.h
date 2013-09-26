@@ -909,6 +909,8 @@ extern void default_banner(void);
 #define PARA_INDIRECT(addr)	*%cs:addr
 #endif
 
+#if defined(CONFIG_XEN) || defined(CONFIG_X86_VSMP)
+
 #define INTERRUPT_RETURN						\
 	PARA_SITE(PARA_PATCH(pv_cpu_ops, PV_CPU_iret), CLBR_NONE,	\
 		  jmp PARA_INDIRECT(pv_cpu_ops+PV_CPU_iret))
@@ -929,6 +931,17 @@ extern void default_banner(void);
 	PARA_SITE(PARA_PATCH(pv_cpu_ops, PV_CPU_usergs_sysret32),	\
 		  CLBR_NONE,						\
 		  jmp PARA_INDIRECT(pv_cpu_ops+PV_CPU_usergs_sysret32))
+
+#else
+
+/* FIXME handle more */
+
+#define INTERRUPT_RETURN iret
+#define DISABLE_INTERRUPTS(x) cli
+#define ENABLE_INTERRUPTS(x) sti
+#define USERGS_SYSRET32 swapgs; sysretl
+
+#endif
 
 #ifdef CONFIG_X86_32
 #define GET_CR0_INTO_EAX				\
