@@ -122,4 +122,4 @@ ifeq ($(CONFIG_X86_64),y)
 	obj-y				+= vsmp_64.o
 endif
 
-obj-y					+= rtm-test.o
+obj-$(CONFIG_RTM_LOCKS)			+= rtm-test.o
