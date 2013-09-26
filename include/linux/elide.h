@@ -9,6 +9,7 @@
 #define elide_lock(l, f) 0
 #define elide_lock_adapt(f, l, a, ac) 0
 #define elide_unlock(l) 0
+#define elide_unlock_check(l, c) 0
 #define elide_abort() do {} while (0)
 struct elision_config {};
 #define DEFAULT_ELISION_CONFIG {}
