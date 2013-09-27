@@ -163,14 +163,12 @@ enum { ELIDE_TXN, ELIDE_STOP, ELIDE_RETRY_WAIT, ELIDE_RETRY_FAST };
  * When not using stateful elision set state to 1.
  */
 #define elide_unlock_check(state, check) ({	\
-	int flag = 0;				\
 	if (state) {				\
 		if (!(check))			\
 			_xabort(0xfe);		\
 		__elide_unlock();		\
-		flag = 1;			\
 	}					\
-	flag;					\
+	state;					\
 })
 
 /*
