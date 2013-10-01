@@ -988,6 +988,7 @@ int perf_event__process_itrace_info(struct perf_tool *tool __maybe_unused,
 		return 0;
 
 	switch (type) {
+	case PERF_ITRACE_INTEL_PT:
 	case PERF_ITRACE_UNKNOWN:
 	default:
 		return -EINVAL;
