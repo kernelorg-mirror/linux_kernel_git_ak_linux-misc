@@ -1246,3 +1246,23 @@ void perf_evlist__to_front(struct perf_evlist *evlist,
 
 	list_splice(&move, &evlist->entries);
 }
+
+int perf_evlist__set_tracking_event(struct perf_evlist *evlist,
+				    struct perf_evsel *tracking_evsel)
+{
+	struct perf_evsel *evsel;
+
+	if (tracking_evsel->idx == 0)
+		return 0;
+
+	if (tracking_evsel->leader->nr_members > 1)
+		return -EINVAL;
+
+	list_for_each_entry(evsel, &evlist->entries, node) {
+		if (evsel->idx < tracking_evsel->idx)
+			evsel->idx += 1;
+	}
+	tracking_evsel->idx = 0;
+
+	return 0;
+}
