@@ -26,6 +26,7 @@ struct perf_inject {
 	struct perf_tool	tool;
 	bool			build_ids;
 	bool			sched_stat;
+	bool		 have_itrace;
 	const char		*input_name;
 	struct perf_data_file	output;
 	u64			bytes_written;
@@ -114,6 +115,8 @@ static s64 perf_event__repipe_itrace(struct perf_tool *tool,
 	struct perf_inject *inject = container_of(tool, struct perf_inject,
 						  tool);
 	int ret;
+
+	inject->have_itrace = true;
 
 	if (!inject->output.is_pipe) {
 		off_t offset;
@@ -540,6 +543,11 @@ static int __cmd_inject(struct perf_inject *inject)
 	ret = perf_session__process_events(session, &inject->tool);
 
 	if (!file_out->is_pipe) {
+		if (inject->build_ids && inject->have_itrace) {
+			perf_header__set_feat(&session->header,
+					      HEADER_BUILD_ID);
+			dsos__hit_all(session);
+		}
 		/*
 		 * The instruction traces have been removed and replaced with
 		 * synthesized hardware events, so clear the feature flag.
