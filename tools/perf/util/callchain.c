@@ -61,6 +61,8 @@ parse_callchain_report_opt(const char *arg)
 			callchain_param.key = CCKEY_FUNCTION;
 		else if (!strncmp(tok, "address", strlen(tok)))
 			callchain_param.key = CCKEY_ADDRESS;
+		else if (!strncmp(tok, "branch", strlen(tok)))
+			callchain_param.branch_callstack = 1;
 		/* try to get the min percent */
 		else if (!minpcnt_set) {
 			callchain_param.min_percent = strtod(tok, &endptr);
