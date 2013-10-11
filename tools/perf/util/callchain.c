@@ -82,7 +82,7 @@ parse_callchain_report_opt(const char *arg)
 		callchain_param.order = ORDER_CALLER;
 	else if (!strncmp(tok2, "callee", strlen("callee")))
 		callchain_param.order = ORDER_CALLEE;
-	else
+	else if (tok2[0] != 0)
 		return -1;
 
 	/* Get the sort key */
@@ -93,8 +93,15 @@ parse_callchain_report_opt(const char *arg)
 		callchain_param.key = CCKEY_FUNCTION;
 	else if (!strncmp(tok2, "address", strlen("address")))
 		callchain_param.key = CCKEY_ADDRESS;
-	else
+	else if (tok2[0] != 0)
 		return -1;
+
+	tok2 = strtok(NULL, ",");
+	if (!tok2)
+		goto setup;
+	if (!strncmp(tok2, "branch", 6))
+		callchain_param.branch_callstack = 1;
+
 setup:
 	if (callchain_register_param(&callchain_param) < 0) {
 		pr_err("Can't register callchain params\n");
