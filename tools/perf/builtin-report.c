@@ -706,7 +706,7 @@ parse_callchain_opt(const struct option *opt, const char *arg, int unset)
 		callchain_param.order = ORDER_CALLER;
 	else if (!strncmp(tok2, "callee", strlen("callee")))
 		callchain_param.order = ORDER_CALLEE;
-	else
+	else if (tok2[0] != 0)
 		return -1;
 
 	/* Get the sort key */
@@ -717,8 +717,15 @@ parse_callchain_opt(const struct option *opt, const char *arg, int unset)
 		callchain_param.key = CCKEY_FUNCTION;
 	else if (!strncmp(tok2, "address", strlen("address")))
 		callchain_param.key = CCKEY_ADDRESS;
-	else
+	else if (tok2[0] != 0)
 		return -1;
+
+	tok2 = strtok(NULL, ",");
+	if (!tok2)
+		goto setup;
+	if (!strncmp(tok2, "branch", 6))
+		callchain_param.branch_callstack = 1;
+
 setup:
 	if (callchain_register_param(&callchain_param) < 0) {
 		fprintf(stderr, "Can't register callchain params\n");
@@ -831,8 +838,8 @@ int cmd_report(int argc, const char **argv, const char *prefix __maybe_unused)
 		   "regex filter to identify parent, see: '--sort parent'"),
 	OPT_BOOLEAN('x', "exclude-other", &symbol_conf.exclude_other,
 		    "Only display entries with parent-match"),
-	OPT_CALLBACK_DEFAULT('g', "call-graph", &report, "output_type,min_percent[,print_limit],call_order",
-		     "Display callchains using output_type (graph, flat, fractal, or none) , min percent threshold, optional print limit, callchain order, key (function or address). "
+	OPT_CALLBACK_DEFAULT('g', "call-graph", &report, "output_type,min_percent[,print_limit],call_order[,branch]",
+		     "Display callchains using output_type (graph, flat, fractal, or none) , min percent threshold, optional print limit, callchain order, key (function or address), add branches. "
 		     "Default: fractal,0.5,callee,function", &parse_callchain_opt, callchain_default_opt),
 	OPT_INTEGER(0, "max-stack", &report.max_stack,
 		    "Set the maximum stack depth when parsing the callchain, "

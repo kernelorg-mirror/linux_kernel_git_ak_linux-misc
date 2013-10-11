@@ -1254,9 +1254,58 @@ struct branch_info *machine__resolve_bstack(struct machine *machine,
 	return bi;
 }
 
+static int add_callchain_ip(struct machine *machine,
+			    struct thread *thread,
+			    struct symbol **parent,
+			    struct addr_location *root_al,
+			    int cpumode,
+			    u64 ip)
+{
+	struct addr_location al;
+
+	al.filtered = false;
+	al.sym = NULL;
+	if (cpumode == -1) {
+		int i;
+
+		for (i = 0; i < (int)NCPUMODES && !al.sym; i++) {
+			/*
+	 	 	 * We cannot use the header.misc hint to determine whether a
+		 	 * branch stack address is user, kernel, guest, hypervisor.
+		 	 * Branches may straddle the kernel/user/hypervisor boundaries.
+		 	 * Thus, we have to try consecutively until we find a match
+		 	 * or else, the symbol is unknown
+		 	 */
+			thread__find_addr_location(thread, machine, cpumodes[i], 
+					MAP__FUNCTION,
+					ip, &al);
+		}
+	} else {
+		thread__find_addr_location(thread, machine, cpumode,
+					   MAP__FUNCTION, ip, &al);
+	}
+	if (al.sym != NULL) {
+		if (sort__has_parent && !*parent &&
+		    symbol__match_regex(al.sym, &parent_regex))
+			*parent = al.sym;
+		else if (have_ignore_callees && root_al &&
+		  symbol__match_regex(al.sym, &ignore_callees_regex)) {
+			/* Treat this symbol as the root,
+			   forgetting its callees. */
+			*root_al = al;
+			callchain_cursor_reset(&callchain_cursor);
+		}
+		if (!symbol_conf.use_callchain)
+			return -EINVAL;
+	}
+
+	return callchain_cursor_append(&callchain_cursor, ip, al.map, al.sym);
+}
+
 static int machine__resolve_callchain_sample(struct machine *machine,
 					     struct thread *thread,
 					     struct ip_callchain *chain,
+					     struct branch_stack *branch,
 					     struct symbol **parent,
 					     struct addr_location *root_al,
 					     int max_stack)
@@ -1268,6 +1317,43 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 
 	callchain_cursor_reset(&callchain_cursor);
 
+	/* 
+	 * Add branches to call stack for easier browsing. This gives
+	 * more context for a sample than just the callers.
+	 * 
+	 * This uses individual histograms of paths compared to the
+	 * aggregated histograms the normal LBR mode uses.
+	 *
+	 * Limitations for now:
+	 * - No extra filters
+	 * - No annotations (should annotate somehow)
+	 * - When the sample is near the beginning of the function
+ 	 *   we may overlap with the real callstack. Could handle this
+	 *   case later, by checking against the last ip.
+	 */
+
+	if (callchain_param.branch_callstack) {
+		for (i = 0; i < branch->nr; i++) { 
+			struct branch_entry *b; 
+
+			if (callchain_param.order == ORDER_CALLEE)
+				b = &branch->entries[i];
+			else
+				b = &branch->entries[branch->nr - i - 1];
+
+			err = add_callchain_ip(machine, thread, parent, root_al,
+					       -1, b->to);
+			if (!err)
+				err = add_callchain_ip(machine, thread, parent, root_al,
+					       -1, b->from);
+			if (err == -EINVAL)
+				break;
+			if (err)
+				return err;
+
+		}
+	}
+
 	if (chain->nr > PERF_MAX_STACK_DEPTH) {
 		pr_warning("corrupted callchain. skipping...\n");
 		return 0;
@@ -1275,7 +1361,6 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 
 	for (i = 0; i < chain_nr; i++) {
 		u64 ip;
-		struct addr_location al;
 
 		if (callchain_param.order == ORDER_CALLEE)
 			ip = chain->ips[i];
@@ -1306,26 +1391,10 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 			continue;
 		}
 
-		al.filtered = false;
-		thread__find_addr_location(thread, machine, cpumode,
-					   MAP__FUNCTION, ip, &al);
-		if (al.sym != NULL) {
-			if (sort__has_parent && !*parent &&
-			    symbol__match_regex(al.sym, &parent_regex))
-				*parent = al.sym;
-			else if (have_ignore_callees && root_al &&
-			  symbol__match_regex(al.sym, &ignore_callees_regex)) {
-				/* Treat this symbol as the root,
-				   forgetting its callees. */
-				*root_al = al;
-				callchain_cursor_reset(&callchain_cursor);
-			}
-			if (!symbol_conf.use_callchain)
-				break;
-		}
 
-		err = callchain_cursor_append(&callchain_cursor,
-					      ip, al.map, al.sym);
+		err = add_callchain_ip(machine, thread, parent, root_al, cpumode, ip);
+		if (err == -EINVAL)
+			break;
 		if (err)
 			return err;
 	}
@@ -1351,7 +1420,9 @@ int machine__resolve_callchain(struct machine *machine,
 	int ret;
 
 	ret = machine__resolve_callchain_sample(machine, thread,
-						sample->callchain, parent,
+						sample->callchain, 
+						sample->branch_stack,
+						parent,
 						root_al, max_stack);
 	if (ret)
 		return ret;
