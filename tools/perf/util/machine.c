@@ -1379,14 +1379,14 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 	 * - No annotations (should annotate somehow)
 	 */
 
-	if (branch->nr > PERF_MAX_BRANCH_DEPTH) {
-		pr_warning("corrupted branch chain. skipping...\n");
-		return 0;
-	}
-
-	if (callchain_param.branch_callstack) {
+	if (branch && callchain_param.branch_callstack) {
 		int nr = min(max_stack, (int)branch->nr);
 		struct branch_entry be[nr];
+
+		if (branch->nr > PERF_MAX_BRANCH_DEPTH) {
+			pr_warning("corrupted branch chain. skipping...\n");
+			return 0;
+		}
 
 		for (i = 0; i < nr; i++) {
 			if (callchain_param.order == ORDER_CALLEE) {
