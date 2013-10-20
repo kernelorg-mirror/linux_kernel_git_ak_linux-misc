@@ -66,6 +66,7 @@ struct callchain_param {
 struct callchain_list {
 	u64			ip;
 	struct map_symbol	ms;
+	char		       *srcline;
 	struct list_head	list;
 };
 
@@ -189,5 +190,8 @@ static inline int arch_skip_callchain_idx(struct machine *machine __maybe_unused
 	return -1;
 }
 #endif
+
+char *callchain_list__sym_name(struct callchain_list *cl,
+			       char *bf, size_t bfsize, bool show_dso);
 
 #endif	/* __PERF_CALLCHAIN_H */
