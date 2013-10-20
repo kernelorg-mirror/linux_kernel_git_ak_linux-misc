@@ -66,6 +66,7 @@ struct callchain_param {
 struct callchain_list {
 	u64			ip;
 	struct map_symbol	ms;
+	char		       *srcline;
 	struct list_head	list;
 };
 
@@ -166,4 +167,8 @@ int hist_entry__append_callchain(struct hist_entry *he, struct perf_sample *samp
 
 extern const char record_callchain_help[];
 int parse_callchain_report_opt(const char *arg);
+
+char *callchain_list__sym_name(struct callchain_list *cl,
+			       char *bf, size_t bfsize, bool show_dso);
+
 #endif	/* __PERF_CALLCHAIN_H */
