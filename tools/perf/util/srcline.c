@@ -230,7 +230,7 @@ char *get_srcline(struct dso *dso, unsigned long addr)
 	size_t size;
 
 	if (!dso->has_srcline)
-		return SRCLINE_UNKNOWN;
+		goto out;
 
 	if (dso_name[0] == '[')
 		goto out;
@@ -255,6 +255,12 @@ char *get_srcline(struct dso *dso, unsigned long addr)
 
 out:
 	dso->has_srcline = 0;
+	size = snprintf(NULL, 0, "%s[%lx]", dso->short_name, addr) + 1;
+	srcline = malloc(size);
+	if (srcline) { 
+		snprintf(srcline, size, "%s[%lx]", dso->short_name, addr);
+		return srcline;
+	}
 	return SRCLINE_UNKNOWN;
 }
 

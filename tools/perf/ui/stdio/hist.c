@@ -56,9 +56,19 @@ static size_t ipchain__fprintf_graph(FILE *fp, struct callchain_list *chain,
 		} else
 			ret += fprintf(fp, "%s", "          ");
 	}
-	if (chain->ms.sym)
-		ret += fprintf(fp, "%s\n", chain->ms.sym->name);
-	else
+	if (chain->ms.sym) {
+		if (callchain_param.key == CCKEY_ADDRESS && 
+		    chain->ms.map)
+			chain->srcline = get_srcline(chain->ms.map->dso,
+						  map__rip_2objdump(
+							  chain->ms.map,
+							  chain->ip));
+		if (chain->srcline)
+			ret += fprintf(fp, "%s %s\n", 
+				       chain->ms.sym->name, chain->srcline);
+		else
+			ret += fprintf(fp, "%s\n", chain->ms.sym->name);
+	} else
 		ret += fprintf(fp, "0x%0" PRIx64 "\n", chain->ip);
 
 	return ret;
