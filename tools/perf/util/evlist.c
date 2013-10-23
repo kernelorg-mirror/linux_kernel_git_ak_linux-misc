@@ -849,7 +849,7 @@ static size_t perf_evlist__mmap_size(unsigned long pages)
 }
 
 static long parse_pages_arg(const char *str, unsigned long min,
-			    unsigned long max)
+			    unsigned long max, bool po2)
 {
 	unsigned long pages, val;
 	static struct parse_tag tags[] = {
@@ -877,7 +877,7 @@ static long parse_pages_arg(const char *str, unsigned long min,
 
 	if (pages == 0 && min == 0) {
 		/* leave number of pages at 0 */
-	} else if (!is_power_of_2(pages)) {
+	} else if (po2 && !is_power_of_2(pages)) {
 		/* round pages up to next power of 2 */
 		pages = next_pow2_l(pages);
 		if (!pages)
@@ -892,17 +892,15 @@ static long parse_pages_arg(const char *str, unsigned long min,
 	return pages;
 }
 
-int perf_evlist__parse_mmap_pages(const struct option *opt, const char *str,
-				  int unset __maybe_unused)
+int __perf_evlist__parse_mmap_pages(unsigned int *mmap_pages, const char *str, bool po2)
 {
-	unsigned int *mmap_pages = opt->value;
 	unsigned long max = UINT_MAX;
 	long pages;
 
 	if (max > SIZE_MAX / page_size)
 		max = SIZE_MAX / page_size;
 
-	pages = parse_pages_arg(str, 1, max);
+	pages = parse_pages_arg(str, 1, max, po2);
 	if (pages < 0) {
 		pr_err("Invalid argument for --mmap_pages/-m\n");
 		return -1;
@@ -910,6 +908,12 @@ int perf_evlist__parse_mmap_pages(const struct option *opt, const char *str,
 
 	*mmap_pages = pages;
 	return 0;
+}
+
+int perf_evlist__parse_mmap_pages(const struct option *opt, const char *str,
+				  int unset __maybe_unused)
+{
+	return __perf_evlist__parse_mmap_pages(opt->value, str, true);
 }
 
 /**

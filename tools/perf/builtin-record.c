@@ -841,6 +841,49 @@ int record_callchain_opt(const struct option *opt,
 	return 0;
 }
 
+static int record__parse_mmap_pages(const struct option *opt,
+				    const char *str,
+				    int unset __maybe_unused)
+{
+	struct record_opts *opts = opt->value;
+	char *s, *p;
+	unsigned int mmap_pages;
+	int ret;
+
+	if (!str)
+		return -EINVAL;
+
+	s = strdup(str);
+	if (!s)
+		return -ENOMEM;
+
+	p = strchr(s, ',');
+	if (p)
+		*p = '\0';
+
+	if (*s) {
+		ret = __perf_evlist__parse_mmap_pages(&mmap_pages, s, true);
+		if (ret)
+			goto out_free;
+		opts->mmap_pages = mmap_pages;
+	}
+
+	if (!p) {
+		ret = 0;
+		goto out_free;
+	}
+
+	ret = __perf_evlist__parse_mmap_pages(&mmap_pages, p + 1, false);
+	if (ret)
+		goto out_free;
+
+	opts->itrace_mmap_pages = mmap_pages;
+
+out_free:
+	free(s);
+	return ret;
+}
+
 static const char * const record_usage[] = {
 	"perf record [<options>] [<command>]",
 	"perf record [<options>] -- <command> [<options>]",
@@ -912,9 +955,9 @@ const struct option record_options[] = {
 			&record.opts.no_inherit_set,
 			"child tasks do not inherit counters"),
 	OPT_UINTEGER('F', "freq", &record.opts.user_freq, "profile at this frequency"),
-	OPT_CALLBACK('m', "mmap-pages", &record.opts.mmap_pages, "pages",
-		     "number of mmap data pages",
-		     perf_evlist__parse_mmap_pages),
+	OPT_CALLBACK('m', "mmap-pages", &record.opts, "pages[,pages]",
+		     "number of mmap data pages and instruction tracing mmap pages",
+		     record__parse_mmap_pages),
 	OPT_BOOLEAN(0, "group", &record.opts.group,
 		    "put the counters into a counter group"),
 	OPT_CALLBACK_NOOPT('g', NULL, &record.opts,
