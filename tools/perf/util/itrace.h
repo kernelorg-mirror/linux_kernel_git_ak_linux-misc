@@ -71,6 +71,32 @@ struct itrace_synth_opts {
 	enum itrace_period_type	period_type;
 };
 
+/**
+ * struct itrace_index_entry - indexes a Instruction Tracing event within a
+ *                             perf.data file.
+ * @file_offset: offset within the perf.data file
+ * @sz: size of the event
+ */
+struct itrace_index_entry {
+	u64			file_offset;
+	u64			sz;
+};
+
+#define PERF_ITRACE_INDEX_ENTRY_COUNT 256
+
+/**
+ * struct itrace_index - index of Instruction Tracing events within a perf.data
+ *                       file.
+ * @list: linking a number of arrays of entries
+ * @nr: number of entries
+ * @entries: array of entries
+ */
+struct itrace_index {
+	struct list_head	list;
+	size_t			nr;
+	struct itrace_index_entry entries[PERF_ITRACE_INDEX_ENTRY_COUNT];
+};
+
 struct itrace {
 	int (*process_event)(struct perf_session *session,
 			     union perf_event *event,
@@ -338,6 +364,8 @@ int itrace_queues__add_sample(struct itrace_queues *queues,
 			      struct perf_session *session,
 			      unsigned int *queue_nr, u64 ref);
 void itrace_queues__free(struct itrace_queues *queues);
+int itrace_queues__process_index(struct itrace_queues *queues,
+				 struct perf_session *session);
 struct itrace_buffer *itrace_buffer__next(struct itrace_queue *queue,
 					  struct itrace_buffer *buffer);
 void *itrace_buffer__get_data(struct itrace_buffer *buffer, int fd);
@@ -370,6 +398,13 @@ int itrace_record__find_snapshot(struct itrace_record *itr, int idx,
 				 struct itrace_mmap *mm,
 				 unsigned char *data, u64 *head, u64 *old);
 u64 itrace_record__reference(struct itrace_record *itr);
+
+int itrace_index__itrace_event(struct list_head *head, union perf_event *event,
+			       off_t file_offset);
+int itrace_index__write(int fd, struct list_head *head);
+int itrace_index__process(int fd, u64 size, struct perf_session *session,
+			  bool needs_swap);
+void itrace_index__free(struct list_head *head);
 
 void itrace_synth_error(struct itrace_error_event *itrace_error, int type,
 			int code, int cpu, pid_t pid, pid_t tid, u64 ip,

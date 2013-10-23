@@ -1187,11 +1187,14 @@ static int write_branch_stack(int fd __maybe_unused,
 	return 0;
 }
 
-static int write_itrace(int fd __maybe_unused,
-			struct perf_header *h __maybe_unused,
+static int write_itrace(int fd, struct perf_header *h,
 			struct perf_evlist *evlist __maybe_unused)
 {
-	return 0;
+	struct perf_session *session;
+
+	session = container_of(h, struct perf_session, header);
+
+	return itrace_index__write(fd, &session->itrace_index);
 }
 
 static void print_hostname(struct perf_header *ph, int fd __maybe_unused,
@@ -2164,6 +2167,18 @@ out_free:
 	return ret;
 }
 
+static int process_itrace(struct perf_file_section *section,
+			  struct perf_header *ph, int fd,
+			  void *data __maybe_unused)
+{
+	struct perf_session *session;
+
+	session = container_of(ph, struct perf_session, header);
+
+	return itrace_index__process(fd, section->size, session,
+				     ph->needs_swap);
+}
+
 struct feature_ops {
 	int (*write)(int fd, struct perf_header *h, struct perf_evlist *evlist);
 	void (*print)(struct perf_header *h, int fd, FILE *fp);
@@ -2204,7 +2219,7 @@ static const struct feature_ops feat_ops[HEADER_LAST_FEATURE] = {
 	FEAT_OPA(HEADER_BRANCH_STACK,	branch_stack),
 	FEAT_OPP(HEADER_PMU_MAPPINGS,	pmu_mappings),
 	FEAT_OPP(HEADER_GROUP_DESC,	group_desc),
-	FEAT_OPA(HEADER_ITRACE,		itrace),
+	FEAT_OPP(HEADER_ITRACE,		itrace),
 };
 
 struct header_print_data {

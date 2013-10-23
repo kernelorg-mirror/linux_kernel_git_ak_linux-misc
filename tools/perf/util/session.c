@@ -80,6 +80,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 	INIT_LIST_HEAD(&session->ordered_samples.samples);
 	INIT_LIST_HEAD(&session->ordered_samples.sample_cache);
 	INIT_LIST_HEAD(&session->ordered_samples.to_free);
+	INIT_LIST_HEAD(&session->itrace_index);
 	machines__init(&session->machines);
 
 	if (file) {
@@ -150,6 +151,7 @@ static void perf_session_env__delete(struct perf_session_env *env)
 void perf_session__delete(struct perf_session *session)
 {
 	itrace__free(session);
+	itrace_index__free(&session->itrace_index);
 	perf_session__destroy_kernel_maps(session);
 	perf_session__delete_dead_threads(session);
 	perf_session__delete_threads(session);

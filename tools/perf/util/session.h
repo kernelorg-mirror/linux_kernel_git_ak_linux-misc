@@ -38,6 +38,7 @@ struct perf_session {
 	struct perf_evlist	*evlist;
 	struct itrace		*itrace;
 	struct itrace_synth_opts *itrace_synth_opts;
+	struct list_head	itrace_index;
 	struct trace_event	tevent;
 	struct events_stats	stats;
 	bool			repipe;
