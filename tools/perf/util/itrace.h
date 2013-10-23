@@ -243,9 +243,33 @@ struct itrace_record {
 			 struct itrace_info_event *itrace_info,
 			 size_t priv_size);
 	void (*free)(struct itrace_record *itr);
+	int (*snapshot_start)(struct itrace_record *itr);
+	int (*snapshot_finish)(struct itrace_record *itr);
+	int (*find_snapshot)(struct itrace_record *itr, int idx,
+			     struct itrace_mmap *mm, unsigned char *data,
+			     u64 *head, u64 *old);
+	int (*parse_snapshot_options)(struct itrace_record *itr,
+				      struct record_opts *opts,
+				      const char *str);
 	u64 (*reference)(struct itrace_record *itr);
 	int (*read_finish)(struct itrace_record *itr, int idx);
 };
+
+/*
+ * In snapshot mode the mmapped page is read-only which makes using
+ * __sync_val_compare_and_swap() problematic.  However, snapshot mode expects
+ * the buffer is not updated while the snapshot is made (e.g. Intel PT disables
+ * the event) so there is not a race anyway.
+ */
+static inline u64 itrace_mmap__read_snapshot_head(struct itrace_mmap *mm)
+{
+	struct perf_event_mmap_page *pc = mm->base;
+	u64 head = ACCESS_ONCE(pc->data_head);
+
+	/* Ensure all reads are done after we read the head */
+	rmb();
+	return head;
+}
 
 static inline u64 itrace_mmap__read_head(struct itrace_mmap *mm)
 {
@@ -296,6 +320,11 @@ int itrace_mmap__read(struct itrace_mmap *mm,
 			    struct itrace_record *itr, struct perf_tool *tool,
 			    process_itrace_t fn);
 
+int itrace_mmap__read_snapshot(struct itrace_mmap *mm,
+			       struct itrace_record *itr,
+			       struct perf_tool *tool, process_itrace_t fn,
+			       size_t snapshot_size);
+
 int itrace_queues__init(struct itrace_queues *queues);
 int itrace_queues__add_event(struct itrace_queues *queues,
 			     struct perf_session *session,
@@ -324,6 +353,8 @@ struct itrace_record *itrace_record__init(int *err);
 
 int itrace_parse_sample_options(const struct option *opt, const char *str,
 				int unset);
+int itrace_parse_snapshot_options(const struct option *opt, const char *str,
+				  int unset);
 int itrace_record__options(struct itrace_record *itr,
 			     struct perf_evlist *evlist,
 			     struct record_opts *opts);
@@ -333,6 +364,11 @@ int itrace_record__info_fill(struct itrace_record *itr,
 			     struct itrace_info_event *itrace_info,
 			     size_t priv_size);
 void itrace_record__free(struct itrace_record *itr);
+int itrace_record__snapshot_start(struct itrace_record *itr);
+int itrace_record__snapshot_finish(struct itrace_record *itr);
+int itrace_record__find_snapshot(struct itrace_record *itr, int idx,
+				 struct itrace_mmap *mm,
+				 unsigned char *data, u64 *head, u64 *old);
 u64 itrace_record__reference(struct itrace_record *itr);
 
 void itrace_synth_error(struct itrace_error_event *itrace_error, int type,

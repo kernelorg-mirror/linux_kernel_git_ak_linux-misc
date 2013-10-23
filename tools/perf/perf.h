@@ -263,6 +263,7 @@ struct record_opts {
 	bool	     period;
 	bool	     full_itrace;
 	bool	     sample_itrace;
+	bool	     itrace_snapshot_mode;
 	unsigned int freq;
 	unsigned int mmap_pages;
 	unsigned int itrace_mmap_pages;
@@ -273,6 +274,7 @@ struct record_opts {
 	u64	     itrace_sample_config;
 	u32	     itrace_sample_type;
 	size_t	     itrace_sample_size;
+	size_t	     itrace_snapshot_size;
 	u16	     stack_dump_size;
 	bool	     sample_transaction;
 	unsigned     initial_delay;
