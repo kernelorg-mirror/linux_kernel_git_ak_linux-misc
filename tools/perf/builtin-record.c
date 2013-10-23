@@ -387,7 +387,7 @@ static void record__init_features(struct record *rec)
 	if (!rec->opts.branch_stack)
 		perf_header__clear_feat(&session->header, HEADER_BRANCH_STACK);
 
-	if (!rec->opts.full_itrace)
+	if (!record_opts__itracing(&rec->opts))
 		perf_header__clear_feat(&session->header, HEADER_ITRACE);
 }
 
@@ -507,9 +507,17 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 		}
 	}
 
-	if (rec->opts.full_itrace) {
+	if (record_opts__itracing(&rec->opts)) {
 		err = perf_event__synthesize_itrace_info(rec->itr, tool,
 					session, process_synthesized_event);
+		if (err)
+			goto out_delete_session;
+	}
+
+	if (rec->opts.sample_itrace) {
+		err = perf_event__synthesize_id_index(tool,
+						      process_synthesized_event,
+						      session->evlist, machine);
 		if (err)
 			goto out_delete_session;
 	}
@@ -1002,6 +1010,9 @@ const struct option record_options[] = {
 		    "sample transaction flags (special events only)"),
 	OPT_BOOLEAN(0, "per-thread", &record.opts.target.per_thread,
 		    "use per-thread mmaps"),
+	OPT_CALLBACK_OPTARG('I', "itrace", &record.opts, &record.itr, "opts",
+			    "sample Instruction Trace",
+			    itrace_parse_sample_options),
 	OPT_END()
 };
 

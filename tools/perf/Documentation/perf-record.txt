@@ -215,6 +215,11 @@ if combined with -a or -C options.
 After starting the program, wait msecs before measuring. This is useful to
 filter out the startup phase of the program, which is often very different.
 
+-I::
+--itrace::
+Enable Instruction Trace sampling. Each sample captures the specified number of
+bytes (default 4096) of trace. Instruction Tracing config can also be specified.
+
 SEE ALSO
 --------
 linkperf:perf-stat[1], linkperf:perf-list[1]
