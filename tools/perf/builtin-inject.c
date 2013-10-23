@@ -16,6 +16,7 @@
 #include "util/debug.h"
 #include "util/build-id.h"
 #include "util/data.h"
+#include "util/itrace.h"
 
 #include "util/parse-options.h"
 
@@ -29,6 +30,7 @@ struct perf_inject {
 	struct perf_data_file	output;
 	u64			bytes_written;
 	struct list_head	samples;
+	struct itrace_synth_opts itrace_synth_opts;
 };
 
 struct event_entry {
@@ -197,6 +199,32 @@ static int perf_event__repipe_fork(struct perf_tool *tool,
 	return err;
 }
 
+static int perf_event__repipe_comm(struct perf_tool *tool,
+				   union perf_event *event,
+				   struct perf_sample *sample,
+				   struct machine *machine)
+{
+	int err;
+
+	err = perf_event__process_comm(tool, event, sample, machine);
+	perf_event__repipe(tool, event, sample, machine);
+
+	return err;
+}
+
+static int perf_event__repipe_exit(struct perf_tool *tool,
+				   union perf_event *event,
+				   struct perf_sample *sample,
+				   struct machine *machine)
+{
+	int err;
+
+	err = perf_event__process_exit(tool, event, sample, machine);
+	perf_event__repipe(tool, event, sample, machine);
+
+	return err;
+}
+
 static int perf_event__repipe_tracing_data(struct perf_tool *tool,
 					   union perf_event *event,
 					   struct perf_session *session)
@@ -205,6 +233,18 @@ static int perf_event__repipe_tracing_data(struct perf_tool *tool,
 
 	perf_event__repipe_synth(tool, event);
 	err = perf_event__process_tracing_data(tool, event, session);
+
+	return err;
+}
+
+static int perf_event__repipe_id_index(struct perf_tool *tool,
+				       union perf_event *event,
+				       struct perf_session *session)
+{
+	int err;
+
+	perf_event__repipe_synth(tool, event);
+	err = perf_event__process_id_index(tool, event, session);
 
 	return err;
 }
@@ -398,10 +438,12 @@ static int __cmd_inject(struct perf_inject *inject)
 		.mode = PERF_DATA_MODE_READ,
 	};
 	struct perf_data_file *file_out = &inject->output;
+	u64 output_data_offset;
 
 	signal(SIGINT, sig_handler);
 
-	if (inject->build_ids || inject->sched_stat) {
+	if (inject->build_ids || inject->sched_stat ||
+	    inject->itrace_synth_opts.set) {
 		inject->tool.mmap	  = perf_event__repipe_mmap;
 		inject->tool.mmap2	  = perf_event__repipe_mmap2;
 		inject->tool.fork	  = perf_event__repipe_fork;
@@ -411,6 +453,8 @@ static int __cmd_inject(struct perf_inject *inject)
 	session = perf_session__new(&file, true, &inject->tool);
 	if (session == NULL)
 		return -ENOMEM;
+
+	output_data_offset = session->header.data_offset;
 
 	if (inject->build_ids) {
 		inject->tool.sample = perf_event__inject_buildid;
@@ -432,14 +476,34 @@ static int __cmd_inject(struct perf_inject *inject)
 			else if (!strncmp(name, "sched:sched_stat_", 17))
 				evsel->handler = perf_inject__sched_stat;
 		}
+	} else if (inject->itrace_synth_opts.set) {
+		session->itrace_synth_opts = &inject->itrace_synth_opts;
+		inject->itrace_synth_opts.inject = true;
+		inject->tool.comm	    = perf_event__repipe_comm;
+		inject->tool.exit	    = perf_event__repipe_exit;
+		inject->tool.id_index	    = perf_event__repipe_id_index;
+		inject->tool.itrace_info    = perf_event__process_itrace_info;
+		inject->tool.itrace	    = perf_event__process_itrace;
+		inject->tool.ordered_samples = true;
+		inject->tool.ordering_requires_timestamps = true;
+		/* Allow space in the header for new attributes */
+		output_data_offset = 4096;
 	}
 
 	if (!file_out->is_pipe)
-		lseek(file_out->fd, session->header.data_offset, SEEK_SET);
+		lseek(file_out->fd, output_data_offset, SEEK_SET);
 
 	ret = perf_session__process_events(session, &inject->tool);
 
 	if (!file_out->is_pipe) {
+		/*
+		 * The instruction traces have been removed and replaced with
+		 * synthesized hardware events, so clear the feature flag.
+		 */
+		if (inject->itrace_synth_opts.set)
+			perf_header__clear_feat(&session->header,
+						HEADER_ITRACE);
+		session->header.data_offset = output_data_offset;
 		session->header.data_size = inject->bytes_written;
 		perf_session__write_header(session, session->evlist, file_out->fd, true);
 	}
@@ -492,6 +556,9 @@ int cmd_inject(int argc, const char **argv, const char *prefix __maybe_unused)
 			    "where and how long tasks slept"),
 		OPT_INCR('v', "verbose", &verbose,
 			 "be more verbose (show build ids, etc)"),
+		OPT_CALLBACK_OPTARG('Z', "itrace", &inject.itrace_synth_opts,
+				    NULL, "opts", "Instruction Tracing options",
+				    itrace_parse_synth_opts),
 		OPT_END()
 	};
 	const char * const inject_usage[] = {
