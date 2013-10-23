@@ -177,9 +177,29 @@ static int record__itrace_mmap_read(struct record *rec,
 	return 0;
 }
 
+static int record__itrace_mmap_read_snapshot(struct record *rec,
+					     struct itrace_mmap *mm)
+{
+	int ret;
+
+	ret = itrace_mmap__read_snapshot(mm, rec->itr, &rec->tool,
+					 record__process_itrace,
+					 rec->opts.itrace_snapshot_size);
+	if (ret < 0)
+		return ret;
+
+	if (ret)
+		rec->samples++;
+
+	return 0;
+}
+
 static volatile int done = 0;
 static volatile int signr = -1;
 static volatile int child_finished = 0;
+static volatile int itrace_snapshot_enabled;
+static volatile int itrace_snapshot_err;
+static volatile int itrace_record__snapshot_started;
 
 static void sig_handler(int sig)
 {
@@ -246,7 +266,8 @@ try_again:
 	}
 
 	if (perf_evlist__mmap_ex(evlist, opts->mmap_pages, false,
-				 opts->itrace_mmap_pages, false) < 0) {
+				 opts->itrace_mmap_pages,
+				 opts->itrace_snapshot_mode) < 0) {
 		if (errno == EPERM) {
 			pr_err("Permission error mapping pages.\n"
 			       "Consider increasing "
@@ -356,7 +377,7 @@ static int record__mmap_read_all(struct record *rec)
 			}
 		}
 
-		if (mm->base &&
+		if (mm->base && !rec->opts.itrace_snapshot_mode &&
 		    record__itrace_mmap_read(rec, mm) != 0) {
 			rc = -1;
 			goto out;
@@ -407,6 +428,41 @@ static void workload_exec_failed_signal(int signo, siginfo_t *info,
 	child_finished = 1;
 }
 
+static int record__itrace_read_snapshot_all(struct record *rec)
+{
+	int i;
+	int rc = 0;
+
+	for (i = 0; i < rec->evlist->nr_mmaps; i++) {
+		struct itrace_mmap *mm =
+				&rec->evlist->mmap[i].itrace_mmap;
+
+		if (!mm->base)
+			continue;
+
+		if (record__itrace_mmap_read_snapshot(rec, mm) != 0) {
+			rc = -1;
+			goto out;
+		}
+	}
+out:
+	return rc;
+}
+
+static void record__read_itrace_snapshot(struct record *rec)
+{
+	pr_debug("Recording instruction tracing snapshot\n");
+	if (record__itrace_read_snapshot_all(rec) < 0) {
+		itrace_snapshot_err = -1;
+	} else {
+		itrace_snapshot_err = itrace_record__snapshot_finish(rec->itr);
+		if (!itrace_snapshot_err)
+			itrace_snapshot_enabled = 1;
+	}
+}
+
+static void snapshot_sig_handler(int sig);
+
 static int __cmd_record(struct record *rec, int argc, const char **argv)
 {
 	int err;
@@ -425,6 +481,10 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 	signal(SIGCHLD, sig_handler);
 	signal(SIGINT, sig_handler);
 	signal(SIGTERM, sig_handler);
+	if (rec->opts.itrace_snapshot_mode)
+		signal(SIGUSR2, snapshot_sig_handler);
+	else
+		signal(SIGUSR2, SIG_IGN);
 
 	session = perf_session__new(file, false, NULL);
 	if (session == NULL) {
@@ -579,12 +639,25 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 		perf_evlist__enable(rec->evlist);
 	}
 
+	itrace_snapshot_enabled = 1;
 	for (;;) {
 		int hits = rec->samples;
 
 		if (record__mmap_read_all(rec) < 0) {
+			itrace_snapshot_enabled = 0;
 			err = -1;
 			goto out_delete_session;
+		}
+
+		if (itrace_record__snapshot_started) {
+			itrace_record__snapshot_started = 0;
+			if (!itrace_snapshot_err)
+				record__read_itrace_snapshot(rec);
+			if (itrace_snapshot_err) {
+				pr_err("Instruction tracing snapshot failed\n");
+				err = -1;
+				goto out_delete_session;
+			}
 		}
 
 		if (hits == rec->samples) {
@@ -600,10 +673,12 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 		 * disable events in this case.
 		 */
 		if (done && !disabled && !target__none(&opts->target)) {
+			itrace_snapshot_enabled = 0;
 			perf_evlist__disable(rec->evlist);
 			disabled = true;
 		}
 	}
+	itrace_snapshot_enabled = 0;
 
 	if (forks && workload_exec_errno) {
 		char msg[512];
@@ -1013,6 +1088,9 @@ const struct option record_options[] = {
 	OPT_CALLBACK_OPTARG('I', "itrace", &record.opts, &record.itr, "opts",
 			    "sample Instruction Trace",
 			    itrace_parse_sample_options),
+	OPT_CALLBACK_OPTARG('S', "snapshot", &record.opts, &record.itr, "opts",
+			    "Instruction Tracing Snapshot Mode",
+			    itrace_parse_snapshot_options),
 	OPT_END()
 };
 
@@ -1102,4 +1180,13 @@ out_symbol_exit:
 out_itrace_free:
 	itrace_record__free(rec->itr);
 	return err;
+}
+
+static void snapshot_sig_handler(int sig __maybe_unused)
+{
+	if (!itrace_snapshot_enabled)
+		return;
+	itrace_snapshot_enabled = 0;
+	itrace_snapshot_err = itrace_record__snapshot_start(record.itr);
+	itrace_record__snapshot_started = 1;
 }
