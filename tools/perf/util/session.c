@@ -505,8 +505,8 @@ static void perf_event__itrace_info_swap(union perf_event *event,
 	mem_bswap_64(event->itrace_info.priv, size);
 }
 
-static void perf_event__itrace_swap(union perf_event *event,
-				    bool sample_id_all __maybe_unused)
+void perf_event__itrace_swap(union perf_event *event,
+			     bool sample_id_all __maybe_unused)
 {
 	event->itrace.size      = bswap_64(event->itrace.size);
 	event->itrace.offset    = bswap_64(event->itrace.offset);
