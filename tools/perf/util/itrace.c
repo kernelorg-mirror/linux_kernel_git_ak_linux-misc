@@ -19,11 +19,15 @@
 
 #include <linux/kernel.h>
 #include <linux/perf_event.h>
+#include <linux/string.h>
 
+#include <sys/param.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 #include <errno.h>
+#include <linux/list.h>
 
 #include "../perf.h"
 #include "types.h"
@@ -116,6 +120,230 @@ void itrace_mmap_params__set_idx(struct itrace_mmap_params *mp,
 	}
 }
 
+#define ITRACE_INIT_NR_QUEUES	32
+
+static struct itrace_queue *itrace_alloc_queue_array(unsigned int nr_queues)
+{
+	struct itrace_queue *queue_array;
+	unsigned int max_nr_queues, i;
+
+	max_nr_queues = MIN(UINT_MAX, SIZE_MAX) / sizeof(struct itrace_queue);
+	if (nr_queues > max_nr_queues)
+		return NULL;
+
+	queue_array = calloc(nr_queues, sizeof(struct itrace_queue));
+	if (!queue_array)
+		return NULL;
+
+	for (i = 0; i < nr_queues; i++) {
+		INIT_LIST_HEAD(&queue_array[i].head);
+		queue_array[i].priv = NULL;
+	}
+
+	return queue_array;
+}
+
+int itrace_queues__init(struct itrace_queues *queues)
+{
+	queues->nr_queues = ITRACE_INIT_NR_QUEUES;
+	queues->queue_array = itrace_alloc_queue_array(queues->nr_queues);
+	if (!queues->queue_array)
+		return -ENOMEM;
+	return 0;
+}
+
+static int itrace_queues__grow(struct itrace_queues *queues,
+			       unsigned int new_nr_queues)
+{
+	unsigned int nr_queues = queues->nr_queues;
+	struct itrace_queue *queue_array;
+	unsigned int i;
+
+	if (!nr_queues)
+		nr_queues = ITRACE_INIT_NR_QUEUES;
+
+	while (nr_queues && nr_queues < new_nr_queues)
+		nr_queues <<= 1;
+
+	if (nr_queues < queues->nr_queues || nr_queues < new_nr_queues)
+		return -EINVAL;
+
+	queue_array = itrace_alloc_queue_array(nr_queues);
+	if (!queue_array)
+		return -ENOMEM;
+
+	for (i = 0; i < queues->nr_queues; i++) {
+		list_splice_tail(&queues->queue_array[i].head,
+				 &queue_array[i].head);
+		queue_array[i].priv = queues->queue_array[i].priv;
+	}
+
+	queues->nr_queues = nr_queues;
+	queues->queue_array = queue_array;
+
+	return 0;
+}
+
+static void *itrace_event__copy_data(union perf_event *event,
+				     struct perf_session *session)
+{
+	int fd = perf_data_file__fd(session->file);
+	void *p;
+	ssize_t ret;
+
+	if (event->itrace.size > SSIZE_MAX)
+		return NULL;
+
+	p = malloc(event->itrace.size);
+	if (!p)
+		return NULL;
+
+	ret = readn(fd, p, event->itrace.size);
+	if (ret != (ssize_t)event->itrace.size) {
+		free(p);
+		return NULL;
+	}
+
+	return p;
+}
+
+static int itrace_queues__add_buffer(struct itrace_queues *queues,
+				     unsigned int idx,
+				     struct itrace_buffer *buffer)
+{
+	struct itrace_queue *queue;
+	int err;
+
+	if (idx >= queues->nr_queues) {
+		err = itrace_queues__grow(queues, idx + 1);
+		if (err)
+			goto out_err;
+	}
+
+	queue = &queues->queue_array[idx];
+
+	if (!queue->set) {
+		queue->set = true;
+		queue->tid = buffer->tid;
+		queue->cpu = buffer->cpu;
+	} else if (buffer->cpu != queue->cpu || buffer->tid != queue->tid) {
+		pr_err("itrace queue conflict: cpu %d, tid %d vs cpu %d, tid %d\n",
+		       queue->cpu, queue->tid, buffer->cpu, buffer->tid);
+		err = -EINVAL;
+		goto out_err;
+	}
+
+	list_add_tail(&buffer->list, &queue->head);
+
+	queues->new_data = true;
+
+	return 0;
+
+out_err:
+	if (buffer->data_needs_freeing)
+		free(buffer->data);
+	free(buffer);
+	return err;
+}
+
+/* Limit buffers to 32MiB on 32-bit */
+#define BUFFER_LIMIT_FOR_32_BIT (32 * 1024 * 1024)
+
+static int itrace_queues__split_buffer(struct itrace_queues *queues,
+				       union perf_event *event,
+				       struct itrace_buffer *buffer)
+{
+	u64 sz = event->itrace.size;
+	bool consecutive = false;
+	struct itrace_buffer *b;
+	int err;
+
+	while (sz > BUFFER_LIMIT_FOR_32_BIT) {
+		b = memdup(buffer, sizeof(struct itrace_buffer));
+		if (!b)
+			return -ENOMEM;
+		b->size = BUFFER_LIMIT_FOR_32_BIT;
+		b->consecutive = consecutive;
+		err = itrace_queues__add_buffer(queues, event->itrace.idx, b);
+		if (err)
+			return err;
+		buffer->data_offset += BUFFER_LIMIT_FOR_32_BIT;
+		sz -= BUFFER_LIMIT_FOR_32_BIT;
+		consecutive = true;
+	}
+
+	buffer->size = sz;
+	buffer->consecutive = consecutive;
+
+	return 0;
+}
+
+int itrace_queues__add_event(struct itrace_queues *queues,
+			     struct perf_session *session,
+			     union perf_event *event, off_t data_offset,
+			     struct itrace_buffer **buffer_ptr)
+{
+	struct itrace_buffer *buffer;
+	int err;
+
+	queues->populated = true;
+
+	buffer = zalloc(sizeof(struct itrace_buffer));
+	if (!buffer)
+		return -ENOMEM;
+
+	if (buffer_ptr)
+		*buffer_ptr = buffer;
+
+	buffer->tid = event->itrace.tid;
+	buffer->cpu = event->itrace.cpu;
+
+	buffer->offset = event->itrace.offset;
+	buffer->reference = event->itrace.reference;
+
+	buffer->size = event->itrace.size;
+
+	if (session->one_mmap) {
+		buffer->data = data_offset - session->one_mmap_offset +
+			       session->one_mmap_addr;
+	} else if (perf_data_file__is_pipe(session->file)) {
+		buffer->data = itrace_event__copy_data(event, session);
+		if (!buffer->data)
+			return -ENOMEM;
+		buffer->data_needs_freeing = true;
+	} else if (BITS_PER_LONG == 64 ||
+		   event->itrace.size <= BUFFER_LIMIT_FOR_32_BIT) {
+		buffer->data_offset = data_offset;
+	} else {
+		buffer->data_offset = data_offset;
+		err = itrace_queues__split_buffer(queues, event, buffer);
+		if (err)
+			return err;
+	}
+
+	return itrace_queues__add_buffer(queues, event->itrace.idx, buffer);
+}
+
+void itrace_queues__free(struct itrace_queues *queues)
+{
+	unsigned int i;
+
+	for (i = 0; i < queues->nr_queues; i++) {
+		while (!list_empty(&queues->queue_array[i].head)) {
+			struct itrace_buffer *buffer;
+
+			buffer = list_entry(queues->queue_array[i].head.next,
+					     struct itrace_buffer, list);
+			itrace_buffer__drop_data(buffer);
+			list_del(&buffer->list);
+			free(buffer);
+		}
+	}
+
+	zfree(&queues->queue_array);
+	queues->nr_queues = 0;
+}
+
 size_t itrace_record__info_priv_size(struct itrace_record *itr)
 {
 	if (itr)
@@ -165,6 +393,65 @@ struct itrace_record *__attribute__ ((weak)) itrace_record__init(int *err)
 {
 	*err = 0;
 	return NULL;
+}
+
+struct itrace_buffer *itrace_buffer__next(struct itrace_queue *queue,
+					  struct itrace_buffer *buffer)
+{
+	if (buffer) {
+		if (list_is_last(&buffer->list, &queue->head))
+			return NULL;
+		return list_entry(buffer->list.next, struct itrace_buffer,
+				  list);
+	} else {
+		if (list_empty(&queue->head))
+			return NULL;
+		return list_entry(queue->head.next, struct itrace_buffer, list);
+	}
+}
+
+void *itrace_buffer__get_data(struct itrace_buffer *buffer, int fd)
+{
+	size_t adj = buffer->data_offset & (page_size - 1);
+	size_t size = buffer->size + adj;
+	off_t file_offset = buffer->data_offset - adj;
+	void *addr;
+
+	if (buffer->data)
+		return buffer->data;
+
+	addr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, file_offset);
+	if (addr == MAP_FAILED)
+		return NULL;
+
+	buffer->mmap_addr = addr;
+	buffer->mmap_size = size;
+
+	buffer->data = addr + adj;
+
+	return buffer->data;
+}
+
+void itrace_buffer__put_data(struct itrace_buffer *buffer)
+{
+	if (!buffer->data || !buffer->mmap_addr)
+		return;
+	munmap(buffer->mmap_addr, buffer->mmap_size);
+	buffer->mmap_addr = NULL;
+	buffer->mmap_size = 0;
+	buffer->data = NULL;
+	buffer->use_data = NULL;
+}
+
+void itrace_buffer__drop_data(struct itrace_buffer *buffer)
+{
+	itrace_buffer__put_data(buffer);
+	if (buffer->data_needs_freeing) {
+		buffer->data_needs_freeing = false;
+		zfree(&buffer->data);
+		buffer->use_data = NULL;
+		buffer->size = 0;
+	}
 }
 
 void itrace_synth_error(struct itrace_error_event *itrace_error, int type,
