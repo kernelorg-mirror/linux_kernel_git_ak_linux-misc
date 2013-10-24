@@ -29,10 +29,13 @@ struct ordered_samples {
 	unsigned int		nr_samples;
 };
 
+struct itrace;
+
 struct perf_session {
 	struct perf_header	header;
 	struct machines		machines;
 	struct perf_evlist	*evlist;
+	struct itrace		*itrace;
 	struct trace_event	tevent;
 	struct events_stats	stats;
 	bool			repipe;

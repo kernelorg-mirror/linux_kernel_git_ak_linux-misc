@@ -15,6 +15,7 @@
 #include "cpumap.h"
 #include "perf_regs.h"
 #include "vdso.h"
+#include "itrace.h"
 
 static int perf_session__open(struct perf_session *session)
 {
@@ -148,6 +149,7 @@ static void perf_session_env__delete(struct perf_session_env *env)
 
 void perf_session__delete(struct perf_session *session)
 {
+	itrace__free(session);
 	perf_session__destroy_kernel_maps(session);
 	perf_session__delete_dead_threads(session);
 	perf_session__delete_threads(session);
@@ -1027,11 +1029,11 @@ perf_session__deliver_sample(struct perf_session *session,
 					    &sample->read.one, machine);
 }
 
-static int perf_session_deliver_event(struct perf_session *session,
-				      union perf_event *event,
-				      struct perf_sample *sample,
-				      struct perf_tool *tool,
-				      u64 file_offset)
+static int __perf_session__deliver_event(struct perf_session *session,
+					 union perf_event *event,
+					 struct perf_sample *sample,
+					 struct perf_tool *tool,
+					 u64 file_offset)
 {
 	struct perf_evsel *evsel;
 	struct machine *machine;
@@ -1100,6 +1102,24 @@ static int perf_session_deliver_event(struct perf_session *session,
 	}
 }
 
+static int perf_session_deliver_event(struct perf_session *session,
+				      union perf_event *event,
+				      struct perf_sample *sample,
+				      struct perf_tool *tool,
+				      u64 file_offset)
+{
+	int ret;
+
+	ret = itrace__process_event(session, event, sample, tool);
+	if (ret < 0)
+		return ret;
+	if (ret > 0)
+		return 0;
+
+	return __perf_session__deliver_event(session, event, sample, tool,
+					     file_offset);
+}
+
 static s64 perf_session__process_user_event(struct perf_session *session,
 					    union perf_event *event,
 					    struct perf_tool *tool,
@@ -1151,7 +1171,7 @@ int perf_session__deliver_synth_event(struct perf_session *session,
 		return perf_session__process_user_event(session, event, tool,
 							0);
 
-	return perf_session_deliver_event(session, event, sample, tool, 0);
+	return __perf_session__deliver_event(session, event, sample, tool, 0);
 }
 
 static void event_swap(union perf_event *event, bool sample_id_all)
@@ -1263,6 +1283,11 @@ static void perf_session__warn_about_errors(const struct perf_session *session,
 			    "Do you have a KVM guest running and not using 'perf kvm'?\n",
 			    session->stats.nr_unprocessable_samples);
 	}
+
+	if (session->itrace && session->itrace->error_count) {
+		ui__warning("%llu instruction trace errors\n",
+			    session->itrace->error_count);
+	}
 }
 
 volatile int session_done;
@@ -1351,10 +1376,14 @@ done:
 	/* do the final flush for ordered samples */
 	session->ordered_samples.next_flush = ULLONG_MAX;
 	err = flush_sample_queue(session, tool);
+	if (err)
+		goto out_err;
+	err = itrace__flush_events(session, tool);
 out_err:
 	free(buf);
 	perf_session__warn_about_errors(session, tool);
 	perf_session_free_sample_buffers(session);
+	itrace__free_events(session);
 	return err;
 }
 
@@ -1497,10 +1526,14 @@ out:
 	/* do the final flush for ordered samples */
 	session->ordered_samples.next_flush = ULLONG_MAX;
 	err = flush_sample_queue(session, tool);
+	if (err)
+		goto out_err;
+	err = itrace__flush_events(session, tool);
 out_err:
 	ui_progress__finish();
 	perf_session__warn_about_errors(session, tool);
 	perf_session_free_sample_buffers(session);
+	itrace__free_events(session);
 	session->one_mmap = false;
 	return err;
 }
