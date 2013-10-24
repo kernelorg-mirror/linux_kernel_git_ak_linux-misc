@@ -639,6 +639,13 @@ void perf_evsel__config(struct perf_evsel *evsel, struct record_opts *opts)
 	if (opts->sample_weight)
 		perf_evsel__set_sample_bit(evsel, WEIGHT);
 
+	if (opts->sample_itrace && !evsel->no_aux_samples) {
+		perf_evsel__set_sample_bit(evsel, ITRACE);
+		attr->itrace_config = opts->itrace_sample_config;
+		attr->itrace_sample_size = opts->itrace_sample_size;
+		attr->itrace_sample_type = opts->itrace_sample_type;
+	}
+
 	attr->mmap  = track;
 	attr->comm  = track;
 

@@ -262,6 +262,7 @@ struct record_opts {
 	bool	     sample_time;
 	bool	     period;
 	bool	     full_itrace;
+	bool	     sample_itrace;
 	unsigned int freq;
 	unsigned int mmap_pages;
 	unsigned int itrace_mmap_pages;
@@ -269,9 +270,18 @@ struct record_opts {
 	u64          branch_stack;
 	u64	     default_interval;
 	u64	     user_interval;
+	u64	     itrace_sample_config;
+	u32	     itrace_sample_type;
+	size_t	     itrace_sample_size;
 	u16	     stack_dump_size;
 	bool	     sample_transaction;
 	unsigned     initial_delay;
 };
+
+static
+inline bool record_opts__itracing(const struct record_opts *opts)
+{
+	return opts->full_itrace || opts->sample_itrace;
+}
 
 #endif

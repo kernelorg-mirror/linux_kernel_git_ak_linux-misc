@@ -92,7 +92,7 @@ void perf_evlist__config(struct perf_evlist *evlist, struct record_opts *opts)
 	evlist__for_each(evlist, evsel)
 		perf_evsel__config(evsel, opts);
 
-	if (opts->full_itrace) {
+	if (record_opts__itracing(opts)) {
 		use_sample_identifier = true;
 		list_for_each_entry(evsel, &evlist->entries, node)
 			perf_evsel__set_sample_id(evsel, use_sample_identifier);

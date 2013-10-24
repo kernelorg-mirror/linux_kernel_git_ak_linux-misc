@@ -771,7 +771,7 @@ int perf_session_queue_event(struct perf_session *s, union perf_event *event,
 
 	__queue_event(new, s);
 
-	return 0;
+	return itrace__queue_event(s, event, sample);
 }
 
 static void callchain__printf(struct perf_sample *sample)
@@ -884,6 +884,10 @@ static void dump_event(struct perf_session *session, union perf_event *event,
 	       file_offset, event->header.size, event->header.type);
 
 	trace_event(event);
+
+	/* Instruction trace sample is so big it is better printed here */
+	if (sample && sample->itrace_sample.size)
+		itrace__dump_itrace_sample(session, sample);
 
 	if (sample)
 		perf_session__print_tstamp(session, event, sample);

@@ -76,9 +76,14 @@ struct itrace {
 			     union perf_event *event,
 			     struct perf_sample *sample,
 			     struct perf_tool *tool);
+	int (*queue_event)(struct perf_session *session,
+			   union perf_event *event,
+			   struct perf_sample *sample);
 	int (*process_itrace_event)(struct perf_session *session,
 				    union perf_event *event,
 				    struct perf_tool *tool);
+	void (*dump_itrace_sample)(struct perf_session *session,
+				   struct perf_sample *sample);
 	int (*flush_events)(struct perf_session *session,
 			    struct perf_tool *tool);
 	void (*free_events)(struct perf_session *session);
@@ -226,6 +231,9 @@ struct itrace_mmap_params {
 };
 
 struct itrace_record {
+	int (*parse_sample_options)(struct itrace_record *itr,
+				    struct record_opts *opts,
+				    const char *str);
 	int (*recording_options)(struct itrace_record *itr,
 				 struct perf_evlist *evlist,
 				 struct record_opts *opts);
@@ -293,6 +301,13 @@ int itrace_queues__add_event(struct itrace_queues *queues,
 			     struct perf_session *session,
 			     union perf_event *event, off_t data_offset,
 			     struct itrace_buffer **buffer_ptr);
+struct itrace_queue *itrace_queues__sample_queue(struct itrace_queues *queues,
+						 struct perf_sample *sample,
+						 struct perf_session *session);
+int itrace_queues__add_sample(struct itrace_queues *queues,
+			      struct perf_sample *sample,
+			      struct perf_session *session,
+			      unsigned int *queue_nr, u64 ref);
 void itrace_queues__free(struct itrace_queues *queues);
 struct itrace_buffer *itrace_buffer__next(struct itrace_queue *queue,
 					  struct itrace_buffer *buffer);
@@ -307,6 +322,8 @@ void itrace_heap__free(struct itrace_heap *heap);
 
 struct itrace_record *itrace_record__init(int *err);
 
+int itrace_parse_sample_options(const struct option *opt, const char *str,
+				int unset);
 int itrace_record__options(struct itrace_record *itr,
 			     struct perf_evlist *evlist,
 			     struct record_opts *opts);
@@ -357,6 +374,25 @@ static inline int itrace__process_event(struct perf_session *session,
 		return 0;
 
 	return session->itrace->process_event(session, event, sample, tool);
+}
+
+static inline int itrace__queue_event(struct perf_session *session,
+				      union perf_event *event,
+				      struct perf_sample *sample)
+{
+	if (!session->itrace)
+		return 0;
+
+	return session->itrace->queue_event(session, event, sample);
+}
+
+static inline void itrace__dump_itrace_sample(struct perf_session *session,
+					      struct perf_sample *sample)
+{
+	if (!session->itrace)
+		return;
+
+	session->itrace->dump_itrace_sample(session, sample);
 }
 
 static inline int itrace__flush_events(struct perf_session *session,
