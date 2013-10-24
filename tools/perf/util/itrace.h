@@ -18,13 +18,18 @@
 
 #include <sys/types.h>
 #include <stdbool.h>
-
+#include <stddef.h>
 #include <linux/perf_event.h>
 
 #include "../perf.h"
 #include "types.h"
 
+union perf_event;
+struct perf_session;
 struct perf_evlist;
+struct perf_tool;
+struct record_opts;
+struct itrace_info_event;
 
 /**
  * struct itrace_mmap - records an mmap of the itrace buffer file descriptor.
@@ -72,6 +77,20 @@ struct itrace_mmap_params {
 	int		cpu;
 };
 
+struct itrace_record {
+	int (*recording_options)(struct itrace_record *itr,
+				 struct perf_evlist *evlist,
+				 struct record_opts *opts);
+	size_t (*info_priv_size)(struct itrace_record *itr);
+	int (*info_fill)(struct itrace_record *itr,
+			 struct perf_session *session,
+			 struct itrace_info_event *itrace_info,
+			 size_t priv_size);
+	void (*free)(struct itrace_record *itr);
+	u64 (*reference)(struct itrace_record *itr);
+	int (*read_finish)(struct itrace_record *itr, int idx);
+};
+
 static inline u64 itrace_mmap__read_head(struct itrace_mmap *mm)
 {
 	struct perf_event_mmap_page *pc = mm->base;
@@ -112,5 +131,35 @@ void itrace_mmap_params__init(struct itrace_mmap_params *mp,
 void itrace_mmap_params__set_idx(struct itrace_mmap_params *mp,
 				 struct perf_evlist *evlist, int idx,
 				 bool per_cpu);
+
+typedef int (*process_itrace_t)(struct perf_tool *tool, union perf_event *event,
+				void *data1, size_t len1, void *data2,
+				size_t len2);
+
+int itrace_mmap__read(struct itrace_mmap *mm,
+			    struct itrace_record *itr, struct perf_tool *tool,
+			    process_itrace_t fn);
+
+struct itrace_record *itrace_record__init(int *err);
+
+int itrace_record__options(struct itrace_record *itr,
+			     struct perf_evlist *evlist,
+			     struct record_opts *opts);
+size_t itrace_record__info_priv_size(struct itrace_record *itr);
+int itrace_record__info_fill(struct itrace_record *itr,
+			     struct perf_session *session,
+			     struct itrace_info_event *itrace_info,
+			     size_t priv_size);
+void itrace_record__free(struct itrace_record *itr);
+u64 itrace_record__reference(struct itrace_record *itr);
+
+int perf_event__synthesize_itrace_info(struct itrace_record *itr,
+				       struct perf_tool *tool,
+				       struct perf_session *session,
+				       perf_event__handler_t process);
+int perf_event__synthesize_itrace(struct perf_tool *tool,
+				  perf_event__handler_t process,
+				  size_t size, u64 offset, u64 ref, int idx,
+				  u32 tid, u32 cpu);
 
 #endif
