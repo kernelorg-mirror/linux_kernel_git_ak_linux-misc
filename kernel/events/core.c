@@ -4105,9 +4105,9 @@ again:
 	if (vma->vm_flags & VM_WRITE)
 		flags |= RING_BUFFER_WRITABLE;
 
-	rb = rb_alloc(nr_pages, 
+	rb = rb_alloc(event, nr_pages,
 		event->attr.watermark ? event->attr.wakeup_watermark : 0,
-		event->cpu, flags);
+		event->cpu, flags, NULL);
 
 	if (!rb) {
 		ret = -ENOMEM;

@@ -6,6 +6,33 @@
 
 /* Buffer handling */
 
+struct ring_buffer;
+
+struct ring_buffer_ops {
+	/*
+	 * How much memory should be allocated for struct ring_buffer, taking into
+	 * account data_pages[] array.
+	 */
+	unsigned long	(*get_size)(int);
+	/*
+	 * Allocate user_page for this buffer, can be NULL, in which case it is
+	 * allocated by alloc_data_page().
+	 */
+	int		(*alloc_user_page)(struct ring_buffer *, int, int);
+	/*
+	 * Allocate data_pages for this buffer.
+	 */
+	int		(*alloc_data_page)(struct ring_buffer *, int, int, int);
+	/*
+	 * Free the buffer.
+	 */
+	void		(*free_buffer)(struct ring_buffer *);
+	/*
+	 * Get a struct page for a given page index in the buffer.
+	 */
+	struct page	*(*mmap_to_page)(struct ring_buffer *, unsigned long);
+};
+
 #define RING_BUFFER_WRITABLE		0x01
 
 struct ring_buffer {
@@ -15,6 +42,8 @@ struct ring_buffer {
 	struct work_struct		work;
 	int				page_order;	/* allocation order  */
 #endif
+	struct ring_buffer_ops		*ops;
+	struct perf_event		*event;
 	int				nr_pages;	/* nr of data pages  */
 	int				overwrite;	/* can overwrite itself */
 
@@ -41,7 +70,8 @@ struct ring_buffer {
 
 extern void rb_free(struct ring_buffer *rb);
 extern struct ring_buffer *
-rb_alloc(int nr_pages, long watermark, int cpu, int flags);
+rb_alloc(struct perf_event *event, int nr_pages, long watermark, int cpu,
+	 int flags, struct ring_buffer_ops *rb_ops);
 extern void perf_event_wakeup(struct perf_event *event);
 
 extern void
