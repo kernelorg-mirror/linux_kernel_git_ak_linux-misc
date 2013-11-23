@@ -142,6 +142,12 @@ filter out the startup phase of the program, which is often very different.
 
 Print statistics of transactional execution if supported.
 
+--events-file=::
+Specify JSON event list file to use for parsing events. Must be specified before
+the -e option. Files can be automatically downloaded with perf download.
+The JSON event file can be also specified with the EVENTMAP environment
+variable.
+
 EXAMPLES
 --------
 
@@ -162,4 +168,4 @@ $ perf stat -- make -j
 
 SEE ALSO
 --------
-linkperf:perf-top[1], linkperf:perf-list[1]
+linkperf:perf-top[1], linkperf:perf-list[1], linkperf:perf-download[1]

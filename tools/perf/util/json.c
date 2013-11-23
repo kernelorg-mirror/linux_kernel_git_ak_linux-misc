@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include "jsmn.h"
 #include "json.h"
+#include "util/debug.h"
 #include <linux/kernel.h>
 
 static char *mapfile(const char *fn, size_t *size)

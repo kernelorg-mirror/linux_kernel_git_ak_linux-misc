@@ -15,8 +15,16 @@ DESCRIPTION
 This command displays the symbolic event types which can be selected in the
 various perf commands with the -e option.
 
-[[EVENT_MODIFIERS]]
-EVENT MODIFIERS
+OPTIONS
+-------
+--events-file=::
+Specify JSON event list file to use for parsing events. Files can be
+automatically downloaded with perf download.
+The JSON event file can be also specified with the EVENTMAP environment
+variable.
+
+
+[[EVENT_MODIFIERS]] EVENT MODIFIERS
 ---------------
 
 Events can optionally have a modifer by appending a colon and one or

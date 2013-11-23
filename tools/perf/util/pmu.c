@@ -9,6 +9,9 @@
 #include "pmu.h"
 #include "parse-events.h"
 #include "cpumap.h"
+#include "jevents.h"
+
+const char *json_file;
 
 #define UNIT_MAX_LEN	31 /* max length for event unit name */
 
@@ -273,6 +276,14 @@ static int pmu_aliases_parse(char *dir, struct list_head *head)
 	return ret;
 }
 
+static int add_alias(void *data, char *name, char *event, char *desc)
+{
+	struct list_head *head = (struct list_head *)data;
+
+	__perf_pmu__new_alias(head, name, NULL, desc, event);
+	return 0;
+}
+
 /*
  * Reading the pmu event aliases definition, which should be located at:
  * /sys/bus/event_source/devices/<dev>/events as sysfs group attributes.
@@ -421,6 +432,9 @@ static struct perf_pmu *pmu_lookup(const char *name)
 
 	if (pmu_aliases(name, &aliases))
 		return NULL;
+
+	if (!strcmp(name, "cpu") && json_file)
+		json_events(json_file, add_alias, &aliases);
 
 	if (pmu_type(name, &type))
 		return NULL;
