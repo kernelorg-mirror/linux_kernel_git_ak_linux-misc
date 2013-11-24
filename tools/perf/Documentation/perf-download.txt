@@ -1,0 +1,31 @@
+perf-download(1)
+===============
+
+NAME
+----
+perf-download - Download event files for current CPU.
+
+SYNOPSIS
+--------
+[verse]
+'perf download' [vendor-family-model]
+
+DESCRIPTION
+-----------
+This command automatically downloads the event list for the current CPU and
+stores them in $XDG_CACHE_HOME/pmu-events (or $HOME/.cache/pmu-events).
+The other tools automatically look for them there. The CPU can be also
+specified at the command line.
+
+The downloading is done using http through wget, which needs
+to be installed. When behind a firewall the proxies
+may also need to be set up using "export https_proxy=...."
+
+The user should regularly call this to download updated event lists
+for the current CPU.
+
+Note the downloaded files are stored per user, so if perf is
+used as both normal user and with sudo the event files may
+also need to be moved to root's home directory with
+sudo mkdir /root/.cache ; sud cp -r ~/.cache/pmu-events /root/.cache
+after downloading.

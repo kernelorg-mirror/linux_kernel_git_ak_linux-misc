@@ -55,6 +55,16 @@ Sampling). Examples to use IBS:
  perf record -a -e r076:p ...          # same as -e cpu-cycles:p
  perf record -a -e r0C1:p ...          # use ibs op counting micro-ops
 
+PER CPU EVENT LISTS
+-------------------
+
+For some CPUs (particularly modern Intel CPUs) "perf download" can
+download additional CPU specific event definitions, which then
+become visible in perf list and available in the other perf tools.
+
+This obsoletes the raw event description method described below
+for most cases.
+
 RAW HARDWARE EVENT DESCRIPTOR
 -----------------------------
 Even when an event is not available in a symbolic form within perf right now,
@@ -117,6 +127,6 @@ types specified.
 SEE ALSO
 --------
 linkperf:perf-stat[1], linkperf:perf-top[1],
-linkperf:perf-record[1],
+linkperf:perf-record[1], linkperf:perf-download[1],
 http://www.intel.com/Assets/PDF/manual/253669.pdf[Intel® 64 and IA-32 Architectures Software Developer's Manual Volume 3B: System Programming Guide],
 http://support.amd.com/us/Processor_TechDocs/24593_APM_v2.pdf[AMD64 Architecture Programmer’s Manual Volume 2: System Programming]
