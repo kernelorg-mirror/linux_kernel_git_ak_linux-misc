@@ -43,6 +43,7 @@
 #include "parse-options.h"
 
 #include "intel-pt.h"
+#include "intel-bts.h"
 
 int itrace_mmap__mmap(struct itrace_mmap *mm, struct itrace_mmap_params *mp,
 		      int fd)
@@ -668,7 +669,9 @@ int itrace_parse_snapshot_options(const struct option *opt, const char *str,
 	return itrace_not_supported();
 }
 
-struct itrace_record *__attribute__ ((weak)) itrace_record__init(int *err)
+struct itrace_record *__attribute__ ((weak))
+itrace_record__init(char *itrace_type __maybe_unused, int argc __maybe_unused,
+		    const char **argv __maybe_unused, int *err)
 {
 	*err = 0;
 	return NULL;
@@ -995,6 +998,8 @@ int perf_event__process_itrace_info(struct perf_tool *tool,
 	switch (type) {
 	case PERF_ITRACE_INTEL_PT:
 		return intel_pt_process_itrace_info(tool, event, session);
+	case PERF_ITRACE_INTEL_BTS:
+		return intel_bts_process_itrace_info(tool, event, session);
 	case PERF_ITRACE_UNKNOWN:
 	default:
 		return -EINVAL;

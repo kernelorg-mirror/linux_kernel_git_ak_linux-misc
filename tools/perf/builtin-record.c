@@ -69,6 +69,7 @@ struct record {
 	u64			bytes_written;
 	struct perf_data_file	file;
 	struct itrace_record	*itr;
+	char			*itrace_type;
 	struct perf_evlist	*evlist;
 	struct perf_session	*session;
 	const char		*progname;
@@ -992,6 +993,18 @@ out_free:
 	return ret;
 }
 
+static int record_config(const char *var, const char *value, void *cb)
+{
+	struct record *rec = cb;
+
+	if (!strcmp(var, "record.itrace-type")) {
+		rec->itrace_type = strdup(value);
+		return 0;
+	}
+
+	return perf_default_config(var, value, cb);
+}
+
 static const char * const record_usage[] = {
 	"perf record [<options>] [<command>]",
 	"perf record [<options>] -- <command> [<options>]",
@@ -1125,7 +1138,9 @@ int cmd_record(int argc, const char **argv, const char *prefix __maybe_unused)
 	struct record *rec = &record;
 	char errbuf[BUFSIZ];
 
-	rec->itr = itrace_record__init(&err);
+	perf_config(record_config, rec);
+
+	rec->itr = itrace_record__init(rec->itrace_type, argc, argv, &err);
 	if (err)
 		return err;
 
@@ -1204,6 +1219,7 @@ out_symbol_exit:
 	symbol__exit();
 out_itrace_free:
 	itrace_record__free(rec->itr);
+	zfree(&rec->itrace_type);
 	return err;
 }
 

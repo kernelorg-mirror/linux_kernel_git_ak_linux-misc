@@ -37,6 +37,7 @@ struct itrace_info_event;
 enum itrace_type {
 	PERF_ITRACE_UNKNOWN,
 	PERF_ITRACE_INTEL_PT,
+	PERF_ITRACE_INTEL_BTS,
 };
 
 enum itrace_error_type {
@@ -379,7 +380,8 @@ int itrace_heap__add(struct itrace_heap *heap, unsigned int queue_nr,
 void itrace_heap__pop(struct itrace_heap *heap);
 void itrace_heap__free(struct itrace_heap *heap);
 
-struct itrace_record *itrace_record__init(int *err);
+struct itrace_record *itrace_record__init(char *itrace_type, int argc,
+					  const char **argv, int *err);
 
 int itrace_parse_sample_options(const struct option *opt, const char *str,
 				int unset);
