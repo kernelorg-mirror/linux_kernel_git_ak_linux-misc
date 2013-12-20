@@ -34,6 +34,7 @@
 #include <linux/utsname.h>
 #include <linux/coredump.h>
 #include <linux/sched.h>
+#include <linux/itrace.h>
 #include <asm/uaccess.h>
 #include <asm/param.h>
 #include <asm/page.h>
@@ -1576,6 +1577,8 @@ static int fill_thread_core_info(struct elf_thread_core_info *t,
 		}
 	}
 
+	*total += itrace_elf_note_size(t->task);
+
 	return 1;
 }
 
@@ -1608,6 +1611,7 @@ static int fill_note_info(struct elfhdr *elf, int phdrs,
 	for (i = 0; i < view->n; ++i)
 		if (view->regsets[i].core_note_type != 0)
 			++info->thread_notes;
+	info->thread_notes++; /* ITRACE */
 
 	/*
 	 * Sanity check.  We rely on regset 0 being in NT_PRSTATUS,
@@ -1709,6 +1713,8 @@ static int write_note_info(struct elf_note_info *info,
 			if (t->notes[i].data &&
 			    !writenote(&t->notes[i], cprm))
 				return 0;
+
+		itrace_elf_note_write(cprm, t->task);
 
 		first = 0;
 		t = t->next;

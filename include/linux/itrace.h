@@ -22,6 +22,7 @@
 
 #include <linux/perf_event.h>
 #include <linux/file.h>
+#include <linux/coredump.h>
 
 extern struct ring_buffer_ops itrace_rb_ops;
 
@@ -66,6 +67,19 @@ struct itrace_pmu {
 	void			(*sample_output)(struct perf_event *event,
 						 struct perf_output_handle *handle,
 						 struct perf_sample_data *data);
+
+	/*
+	 * Get the PMU-specific part of a core dump note
+	 */
+	size_t			(*core_size)(struct perf_event *event);
+
+	/*
+	 * Write out the core dump note
+	 */
+	void			(*core_output)(struct coredump_params *cprm,
+					       struct perf_event *event,
+					       unsigned long len);
+	u64			coredump_config;
 	char			*name;
 };
 
@@ -95,6 +109,17 @@ extern unsigned long itrace_sampler_trace(struct perf_event *event,
 extern void itrace_sampler_output(struct perf_event *event,
 				  struct perf_output_handle *handle,
 				  struct perf_sample_data *data);
+
+extern int update_itrace_rlimit(struct task_struct *, unsigned long);
+extern void exit_itrace(struct task_struct *);
+
+struct itrace_note {
+	u64	itrace_config;
+};
+
+extern size_t itrace_elf_note_size(struct task_struct *tsk);
+extern void itrace_elf_note_write(struct coredump_params *cprm,
+				  struct task_struct *task);
 #else
 static int itrace_kernel_event(struct perf_event *event,
 			       struct task_struct *task)	{ return 0; }
@@ -121,6 +146,17 @@ static inline void
 itrace_sampler_output(struct perf_event *event,
 		      struct perf_output_handle *handle,
 		      struct perf_sample_data *data)		{}
+
+static inline int
+update_itrace_rlimit(struct task_struct *, unsigned long)	{ return -EINVAL; }
+static inline void exit_itrace(struct task_struct *)		{}
+
+static inline size_t
+itrace_elf_note_size(struct task_struct *tsk)			{ return 0; }
+static inline void
+itrace_elf_note_write(struct coredump_params *cprm,
+		      struct task_struct *task)			{}
+
 #endif
 
 #endif /* _LINUX_PERF_EVENT_H */

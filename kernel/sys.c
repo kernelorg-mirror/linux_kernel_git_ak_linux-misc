@@ -14,6 +14,7 @@
 #include <linux/fs.h>
 #include <linux/kmod.h>
 #include <linux/perf_event.h>
+#include <linux/itrace.h>
 #include <linux/resource.h>
 #include <linux/kernel.h>
 #include <linux/workqueue.h>
@@ -1402,6 +1403,10 @@ int do_prlimit(struct task_struct *tsk, unsigned int resource,
 		update_rlimit_cpu(tsk, new_rlim->rlim_cur);
 out:
 	read_unlock(&tasklist_lock);
+
+	if (!retval && new_rlim && resource == RLIMIT_ITRACE)
+		retval = update_itrace_rlimit(tsk, new_rlim->rlim_cur);
+
 	return retval;
 }
 

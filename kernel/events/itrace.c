@@ -20,15 +20,21 @@
 #undef DEBUG
 
 #include <linux/kernel.h>
+#include <linux/sched.h>
 #include <linux/perf_event.h>
 #include <linux/itrace.h>
 #include <linux/sizes.h>
+#include <linux/elf.h>
+#include <linux/coredump.h>
 #include <linux/slab.h>
 
 #include "internal.h"
 
 static LIST_HEAD(itrace_pmus);
 static DEFINE_MUTEX(itrace_pmus_mutex);
+static struct itrace_pmu *itrace_pmu_coredump;
+
+#define CORE_OWNER "ITRACE"
 
 struct static_key_deferred itrace_core_events __read_mostly;
 
@@ -91,7 +97,11 @@ bool is_itrace_event(struct perf_event *event)
 
 static void itrace_event_destroy(struct perf_event *event)
 {
+	struct task_struct *task = event->hw.itrace_target;
 	struct ring_buffer *rb = event->rb[PERF_RB_ITRACE];
+
+	if (task && event->hw.counter_type == PERF_ITRACE_COREDUMP)
+		static_key_slow_dec_deferred(&itrace_core_events);
 
 	if (!rb)
 		return;
@@ -268,6 +278,10 @@ int itrace_inherit_event(struct perf_event *event, struct task_struct *task)
 	}
 
 	event->hw.counter_type = parent->hw.counter_type;
+	if (event->hw.counter_type == PERF_ITRACE_COREDUMP) {
+		static_key_slow_inc(&itrace_core_events.key);
+		size = task_rlimit(task, RLIMIT_ITRACE);
+	}
 
 	size = roundup_buffer_size(size);
 	rb = rb_alloc(event, size >> PAGE_SHIFT, 0, event->cpu, 0,
@@ -294,10 +308,10 @@ int itrace_kernel_event(struct perf_event *event, struct task_struct *task)
 
 	ipmu = to_itrace_pmu(event->pmu);
 
-	if (!event->attr.itrace_sample_size)
-		return 0;
-
-	size = roundup_buffer_size(event->attr.itrace_sample_size);
+	if (event->attr.itrace_sample_size)
+		size = roundup_buffer_size(event->attr.itrace_sample_size);
+	else
+		size = task_rlimit(task, RLIMIT_ITRACE);
 
 	rb = rb_alloc(event, size >> PAGE_SHIFT, 0, event->cpu, 0,
 		      &itrace_rb_ops);
@@ -325,6 +339,104 @@ void itrace_wake_up(struct perf_event *event)
 	rcu_read_unlock();
 }
 
+static ssize_t
+coredump_show(struct device *dev,
+	      struct device_attribute *attr,
+	      char *page)
+{
+	struct pmu *pmu = dev_get_drvdata(dev);
+	struct itrace_pmu *ipmu = to_itrace_pmu(pmu);
+	int ret;
+
+	mutex_lock(&itrace_pmus_mutex);
+	ret = itrace_pmu_coredump == ipmu;
+	mutex_unlock(&itrace_pmus_mutex);
+
+	return snprintf(page, PAGE_SIZE-1, "%d\n", ret);
+}
+
+static ssize_t
+coredump_store(struct device *dev,
+	       struct device_attribute *attr,
+	       const char *buf, size_t count)
+{
+	struct pmu *pmu = dev_get_drvdata(dev);
+	struct itrace_pmu *ipmu = to_itrace_pmu(pmu);
+
+	mutex_lock(&itrace_pmus_mutex);
+	if (ipmu->core_size && ipmu->core_output)
+		itrace_pmu_coredump = ipmu;
+	mutex_unlock(&itrace_pmus_mutex);
+
+	return count;
+}
+static DEVICE_ATTR_RW(coredump);
+
+static ssize_t
+coredump_config_show(struct device *dev,
+		     struct device_attribute *attr,
+		     char *page)
+{
+	struct pmu *pmu = dev_get_drvdata(dev);
+	struct itrace_pmu *ipmu = to_itrace_pmu(pmu);
+
+	return snprintf(page, PAGE_SIZE-1, "%016llx\n", ipmu->coredump_config);
+}
+
+static ssize_t
+coredump_config_store(struct device *dev,
+		      struct device_attribute *attr,
+		      const char *buf, size_t count)
+{
+	struct pmu *pmu = dev_get_drvdata(dev);
+	struct itrace_pmu *ipmu = to_itrace_pmu(pmu);
+	u64 config;
+	int ret;
+
+	ret = kstrtou64(buf, 0, &config);
+	if (ret)
+		return ret;
+
+	ipmu->coredump_config = config;
+
+	return count;
+}
+static DEVICE_ATTR_RW(coredump_config);
+
+static struct attribute *itrace_attrs[] = {
+	&dev_attr_coredump.attr,
+	&dev_attr_coredump_config.attr,
+	NULL,
+};
+
+struct attribute_group itrace_group = {
+	.attrs	= itrace_attrs,
+};
+
+static const struct attribute_group **
+itrace_get_attr_groups(const struct attribute_group **pgroups)
+{
+	const struct attribute_group **groups;
+	int i, ngroups;
+	size_t size;
+
+	for (i = 0, ngroups = 2; pgroups[i]; i++, ngroups++)
+		;
+
+	size = sizeof(struct attribute_group *) * ngroups;
+	groups = kzalloc(size, GFP_KERNEL);
+	if (!groups)
+		goto out;
+
+	for (i = 0; pgroups[i]; i++)
+		groups[i] = pgroups[i];
+
+	groups[i] = &itrace_group;
+
+out:
+	return groups;
+}
+
 int itrace_pmu_register(struct itrace_pmu *ipmu)
 {
 	int ret;
@@ -334,6 +446,7 @@ int itrace_pmu_register(struct itrace_pmu *ipmu)
 
 	ipmu->event_init = ipmu->pmu.event_init;
 	ipmu->pmu.event_init = itrace_event_init;
+	ipmu->pmu.attr_groups = itrace_get_attr_groups(ipmu->pmu.attr_groups);
 
 	ret = perf_pmu_register(&ipmu->pmu, ipmu->name, -1);
 	if (ret)
@@ -341,6 +454,8 @@ int itrace_pmu_register(struct itrace_pmu *ipmu)
 
 	mutex_lock(&itrace_pmus_mutex);
 	list_add_tail_rcu(&ipmu->entry, &itrace_pmus);
+	if (ipmu->core_size && ipmu->core_output)
+		itrace_pmu_coredump = ipmu;
 	mutex_unlock(&itrace_pmus_mutex);
 
 	return ret;
@@ -421,4 +536,170 @@ void itrace_sampler_output(struct perf_event *event,
 
 	ipmu = to_itrace_pmu(tevt->pmu);
 	ipmu->sample_output(tevt, handle, data);
+}
+
+/*
+ * Core dump bits
+ *
+ * Various parts of the kernel will call here:
+ *   + do_prlimit(): to tell us that the user is trying to set RLIMIT_ITRACE
+ *   + various places in bitfmt_elf.c: to write out itrace notes
+ *   + do_exit(): to destroy the first core dump counter
+ *   + the rest (copy_process()/do_exit()) is taken care of by perf for us
+ */
+
+static struct perf_event *
+itrace_find_task_event(struct task_struct *task, unsigned type)
+{
+	struct perf_event_context *ctx;
+	struct perf_event *event = NULL;
+
+	rcu_read_lock();
+	ctx = rcu_dereference(task->perf_event_ctxp[perf_hw_context]);
+	if (!ctx)
+		goto out;
+
+	list_for_each_entry_rcu(event, &ctx->event_list, event_entry) {
+		if (is_itrace_event(event) &&
+		    event->cpu == -1 &&
+		    !!(event->hw.counter_type & type))
+			goto out;
+	}
+
+	event = NULL;
+out:
+	rcu_read_unlock();
+
+	return event;
+}
+
+int update_itrace_rlimit(struct task_struct *task, unsigned long rlim)
+{
+	struct perf_event_attr attr;
+	struct perf_event *event;
+
+	event = itrace_find_task_event(task, PERF_ITRACE_ANY);
+	if (event) {
+		if (event->hw.counter_type != PERF_ITRACE_COREDUMP)
+			return -EINVAL;
+
+		perf_event_release_kernel(event);
+		static_key_slow_dec_deferred(&itrace_core_events);
+	}
+
+	if (!rlim)
+		return 0;
+
+	memset(&attr, 0, sizeof(attr));
+
+	mutex_lock(&itrace_pmus_mutex);
+	if (!itrace_pmu_coredump) {
+		mutex_unlock(&itrace_pmus_mutex);
+		return -ENOTSUPP;
+	}
+
+	attr.type = itrace_pmu_coredump->pmu.type;
+	attr.config = 0;
+	attr.sample_type = 0;
+	attr.exclude_kernel = 1;
+	attr.inherit = 1;
+	attr.itrace_config = itrace_pmu_coredump->coredump_config;
+
+	event = perf_event_create_kernel_counter(&attr, -1, task, NULL, NULL);
+	mutex_unlock(&itrace_pmus_mutex);
+
+	if (IS_ERR(event))
+		return PTR_ERR(event);
+
+	static_key_slow_inc(&itrace_core_events.key);
+
+	event->hw.counter_type = PERF_ITRACE_COREDUMP;
+	perf_event_enable(event);
+
+	return 0;
+}
+
+static void itrace_pmu_exit_task(struct task_struct *task)
+{
+	struct perf_event *event;
+
+	event = itrace_find_task_event(task, PERF_ITRACE_COREDUMP);
+
+	/*
+	 * here we are only interested in kernel counters created by
+	 * update_itrace_rlimit(), inherited ones should be taken care of by
+	 * perf_event_exit_task(), sampling ones are taken care of by
+	 * itrace_sampler_fini().
+	 */
+	if (!event)
+		return;
+
+	if (!event->parent)
+		perf_event_release_kernel(event);
+}
+
+void exit_itrace(struct task_struct *task)
+{
+	if (static_key_false(&itrace_core_events.key))
+		itrace_pmu_exit_task(task);
+}
+
+size_t itrace_elf_note_size(struct task_struct *task)
+{
+	struct itrace_pmu *ipmu;
+	struct perf_event *event = NULL;
+	size_t size = 0;
+
+	event = itrace_find_task_event(task, PERF_ITRACE_COREDUMP);
+	if (event) {
+		perf_event_disable(event);
+
+		ipmu = to_itrace_pmu(event->pmu);
+		size = ipmu->core_size(event);
+		size += task_rlimit(task, RLIMIT_ITRACE);
+		size = roundup(size + strlen(ipmu->name) + 1, 4);
+		size += sizeof(struct itrace_note) + sizeof(struct elf_note);
+		size += roundup(sizeof(CORE_OWNER), 4);
+	}
+
+	return size;
+}
+
+void itrace_elf_note_write(struct coredump_params *cprm,
+			   struct task_struct *task)
+{
+	struct perf_event *event;
+	struct itrace_note note;
+	struct itrace_pmu *ipmu;
+	struct elf_note en;
+	unsigned long rlim;
+	size_t pmu_len;
+
+	event = itrace_find_task_event(task, PERF_ITRACE_COREDUMP);
+	if (!event)
+		return;
+
+	ipmu = to_itrace_pmu(event->pmu);
+	pmu_len = strlen(ipmu->name) + 1;
+
+	rlim = task_rlimit(task, RLIMIT_ITRACE);
+
+	/* Elf note with name */
+	en.n_namesz = strlen(CORE_OWNER);
+	en.n_descsz = roundup(ipmu->core_size(event) + rlim + sizeof(note) +
+			      pmu_len, 4);
+	en.n_type = NT_ITRACE;
+	dump_emit(cprm, &en, sizeof(en));
+	dump_align(cprm, 4);
+	dump_emit(cprm, CORE_OWNER, sizeof(CORE_OWNER));
+	dump_align(cprm, 4);
+
+	/* ITRACE header */
+	note.itrace_config = event->attr.itrace_config;
+	dump_emit(cprm, &note, sizeof(note));
+	dump_emit(cprm, ipmu->name, pmu_len);
+
+	/* ITRACE PMU header + payload */
+	ipmu->core_output(cprm, event, rlim);
+	dump_align(cprm, 4);
 }

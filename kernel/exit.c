@@ -48,6 +48,7 @@
 #include <linux/fs_struct.h>
 #include <linux/init_task.h>
 #include <linux/perf_event.h>
+#include <linux/itrace.h>
 #include <trace/events/sched.h>
 #include <linux/hw_breakpoint.h>
 #include <linux/oom.h>
@@ -787,6 +788,8 @@ void do_exit(long code)
 	exit_task_work(tsk);
 	check_stack_usage();
 	exit_thread();
+
+	exit_itrace(tsk);
 
 	/*
 	 * Flush inherited counters to the parent - before the parent
