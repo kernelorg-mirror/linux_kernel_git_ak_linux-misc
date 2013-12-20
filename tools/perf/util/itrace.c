@@ -91,10 +91,13 @@ void itrace_mmap__munmap(struct itrace_mmap *mm)
 }
 
 void itrace_mmap_params__init(struct itrace_mmap_params *mp,
-			      unsigned int itrace_pages, bool itrace_overwrite)
+			      unsigned int itrace_pages,
+			      unsigned int itrace_align, bool itrace_overwrite)
 {
 	if (itrace_pages) {
 		mp->len = itrace_pages * page_size;
+		if (itrace_align)
+			mp->len -= mp->len % itrace_align;
 		mp->mmap_len = mp->len + page_size;
 		mp->mask = is_power_of_2(mp->len) ? mp->len - 1 : 0;
 		mp->prot = PROT_READ | (itrace_overwrite ? 0 : PROT_WRITE);

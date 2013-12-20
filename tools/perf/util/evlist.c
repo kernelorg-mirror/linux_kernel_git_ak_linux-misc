@@ -677,6 +677,7 @@ void __weak itrace_mmap__munmap(struct itrace_mmap *mm __maybe_unused)
 void __weak itrace_mmap_params__init(
 			struct itrace_mmap_params *mp __maybe_unused,
 			unsigned int itrace_pages __maybe_unused,
+			unsigned int itrace_align __maybe_unused,
 			bool itrace_overwrite __maybe_unused)
 {
 }
@@ -935,7 +936,7 @@ int perf_evlist__parse_mmap_pages(const struct option *opt, const char *str,
  */
 int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
 			 bool overwrite, unsigned int itrace_pages,
-			 bool itrace_overwrite)
+			 unsigned int itrace_align, bool itrace_overwrite)
 {
 	struct perf_evsel *evsel;
 	const struct cpu_map *cpus = evlist->cpus;
@@ -955,7 +956,8 @@ int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
 	pr_debug("mmap size %zuB\n", evlist->mmap_len);
 	mp.mask = evlist->mmap_len - page_size - 1;
 
-	itrace_mmap_params__init(&mp.itrace_mp, itrace_pages, itrace_overwrite);
+	itrace_mmap_params__init(&mp.itrace_mp, itrace_pages, itrace_align,
+				 itrace_overwrite);
 
 	evlist__for_each(evlist, evsel) {
 		if ((evsel->attr.read_format & PERF_FORMAT_ID) &&
@@ -973,7 +975,7 @@ int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
 int perf_evlist__mmap(struct perf_evlist *evlist, unsigned int pages,
 		      bool overwrite)
 {
-	return perf_evlist__mmap_ex(evlist, pages, overwrite, 0, false);
+	return perf_evlist__mmap_ex(evlist, pages, overwrite, 0, 0, false);
 }
 
 int perf_evlist__create_maps(struct perf_evlist *evlist, struct target *target)

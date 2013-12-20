@@ -282,6 +282,7 @@ try_again:
 
 	if (perf_evlist__mmap_ex(evlist, opts->mmap_pages, false,
 				 opts->itrace_mmap_pages,
+				 opts->itrace_mmap_align,
 				 opts->itrace_snapshot_mode) < 0) {
 		if (errno == EPERM) {
 			pr_err("Permission error mapping pages.\n"
