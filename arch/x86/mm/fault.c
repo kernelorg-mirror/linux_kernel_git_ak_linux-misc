@@ -785,6 +785,9 @@ __bad_area(struct pt_regs *regs, unsigned long error_code,
 {
 	struct mm_struct *mm = current->mm;
 
+	/* Forget about elision state on error. */
+	elide_abort();
+
 	/*
 	 * Something tried to access memory that isn't in our memory map..
 	 * Fix it, but check if it's kernel or user first..
@@ -846,6 +849,8 @@ static noinline void
 mm_fault_error(struct pt_regs *regs, unsigned long error_code,
 	       unsigned long address, unsigned int fault)
 {
+	elide_abort(); /* Forget about elision state for errors */
+
 	if (fatal_signal_pending(current) && !(error_code & PF_USER)) {
 		up_read(&current->mm->mmap_sem);
 		no_context(regs, error_code, address, 0, 0);
@@ -1003,6 +1008,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code)
 	struct mm_struct *mm;
 	int fault;
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
+	int eliding;
 
 	tsk = current;
 	mm = tsk->mm;
@@ -1102,6 +1108,8 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code)
 	if (error_code & PF_WRITE)
 		flags |= FAULT_FLAG_WRITE;
 
+	predictive_page_clear();
+
 	/*
 	 * When running in the kernel we expect faults to occur only to
 	 * addresses in user space.  All other faults represent errors in
@@ -1118,14 +1126,14 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code)
 	 * validate the source. If this is invalid we can skip the address
 	 * space check, thus avoiding the deadlock:
 	 */
-	if (unlikely(!down_read_trylock(&mm->mmap_sem))) {
+	if (unlikely(!down_read_trylock_state(&mm->mmap_sem, &eliding))) {
 		if ((error_code & PF_USER) == 0 &&
 		    !search_exception_tables(regs->ip)) {
 			bad_area_nosemaphore(regs, error_code, address);
 			return;
 		}
 retry:
-		down_read(&mm->mmap_sem);
+		down_read_state(&mm->mmap_sem, &eliding);
 	} else {
 		/*
 		 * The above down_read_trylock() might have succeeded in
@@ -1134,6 +1142,8 @@ retry:
 		 */
 		might_sleep();
 	}
+	if (eliding)
+		flags |= FAULT_FLAG_ELIDING;
 
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
@@ -1194,6 +1204,12 @@ good_area:
 	}
 
 	/*
+	 * Clear page prediction not successfull?
+	 */
+	if (tsk->clear_page)
+		tsk->clear_count = 0;
+
+	/*
 	 * Major/minor page fault accounting is only done on the
 	 * initial attempt. If we go through a retry, it is extremely
 	 * likely that the page will be found in page cache at that point.
@@ -1219,7 +1235,7 @@ good_area:
 
 	check_v8086_mode(regs, address, tsk);
 
-	up_read(&mm->mmap_sem);
+	up_read_state(&mm->mmap_sem, eliding);
 }
 
 dotraplinkage void __kprobes
@@ -1227,7 +1243,15 @@ do_page_fault(struct pt_regs *regs, unsigned long error_code)
 {
 	enum ctx_state prev_state;
 
+	/* 
+	 * Write faults usually flush the TLB, so cause aborts.
+	 * Don't elide in this case.
+	 */
+	if (error_code & PF_WRITE)
+		disable_txn();
 	prev_state = exception_enter();
 	__do_page_fault(regs, error_code);
 	exception_exit(prev_state);
+	if (error_code & PF_WRITE)
+		reenable_txn();
 }
