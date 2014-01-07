@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
+#include <linux/elide.h>
 
 /*
  * In the DEBUG case we are using the "NULL fastpath" for mutexes,
@@ -43,6 +44,8 @@
  * mutex.
  */
 #define	MUTEX_SHOW_NO_WAITER(mutex)	(atomic_read(&(mutex)->count) >= 0)
+
+#define mutex_free(l) (atomic_read(&(l)->count) == 1)
 
 void
 __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
@@ -93,6 +96,12 @@ __mutex_lock_slowpath(atomic_t *lock_count);
  */
 void __sched mutex_lock(struct mutex *lock)
 {
+	if (elide_lock_adapt(mutex_elision,
+			     mutex_free(lock),
+			     &lock->elision_adapt,
+			     &mutex_elision_config))
+		return;
+
 	might_sleep();
 	/*
 	 * The locking fastpath is the 1->0 transition from
@@ -240,6 +249,8 @@ static __used noinline void __sched __mutex_unlock_slowpath(atomic_t *lock_count
  */
 void __sched mutex_unlock(struct mutex *lock)
 {
+	if (elide_unlock(mutex_free(lock)))
+		return;
 	/*
 	 * The unlocking fastpath is the 0->1 transition from 'locked'
 	 * into 'unlocked' state:
@@ -778,6 +789,12 @@ int __sched mutex_lock_interruptible(struct mutex *lock)
 {
 	int ret;
 
+	if (elide_lock_adapt(mutex_elision,
+			     mutex_free(lock),
+			     &lock->elision_adapt,
+			     &mutex_elision_config))
+		return 0;
+
 	might_sleep();
 	ret =  __mutex_fastpath_lock_retval(&lock->count);
 	if (likely(!ret)) {
@@ -792,6 +809,12 @@ EXPORT_SYMBOL(mutex_lock_interruptible);
 int __sched mutex_lock_killable(struct mutex *lock)
 {
 	int ret;
+
+	if (elide_lock_adapt(mutex_elision,
+			     mutex_free(lock),
+			     &lock->elision_adapt,
+			     &mutex_elision_config))
+		return 0;
 
 	might_sleep();
 	ret = __mutex_fastpath_lock_retval(&lock->count);
@@ -887,6 +910,12 @@ static inline int __mutex_trylock_slowpath(atomic_t *lock_count)
 int __sched mutex_trylock(struct mutex *lock)
 {
 	int ret;
+
+	if (elide_lock_adapt(mutex_elision,
+			     mutex_free(lock),
+			     &lock->elision_adapt,
+			     &mutex_elision_config))
+		return 1;
 
 	ret = __mutex_fastpath_trylock(&lock->count, __mutex_trylock_slowpath);
 	if (ret)

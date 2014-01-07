@@ -38,6 +38,8 @@
 
 #ifdef __KERNEL__
 #include <asm/asm.h>
+#include <linux/elide.h>
+#include <linux/jump_label.h>
 
 /*
  * The bias values and the counter type limits the number of
@@ -57,10 +59,14 @@
 #define RWSEM_ACTIVE_READ_BIAS		RWSEM_ACTIVE_BIAS
 #define RWSEM_ACTIVE_WRITE_BIAS		(RWSEM_WAITING_BIAS + RWSEM_ACTIVE_BIAS)
 
+extern struct static_key rwsem_elision;
+extern struct elision_config readsem_elision_config;
+extern struct elision_config writesem_elision_config;
+
 /*
  * lock for reading
  */
-static inline void __down_read(struct rw_semaphore *sem)
+static inline void ___down_read(struct rw_semaphore *sem)
 {
 	asm volatile("# beginning down_read\n\t"
 		     LOCK_PREFIX _ASM_INC "(%1)\n\t"
@@ -74,12 +80,35 @@ static inline void __down_read(struct rw_semaphore *sem)
 		     : "memory", "cc");
 }
 
+static inline void __down_read(struct rw_semaphore *sem)
+{
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
+		return;
+	___down_read(sem);
+}
+
+static inline void __down_read_state(struct rw_semaphore *sem, int *state)
+{
+	if (elide_lock_adapt(rwsem_elision,
+			     1,
+			     &sem->elision_adapt,
+			     &readsem_elision_config)) {
+		*state = 1;
+		return;
+	}
+	*state = 0;
+	___down_read(sem);
+}
+
 /*
  * trylock for reading -- returns 1 if successful, 0 if contention
  */
-static inline int __down_read_trylock(struct rw_semaphore *sem)
+static inline int ___down_read_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
+
 	asm volatile("# beginning __down_read_trylock\n\t"
 		     "  mov          %0,%1\n\t"
 		     "1:\n\t"
@@ -96,12 +125,44 @@ static inline int __down_read_trylock(struct rw_semaphore *sem)
 	return result >= 0 ? 1 : 0;
 }
 
+static inline int __down_read_trylock(struct rw_semaphore *sem)
+{
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
+		return 1;
+	return ___down_read_trylock(sem);
+}
+
+/*
+ * Elided lock with parallel speculation for readers.
+ * This requires saving state whether we are eliding or not.
+ */
+
+static inline int __down_read_trylock_state(struct rw_semaphore *sem, int *state)
+{
+	if (elide_lock_adapt(rwsem_elision,
+			     1,
+			     &sem->elision_adapt,
+			     &readsem_elision_config)) {
+		*state = 1;
+		return 1;
+	}
+	*state = 0;
+	return ___down_read_trylock(sem);
+}
+
 /*
  * lock for writing
  */
 static inline void __down_write_nested(struct rw_semaphore *sem, int subclass)
 {
 	long tmp;
+
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &readsem_elision_config))
+		return;
 	asm volatile("# beginning down_write\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* adds 0xffff0001, returns the old value */
@@ -127,6 +188,10 @@ static inline void __down_write(struct rw_semaphore *sem)
 static inline int __down_write_trylock(struct rw_semaphore *sem)
 {
 	long result, tmp;
+	if (elide_lock_adapt(rwsem_elision, sem->count == 0,
+			     &sem->elision_adapt,
+			     &writesem_elision_config))
+		return 1;
 	asm volatile("# beginning __down_write_trylock\n\t"
 		     "  mov          %0,%1\n\t"
 		     "1:\n\t"
@@ -150,9 +215,10 @@ static inline int __down_write_trylock(struct rw_semaphore *sem)
 /*
  * unlock after reading
  */
-static inline void __up_read(struct rw_semaphore *sem)
+static inline void ___up_read(struct rw_semaphore *sem)
 {
 	long tmp;
+
 	asm volatile("# beginning __up_read\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 1, returns the old value */
@@ -165,12 +231,33 @@ static inline void __up_read(struct rw_semaphore *sem)
 		     : "memory", "cc");
 }
 
+static inline void __up_read(struct rw_semaphore *sem)
+{
+	if (elide_unlock(sem->count == 0))
+		return;
+	___up_read(sem);
+}
+
+static inline void __up_read_state(struct rw_semaphore *sem, int state)
+{
+	/* 
+	 * Late lock check. This limits the conflict overlap window
+	 * with locking readers changing the count.
+	 */
+	if (elide_unlock_check(state, sem->count < RWSEM_ACTIVE_WRITE_BIAS))
+		return;
+	___up_read(sem);
+}
+
 /*
  * unlock after writing
  */
 static inline void __up_write(struct rw_semaphore *sem)
 {
 	long tmp;
+
+	if (elide_unlock(sem->count == 0))
+		return;
 	asm volatile("# beginning __up_write\n\t"
 		     LOCK_PREFIX "  xadd      %1,(%2)\n\t"
 		     /* subtracts 0xffff0001, returns the old value */
@@ -188,6 +275,7 @@ static inline void __up_write(struct rw_semaphore *sem)
  */
 static inline void __downgrade_write(struct rw_semaphore *sem)
 {
+	/* if (sem->count == 0) return; */
 	asm volatile("# beginning __downgrade_write\n\t"
 		     LOCK_PREFIX _ASM_ADD "%2,(%1)\n\t"
 		     /*
@@ -220,6 +308,10 @@ static inline long rwsem_atomic_update(long delta, struct rw_semaphore *sem)
 {
 	return delta + xadd(&sem->count, delta);
 }
+
+#ifdef CONFIG_RTM_LOCKS
+#define ARCH_HAS_RWSEM_STATE 1
+#endif
 
 #endif /* __KERNEL__ */
 #endif /* _ASM_X86_RWSEM_H */

@@ -57,6 +57,9 @@ config CMPXCHG_LOCKREF
 	depends on !GENERIC_LOCKBREAK
 	depends on !DEBUG_SPINLOCK
 	depends on !DEBUG_LOCK_ALLOC
+	# could be made to work with some reorganization, as the elision
+	# state field does not need to be handled by the cmpxchg
+	depends on !RTM_LOCKS
 
 config CRC_CCITT
 	tristate "CRC-CCITT functions"
