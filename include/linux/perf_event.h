@@ -83,6 +83,12 @@ struct perf_regs_user {
 	struct pt_regs	*regs;
 };
 
+struct perf_trace_record {
+	u64		size;
+	unsigned long	from;
+	unsigned long	to;
+};
+
 struct task_struct;
 
 /*
@@ -96,6 +102,11 @@ struct hw_perf_event_extra {
 };
 
 struct event_constraint;
+
+enum perf_itrace_counter_type {
+	PERF_ITRACE_USER	= BIT(1),
+	PERF_ITRACE_SAMPLING	= BIT(2),
+};
 
 /**
  * struct hw_perf_event - performance event hardware details:
@@ -129,6 +140,7 @@ struct hw_perf_event {
 		struct { /* itrace */
 			struct file		*itrace_file;
 			struct task_struct	*itrace_target;
+			unsigned int		counter_type;
 		};
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 		struct { /* breakpoint */
@@ -434,6 +446,7 @@ struct perf_event {
 	perf_overflow_handler_t		overflow_handler;
 	void				*overflow_handler_context;
 
+	struct perf_event		*trace_event;
 #ifdef CONFIG_EVENT_TRACING
 	struct ftrace_event_call	*tp_event;
 	struct event_filter		*filter;
@@ -591,6 +604,7 @@ struct perf_sample_data {
 	union  perf_mem_data_src	data_src;
 	struct perf_callchain_entry	*callchain;
 	struct perf_raw_record		*raw;
+	struct perf_trace_record	trace;
 	struct perf_branch_stack	*br_stack;
 	struct perf_regs_user		regs_user;
 	u64				stack_user_size;
@@ -611,6 +625,7 @@ static inline void perf_sample_data_init(struct perf_sample_data *data,
 	data->period = period;
 	data->regs_user.abi = PERF_SAMPLE_REGS_ABI_NONE;
 	data->regs_user.regs = NULL;
+	data->trace.from = data->trace.to = data->trace.size = 0;
 	data->stack_user_size = 0;
 	data->weight = 0;
 	data->data_src.val = 0;

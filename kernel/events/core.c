@@ -1576,6 +1576,9 @@ void perf_event_disable(struct perf_event *event)
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
 
+	if (event->trace_event)
+		perf_event_disable(event->trace_event);
+
 	if (!task) {
 		/*
 		 * Disable the event on the cpu that it's on
@@ -2070,6 +2073,8 @@ void perf_event_enable(struct perf_event *event)
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
 
+	if (event->trace_event)
+		perf_event_enable(event->trace_event);
 	if (!task) {
 		/*
 		 * Enable the event on the cpu that it's on
@@ -3209,6 +3214,8 @@ static void unaccount_event(struct perf_event *event)
 		static_key_slow_dec_deferred(&perf_sched_events);
 	if (has_branch_stack(event))
 		static_key_slow_dec_deferred(&perf_sched_events);
+	if ((event->attr.sample_type & PERF_SAMPLE_ITRACE) && event->trace_event)
+		itrace_sampler_fini(event);
 
 	unaccount_event_cpu(event, event->cpu);
 }
@@ -4664,6 +4671,13 @@ void perf_output_sample(struct perf_output_handle *handle,
 	if (sample_type & PERF_SAMPLE_TRANSACTION)
 		perf_output_put(handle, data->txn);
 
+	if (sample_type & PERF_SAMPLE_ITRACE) {
+		perf_output_put(handle, data->trace.size);
+
+		if (data->trace.size)
+			itrace_sampler_output(event, handle, data);
+	}
+
 	if (!event->attr.watermark) {
 		int wakeup_events = event->attr.wakeup_events;
 
@@ -4769,6 +4783,14 @@ void perf_prepare_sample(struct perf_event_header *header,
 			size += sizeof(u64) + stack_size;
 
 		data->stack_user_size = stack_size;
+		header->size += size;
+	}
+
+	if (sample_type & PERF_SAMPLE_ITRACE) {
+		u64 size = sizeof(u64);
+
+		size += itrace_sampler_trace(event, data);
+
 		header->size += size;
 	}
 }
@@ -6795,6 +6817,15 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 			if (err)
 				goto err_pmu;
 		}
+
+		if (event->attr.sample_type & PERF_SAMPLE_ITRACE) {
+			err = itrace_sampler_init(event, task);
+			if (err) {
+				/* XXX: either clean up callchain buffers too
+				   or forbid them to go together */
+				goto err_pmu;
+			}
+		}
 	}
 
 	return event;
@@ -7368,6 +7399,10 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 	}
 
 	account_event(event);
+
+	err = itrace_kernel_event(event, task);
+	if (err)
+		goto err_free;
 
 	ctx = find_get_context(event->pmu, task, cpu);
 	if (IS_ERR(ctx)) {

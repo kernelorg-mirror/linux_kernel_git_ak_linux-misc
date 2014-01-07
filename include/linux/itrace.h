@@ -54,12 +54,27 @@ struct itrace_pmu {
 
 	int			(*event_init)(struct perf_event *event);
 
+	/*
+	 * Calculate the size of a sample to be written out
+	 */
+	unsigned long		(*sample_trace)(struct perf_event *event,
+						struct perf_sample_data *data);
+
+	/*
+	 * Write out a trace sample to the given output handle
+	 */
+	void			(*sample_output)(struct perf_event *event,
+						 struct perf_output_handle *handle,
+						 struct perf_sample_data *data);
 	char			*name;
 };
 
 #define to_itrace_pmu(x) container_of((x), struct itrace_pmu, pmu)
 
 #ifdef CONFIG_PERF_EVENTS
+
+extern int itrace_kernel_event(struct perf_event *event,
+			       struct task_struct *task);
 extern int itrace_inherit_event(struct perf_event *event,
 				struct task_struct *task);
 extern void itrace_lost_data(struct perf_event *event, u64 offset);
@@ -72,7 +87,17 @@ extern void itrace_wake_up(struct perf_event *event);
 
 extern bool is_itrace_event(struct perf_event *event);
 
+extern int itrace_sampler_init(struct perf_event *event,
+			       struct task_struct *task);
+extern void itrace_sampler_fini(struct perf_event *event);
+extern unsigned long itrace_sampler_trace(struct perf_event *event,
+					  struct perf_sample_data *data);
+extern void itrace_sampler_output(struct perf_event *event,
+				  struct perf_output_handle *handle,
+				  struct perf_sample_data *data);
 #else
+static int itrace_kernel_event(struct perf_event *event,
+			       struct task_struct *task)	{ return 0; }
 static int itrace_inherit_event(struct perf_event *event,
 				struct task_struct *task)	{ return 0; }
 static inline void
@@ -84,6 +109,18 @@ itrace_event_installable(struct perf_event *event,
 			 struct perf_event_context *ctx)	{ return -EINVAL; }
 static inline void itrace_wake_up(struct perf_event *event)	{}
 static inline bool is_itrace_event(struct perf_event *event)	{ return false; }
+
+static inline int itrace_sampler_init(struct perf_event *event,
+				      struct task_struct *task)	{}
+static inline void
+itrace_sampler_fini(struct perf_event *event)			{}
+static inline unsigned long
+itrace_sampler_trace(struct perf_event *event,
+		     struct perf_sample_data *data)		{ return 0; }
+static inline void
+itrace_sampler_output(struct perf_event *event,
+		      struct perf_output_handle *handle,
+		      struct perf_sample_data *data)		{}
 #endif
 
 #endif /* _LINUX_PERF_EVENT_H */
