@@ -1355,6 +1355,7 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 	int chain_nr = min(max_stack, (int)chain->nr);
 	int i;
 	int err;
+	int first_call = 0;
 
 	callchain_cursor_reset(&callchain_cursor);
 
@@ -1368,8 +1369,6 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 	 * Limitations for now:
 	 * - No extra filters
 	 * - No annotations (should annotate somehow)
-	 * - When the sample is near the beginning of the function
- 	 *   we may overlap with the real callstack. 
 	 */
 
 	if (branch->nr > PERF_MAX_BRANCH_DEPTH) {
@@ -1378,13 +1377,23 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 	}
 
 	if (callchain_param.branch_callstack) {
-		int nr = min(max_stack, branch->nr);
+		int nr = min(max_stack, (int)branch->nr);
 		struct branch_entry be[nr];
 
 		for (i = 0; i < nr; i++) { 
-			if (callchain_param.order == ORDER_CALLEE)
+			if (callchain_param.order == ORDER_CALLEE) {
 				be[i] = branch->entries[i];
-			else
+				/* 
+				 * Check for overlap into the callchain.
+				 * The return address is one off compared to
+				 * the branch entry. To adjust for this 
+				 * assume the calling instruction is not longer
+				 * than 8 bytes.
+				 */
+				if (be[i].from < chain->ips[first_call] &&
+				    be[i].from >= chain->ips[first_call] - 8)
+					first_call++;
+			} else
 				be[i] = branch->entries[branch->nr - i - 1];
 		}
 
@@ -1411,7 +1420,7 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 		return 0;
 	}
 
-	for (i = 0; i < chain_nr; i++) {
+	for (i = first_call; i < chain_nr; i++) {
 		u64 ip;
 
 		if (callchain_param.order == ORDER_CALLEE)
