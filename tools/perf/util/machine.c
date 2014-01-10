@@ -1378,7 +1378,7 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 	}
 
 	if (callchain_param.branch_callstack) {
-		int nr = branch->nr;
+		int nr = min(max_stack, branch->nr);
 		struct branch_entry be[nr];
 
 		for (i = 0; i < nr; i++) { 
@@ -1403,6 +1403,7 @@ static int machine__resolve_callchain_sample(struct machine *machine,
 			if (err)
 				return err;
 		}
+		chain_nr -= nr;
 	}
 
 	if (chain->nr > PERF_MAX_STACK_DEPTH) {
