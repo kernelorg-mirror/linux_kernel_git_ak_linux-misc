@@ -436,6 +436,26 @@ static void bts_event_read(struct perf_event *event)
 {
 }
 
+static size_t bts_trace_core_size(struct perf_event *event)
+{
+	return 0;
+}
+
+static void bts_trace_core_output(struct coredump_params *cprm,
+				  struct perf_event *event,
+				  unsigned long len)
+{
+	struct bts_buffer *buf = itrace_event_get_priv(event);
+	u64 head = local64_read(&buf->head);
+
+	if (head < len) {
+		dump_emit(cprm, buf->buf + head, buf->real_size - head);
+		dump_emit(cprm, buf->buf, len - buf->real_size + head);
+	} else
+		dump_emit(cprm, buf->buf + head - len, len);
+	itrace_event_put(event);
+}
+
 static __init int bts_init(void)
 {
 	int ret, cpu;
@@ -459,6 +479,8 @@ static __init int bts_init(void)
 	bts_pmu.pmu.read		= bts_event_read;
 	bts_pmu.alloc_buffer		= bts_buffer_itrace_alloc;
 	bts_pmu.free_buffer		= bts_buffer_itrace_free;
+	bts_pmu.core_size		= bts_trace_core_size;
+	bts_pmu.core_output		= bts_trace_core_output;
 	bts_pmu.name			= "intel_bts";
 
 	ret = itrace_pmu_register(&bts_pmu);
