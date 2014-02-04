@@ -63,6 +63,7 @@ struct ring_buffer {
 	atomic_t			mmap_count;
 	unsigned long			mmap_locked;
 	struct user_struct		*mmap_user;
+	void				*priv;
 
 	struct perf_event_mmap_page	*user_page;
 	void				*data_pages[0];
@@ -73,6 +74,12 @@ extern struct ring_buffer *
 rb_alloc(struct perf_event *event, int nr_pages, long watermark, int cpu,
 	 int flags, struct ring_buffer_ops *rb_ops);
 extern void perf_event_wakeup(struct perf_event *event);
+extern struct ring_buffer *ring_buffer_get(struct perf_event *event, int rbx);
+extern void ring_buffer_put(struct ring_buffer *rb);
+extern void ring_buffer_attach(struct perf_event *event,
+			       struct ring_buffer *rb);
+extern void ring_buffer_detach(struct perf_event *event,
+			       struct ring_buffer *rb);
 
 extern void
 perf_event_header__init_id(struct perf_event_header *header,

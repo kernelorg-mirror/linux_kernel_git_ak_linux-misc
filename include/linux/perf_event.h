@@ -289,6 +289,11 @@ struct swevent_hlist {
 struct perf_cgroup;
 struct ring_buffer;
 
+enum perf_event_rb {
+	PERF_RB_MAIN = 0,
+	PERF_NR_RB,
+};
+
 /**
  * struct perf_event - performance event kernel representation:
  */
@@ -398,10 +403,10 @@ struct perf_event {
 
 	/* mmap bits */
 	struct mutex			mmap_mutex;
-	atomic_t			mmap_count;
+	atomic_t			mmap_count[PERF_NR_RB];
 
-	struct ring_buffer		*rb;
-	struct list_head		rb_entry;
+	struct ring_buffer		*rb[PERF_NR_RB];
+	struct list_head		rb_entry[PERF_NR_RB];
 
 	/* poll related */
 	wait_queue_head_t		waitq;

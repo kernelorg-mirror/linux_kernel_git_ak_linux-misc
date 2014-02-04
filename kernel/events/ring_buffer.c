@@ -120,7 +120,7 @@ int perf_output_begin(struct perf_output_handle *handle,
 	if (event->parent)
 		event = event->parent;
 
-	rb = rcu_dereference(event->rb);
+	rb = rcu_dereference(event->rb[PERF_RB_MAIN]);
 	if (unlikely(!rb))
 		goto out;
 
