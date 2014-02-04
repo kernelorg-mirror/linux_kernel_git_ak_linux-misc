@@ -84,6 +84,8 @@ enum pt_capabilities {
 struct pt_pmu {
 	struct itrace_pmu	itrace;
 	u32			caps[4 * PT_CPUID_LEAVES];
+	char			*capstr;
+	unsigned int		caplen;
 };
 
 /**
