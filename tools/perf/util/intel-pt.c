@@ -119,6 +119,8 @@ struct intel_pt {
 	u64 noretcomp_bit;
 };
 
+#define IBUFSIZE 4096
+
 struct intel_pt_queue {
 	struct intel_pt *pt;
 	unsigned int queue_nr;
@@ -135,6 +137,9 @@ struct intel_pt_queue {
 	bool have_sample;
 	u64 time;
 	u64 timestamp;
+	int ibuflen;
+	uint64_t ibufip;
+	u8 ibuf[IBUFSIZE];
 };
 
 static void intel_pt_dump(struct intel_pt *pt __maybe_unused,
@@ -293,24 +298,46 @@ static int intel_pt_get_trace(struct intel_pt_buffer *b, void *data)
 	return 0;
 }
 
+static int intel_pt_try_decode(struct intel_pt_insn *intel_pt_insn,
+			       struct intel_pt_queue *ptq,
+			       uint64_t ip, bool x86_64)
+{
+	int err = -1, off;
+
+	if (ip >= ptq->ibufip && ip < ptq->ibufip + ptq->ibuflen) {
+		off = ip - ptq->ibufip;
+		err = intel_pt_get_insn(ptq->ibuf + off,
+					ptq->ibuflen - off,
+					x86_64,
+					intel_pt_insn);
+	}
+	return err;
+}
+
 static int intel_pt_get_next_insn(struct intel_pt_insn *intel_pt_insn,
 				  uint64_t ip, uint64_t cr3 __maybe_unused,
-				  void *data)
+				  void *data, bool x86_64)
 {
 	struct intel_pt_queue *ptq = data;
 	struct machine *machine = ptq->pt->machine;
 	struct thread *thread;
 	struct addr_location al;
-	unsigned char buf[1024];
-	size_t bufsz;
-	ssize_t len;
-	int x86_64;
 	pid_t pid = ptq->pid;
 	uint8_t cpumode;
+	int err;
 
-	bufsz = intel_pt_insn_max_size();
+	/*
+	 * XXX should read directly from the underlying
+	 * dso cache.
+	 */
+
+	/* Try to decode the rest first, if it fails get fresh data. */
+	err = intel_pt_try_decode(intel_pt_insn, ptq, ip, x86_64);
+	if (err == 0)
+		return err;
 
 	/* Assume kernel addresses can be identified by "ip < 0" */
+	/* AK: I think this is not correct on 32bit kernels */
 	if ((int64_t)ip < 0)
 		cpumode = PERF_RECORD_MISC_KERNEL;
 	else
@@ -324,19 +351,19 @@ static int intel_pt_get_next_insn(struct intel_pt_insn *intel_pt_insn,
 	if (!al.map || !al.map->dso)
 		return -1;
 
-	len = dso__data_read_addr(al.map->dso, al.map, machine, ip, buf, bufsz);
-	if (len <= 0)
+	/*
+	 * Try to read ahead multiple instructions to amortize the overhead
+	 * of the thread/map lookups.
+	 */
+	ptq->ibuflen = dso__data_read_addr(al.map->dso, al.map, machine, ip,
+					   ptq->ibuf, IBUFSIZE);
+	if (ptq->ibuflen <= 0) {
+		ptq->ibuflen = 0;
 		return -1;
+	}
+	ptq->ibufip = ip;
 
-	/* Load maps to ensure dso->is_64_bit has been updated */
-	map__load(al.map, machine->symbol_filter);
-
-	x86_64 = al.map->dso->is_64_bit;
-
-	if (intel_pt_get_insn(buf, len, x86_64, intel_pt_insn))
-		return -1;
-
-	return 0;
+	return intel_pt_try_decode(intel_pt_insn, ptq, ip, x86_64);
 }
 
 static bool intel_pt_exclude_kernel(struct intel_pt *pt)

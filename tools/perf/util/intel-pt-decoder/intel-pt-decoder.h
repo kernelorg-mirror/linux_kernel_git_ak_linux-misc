@@ -62,7 +62,7 @@ struct intel_pt_buffer {
 struct intel_pt_params {
 	int (*get_trace)(struct intel_pt_buffer *buffer, void *data);
 	int (*get_insn)(struct intel_pt_insn *intel_pt_insn, uint64_t ip,
-			uint64_t cr3, void *data);
+			uint64_t cr3, void *data, bool x86_64);
 	void *data;
 	bool return_compression;
 	uint64_t period;

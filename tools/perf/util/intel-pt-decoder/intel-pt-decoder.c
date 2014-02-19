@@ -72,7 +72,7 @@ enum intel_pt_pkt_state {
 struct intel_pt_decoder {
 	int (*get_trace)(struct intel_pt_buffer *buffer, void *data);
 	int (*get_insn)(struct intel_pt_insn *intel_pt_insn, uint64_t ip,
-			uint64_t cr3, void *data);
+			uint64_t cr3, void *data, bool x86_64);
 	void *data;
 	struct intel_pt_state state;
 	const unsigned char *buf;
@@ -462,7 +462,7 @@ static int intel_pt_decoder_get_insn(struct intel_pt_decoder *decoder,
 	int err;
 
 	err = decoder->get_insn(intel_pt_insn, decoder->ip, decoder->cr3,
-				decoder->data);
+				decoder->data, decoder->exec_mode == 64);
 	if (err) {
 		intel_pt_log_at("ERROR: Failed to get instruction",
 				decoder->ip);
