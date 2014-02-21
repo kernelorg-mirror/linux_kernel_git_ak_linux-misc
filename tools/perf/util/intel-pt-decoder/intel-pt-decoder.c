@@ -22,6 +22,10 @@
 #include <errno.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
+#include <limits.h>
+
+#include <linux/list.h>
 
 #include "intel-pt-insn-decoder.h"
 #include "intel-pt-pkt-decoder.h"
@@ -69,6 +73,47 @@ enum intel_pt_pkt_state {
 #define INTEL_PT_STATE_ERR4	INTEL_PT_STATE_IN_SYNC
 #endif
 
+/*
+ * Cached super block that does only need instruction
+ * decoding, but no extra input from the PT stream.
+ * This caches one execution of *walk_insn.
+ */
+struct intel_pt_sb {
+	struct list_head lru;
+	uint64_t start_ip;	/* key */
+	uint64_t end_ip;
+	uint32_t hash;
+	unsigned num_insn;
+	int hits;
+	int err;
+	unsigned stamp;
+	struct intel_pt_state state;
+	enum intel_pt_pkt_state pkt_state;
+	struct intel_pt_insn intel_pt_insn;
+};
+
+#define SBHASH_ORDER 14
+#define SBHASH_SHIFT (32 - SBHASH_ORDER)
+#define SBHASH_SIZE  (1U << SBHASH_ORDER)
+#define SBHASH_MASK  (SBHASH_SIZE - 1)
+#define SBHASH_WAYS  2 /* Max collision before we give up */
+#define SBHASH_LRU_MAX (SBHASH_SIZE / 2) /* Max fill */
+#define SBHASH_LRU_THRESH 10
+#define SBHASH_REPL_THRESH 4
+#define SBHASH_FAST_REUSE 1000
+
+struct sbhash_entry {
+	struct intel_pt_sb *sb;
+	uint64_t ip;
+};
+
+struct intel_pt_cache {
+	struct list_head lru;
+	unsigned num_entries;
+	unsigned total_lookup;
+	struct sbhash_entry sbhash[SBHASH_SIZE];
+};
+
 struct intel_pt_decoder {
 	int (*get_trace)(struct intel_pt_buffer *buffer, void *data);
 	int (*get_insn)(struct intel_pt_insn *intel_pt_insn, uint64_t ip,
@@ -111,7 +156,109 @@ struct intel_pt_decoder {
 	const unsigned char *next_buf;
 	size_t next_len;
 	unsigned char temp_buf[INTEL_PT_PKT_MAX_SZ];
+	/* XXX should be shared for the same process, not just per stream */
+	struct intel_pt_cache cache;
 };
+
+static uint32_t decoding_hash(uint64_t ip)
+{
+	uint32_t hash = (((uint32_t)ip) * 0x1e35a7bd) >> SBHASH_SHIFT;
+	return hash;
+}
+
+static void sbhash_lru_hit(struct intel_pt_cache *cache, struct intel_pt_sb *sb)
+{
+	if (sb->hits > SBHASH_LRU_THRESH)
+		list_move(&sb->lru, &sb->lru);
+	sb->stamp = cache->total_lookup;
+	sb->hits++;
+}
+
+static struct intel_pt_sb *lookup_decoding_hash(struct intel_pt_cache *cache,
+						uint64_t ip)
+{
+	int i;
+	uint32_t hash;
+
+	cache->total_lookup++;
+	hash = decoding_hash(ip);
+	for (i = 1; i <= SBHASH_WAYS; i++) {
+		uint64_t hip = cache->sbhash[hash].ip;
+		if (hip == ip) {
+			struct intel_pt_sb *sb = cache->sbhash[hash].sb;
+			if (sb)
+				sbhash_lru_hit(cache, sb);
+			return sb;
+		}
+		if (hip == 0)
+			break;
+		hash = (hash + (i*i)) & SBHASH_MASK;
+	}
+	return NULL;
+}
+
+static void sbhash_reuse(struct intel_pt_cache *cache, struct intel_pt_sb *sb)
+{
+	list_move(&sb->lru, &cache->lru);
+	cache->sbhash[sb->hash].sb = NULL;
+	cache->sbhash[sb->hash].ip = 0;
+}
+
+static struct intel_pt_sb *alloc_sb(struct intel_pt_cache *cache)
+{
+	struct intel_pt_sb *sb;
+
+	if (cache->num_entries >= SBHASH_LRU_MAX) {
+		sb = list_entry(cache->lru.prev,
+				struct intel_pt_sb, lru);
+		sbhash_reuse(cache, sb);
+	} else {
+		sb = malloc(sizeof(struct intel_pt_sb));
+		if (!sb)
+			return NULL;
+		cache->num_entries++;
+		list_add(&sb->lru, &cache->lru);
+	}
+	sb->hits = 0;
+	return sb;
+}
+
+static struct intel_pt_sb *insert_decoding_hash(struct intel_pt_cache *cache,
+						uint64_t ip)
+{
+	uint32_t hash;
+	int i;
+
+	hash = decoding_hash(ip);
+	for (i = 1; i <= SBHASH_WAYS; i++) {
+		struct intel_pt_sb *sb = cache->sbhash[hash].sb;
+
+		if (sb != NULL &&
+		    (sb->hits < SBHASH_REPL_THRESH ||
+		     cache->total_lookup - sb->stamp >= SBHASH_FAST_REUSE))
+			cache->sbhash[hash].sb = NULL;
+		else
+			sb = NULL;
+
+		if (cache->sbhash[hash].sb == NULL) {
+			if (!sb)
+				sb = alloc_sb(cache);
+			if (!sb)
+				return NULL;
+			cache->sbhash[hash].ip = ip;
+			cache->sbhash[hash].sb = sb;
+			sb->hash = hash;
+			return sb;
+		}
+		hash = (hash + (i*i)) & SBHASH_MASK;
+	}
+	return NULL;
+}
+
+static void init_cache(struct intel_pt_cache *cache)
+{
+	INIT_LIST_HEAD(&cache->lru);
+}
 
 static uint64_t intel_pt_lower_power_of_2(uint64_t x)
 {
@@ -159,6 +306,7 @@ struct intel_pt_decoder *intel_pt_decoder_new(struct intel_pt_params *params)
 
 	intel_pt_setup_period(decoder);
 
+	init_cache(&decoder->cache);
 	return decoder;
 }
 
@@ -234,8 +382,91 @@ static void intel_pt_free_stack(struct intel_pt_stack *stack)
 	free(stack->spare);
 }
 
+static int get_chain_len(struct intel_pt_cache *cache, uint32_t hash)
+{
+	int j;
+	int chain_len = 0;
+	uint32_t ohash = hash;
+
+	for (j = 1; j <= SBHASH_WAYS; j++) {
+		if (cache->sbhash[hash].sb) {
+			uint64_t ip = cache->sbhash[hash].sb->start_ip;
+
+			if (decoding_hash(ip) == ohash)
+				chain_len++;
+		}
+		hash = (hash + (j*j)) & SBHASH_MASK;
+	}
+	return chain_len;
+}
+
+static void __attribute__((noinline)) sbhash_stat(struct intel_pt_cache *cache)
+{
+	struct intel_pt_sb *sb;
+	uint32_t hash;
+
+	int min_hit = INT_MAX, max_hit = 0, total_hit = 0, buckets = 0;
+	int min_chain = INT_MAX, max_chain = 0, total_chain = 0;
+	int chain_len;
+
+	unsigned mem = 0;
+
+	if (getenv("PERF_SBHASH_STAT") == NULL)
+		return;
+
+	for (hash = 0; hash < SBHASH_SIZE; hash++) {
+		sb = cache->sbhash[hash].sb;
+		if (!sb)
+			continue;
+		if (decoding_hash(cache->sbhash[hash].ip) != hash)
+			continue;
+		mem += sizeof(struct intel_pt_sb);
+
+		assert(sb->start_ip == cache->sbhash[hash].ip);
+		assert(sb->hash == hash);
+		if (sb->hits < min_hit)
+			min_hit = sb->hits;
+		if (sb->hits > max_hit)
+			max_hit = sb->hits;
+		total_hit += sb->hits;
+		buckets++;
+		chain_len = 0;
+		chain_len = get_chain_len(cache, hash);
+		if (chain_len < min_chain)
+			min_chain = chain_len;
+		if (chain_len > max_chain)
+			max_chain = chain_len;
+		total_chain += chain_len;
+	}
+
+	fprintf(stderr, "buckets %d max_hit %d min_hit %d avg_hit %f\n",
+		buckets, max_hit, min_hit, (float)total_hit / buckets);
+	fprintf(stderr, "min_chain %d max_chain %d avg_chain %f\n",
+		min_chain, max_chain, (float)total_chain / buckets);
+	fprintf(stderr, "mem %.2f KB, hit rate %.2f total %u\n",
+		(double)mem / 1024, (double)total_hit / cache->total_lookup,
+		cache->total_lookup);
+}
+
+
+static void free_sbhash(struct intel_pt_cache *cache)
+{
+	struct intel_pt_sb *sb;
+	uint32_t hash;
+
+	for (hash = 0; hash < SBHASH_SIZE; hash++) {
+		sb = cache->sbhash[hash].sb;
+		if (!sb)
+			continue;
+		free(sb);
+		cache->sbhash[hash].sb = NULL;
+	}
+}
+
 void intel_pt_decoder_free(struct intel_pt_decoder *decoder)
 {
+	sbhash_stat(&decoder->cache);
+	free_sbhash(&decoder->cache);
 	intel_pt_free_stack(&decoder->stack);
 	free(decoder);
 }
@@ -473,10 +704,10 @@ static int intel_pt_decoder_get_insn(struct intel_pt_decoder *decoder,
 	return 0;
 }
 
-static inline bool intel_pt_sample_insn(struct intel_pt_decoder *decoder)
+static inline bool intel_pt_sample_insn(struct intel_pt_decoder *decoder, uint32_t off)
 {
 	if (decoder->period_type == INTEL_PT_PERIOD_INSTRUCTIONS &&
-	    ++decoder->period_insn_cnt >= decoder->period) {
+	    (decoder->period_insn_cnt += off) >= decoder->period) {
 		decoder->period_insn_cnt = 0;
 		decoder->state.type |= INTEL_PT_INSTRUCTION;
 		return true;
@@ -500,11 +731,51 @@ static inline bool intel_pt_sample_insn(struct intel_pt_decoder *decoder)
 	return false;
 }
 
+//#define VERIFY_CACHE 1
+
 static int intel_pt_walk_insn(struct intel_pt_decoder *decoder,
 			      struct intel_pt_insn *intel_pt_insn, uint64_t ip)
 {
 	bool sample_insn = false;
 	int err;
+	uint64_t start_ip, start_insn_cnt;
+	struct intel_pt_sb *sb;
+
+	if (decoder->ip == ip && ip) /* needed? */
+		return -EAGAIN;
+	start_ip = decoder->ip;
+	sb = lookup_decoding_hash(&decoder->cache, start_ip);
+#ifndef VERIFY_CACHE
+	if (sb != NULL) {
+		*intel_pt_insn = sb->intel_pt_insn;
+		decoder->state = sb->state;
+		decoder->ip = sb->end_ip;
+		decoder->timestamp_insn_cnt += sb->num_insn;
+		decoder->pkt_state = sb->pkt_state;
+		err = sb->err;
+
+		if (intel_pt_insn->op == INTEL_PT_OP_CALL) {
+			err = intel_pt_push(&decoder->stack, decoder->ip +
+					    intel_pt_insn->length);
+		} else if (intel_pt_insn->op == INTEL_PT_OP_RET) {
+			decoder->ret_addr = intel_pt_pop(&decoder->stack);
+		}
+
+		/*
+		 * Just update the sample state, but we reuse the
+		 * cached decision.
+		 *
+		 * A word on sampling periods:
+		 * We cache the end point of the last sampling period.
+		 * This means if a trace hits a cached block the sampling
+		 * period may jump, and the end result may be different.
+		 * Over time it should hopefully average out.
+		 */
+		intel_pt_sample_insn(decoder, sb->num_insn);
+		return err;
+	}
+#endif
+	start_insn_cnt = decoder->timestamp_insn_cnt;
 
 	while (1) {
 		if (decoder->ip == ip && ip) {
@@ -518,7 +789,7 @@ static int intel_pt_walk_insn(struct intel_pt_decoder *decoder,
 
 		decoder->timestamp_insn_cnt += 1;
 
-		sample_insn = intel_pt_sample_insn(decoder);
+		sample_insn = intel_pt_sample_insn(decoder, 1);
 
 		if (intel_pt_insn->branch == INTEL_PT_BR_NO_BRANCH) {
 			if (sample_insn) {
@@ -559,6 +830,29 @@ static int intel_pt_walk_insn(struct intel_pt_decoder *decoder,
 
 	if (decoder->tx_flags & INTEL_PT_IN_TX)
 		decoder->state.flags |= INTEL_PT_IN_TX;
+
+#ifdef VERIFY_CACHE
+	if (sb) {
+		assert(sb->end_ip == sb->end_ip);
+		assert(sb->pkt_state == decoder->pkt_state);
+		assert(sb->num_insn == decoder->timestamp_insn_cnt -
+		       start_insn_cnt);
+		assert(sb->start_ip == start_ip);
+		assert(err == sb->err);
+		return err;
+	}
+#endif
+
+	sb = insert_decoding_hash(&decoder->cache, start_ip);
+	if (sb) {
+		sb->state = decoder->state;
+		sb->start_ip = start_ip;
+		sb->end_ip = decoder->ip;
+		sb->num_insn = decoder->timestamp_insn_cnt - start_insn_cnt;
+		sb->intel_pt_insn = *intel_pt_insn;
+		sb->pkt_state = decoder->pkt_state;
+		sb->err = err;
+	}
 
 	return err;
 }
