@@ -23,12 +23,29 @@ struct intel_pt_pkt;
 
 void intel_pt_log_set_name(const char *name);
 
-void intel_pt_log_packet(const struct intel_pt_pkt *packet, int pkt_len,
+extern int intel_pt_no_logging;
+
+void __intel_pt_log_packet(const struct intel_pt_pkt *packet, int pkt_len,
 			 uint64_t pos, const unsigned char *buf);
+
+static inline void intel_pt_log_packet(const struct intel_pt_pkt *packet,
+				       int pkt_len,
+				       uint64_t pos, const unsigned char *buf)
+{
+	if (!intel_pt_no_logging)
+		__intel_pt_log_packet(packet, pkt_len, pos, buf);
+}
 
 struct intel_pt_insn;
 
-void intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn, uint64_t ip);
+void __intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn, uint64_t ip);
+
+static inline void intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn,
+				     uint64_t ip)
+{
+	if (!intel_pt_no_logging)
+		__intel_pt_log_insn(intel_pt_insn, ip);
+}
 
 __attribute__((format(printf, 1, 2)))
 void intel_pt_log(const char *fmt, ...);

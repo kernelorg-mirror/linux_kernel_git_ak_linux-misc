@@ -28,7 +28,7 @@
 
 static FILE *f;
 static char log_name[MAX_LOG_NAME];
-static int no_logging;
+int intel_pt_no_logging;
 
 void intel_pt_log_set_name(const char *name)
 {
@@ -54,7 +54,7 @@ static void intel_pt_print_data(const unsigned char *buf, int len, uint64_t pos,
 
 static int intel_pt_log_open(void)
 {
-	if (no_logging)
+	if (intel_pt_no_logging)
 		return -1;
 
 	if (f)
@@ -65,7 +65,7 @@ static int intel_pt_log_open(void)
 
 	f = fopen(log_name, "r");
 	if (!f) {
-		no_logging = 1;
+		intel_pt_no_logging = 1;
 		return -1;
 	}
 
@@ -73,14 +73,14 @@ static int intel_pt_log_open(void)
 
 	f = fopen(log_name, "w+");
 	if (!f) {
-		no_logging = 1;
+		intel_pt_no_logging = 1;
 		return -1;
 	}
 
 	return 0;
 }
 
-void intel_pt_log_packet(const struct intel_pt_pkt *packet, int pkt_len,
+void __intel_pt_log_packet(const struct intel_pt_pkt *packet, int pkt_len,
 			 uint64_t pos, const unsigned char *buf)
 {
 	char desc[INTEL_PT_PKT_DESC_MAX];
@@ -93,7 +93,7 @@ void intel_pt_log_packet(const struct intel_pt_pkt *packet, int pkt_len,
 	fprintf(f, "%s\n", desc);
 }
 
-void intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn, uint64_t ip)
+void __intel_pt_log_insn(struct intel_pt_insn *intel_pt_insn, uint64_t ip)
 {
 	char desc[INTEL_PT_INSN_DESC_MAX];
 	size_t len = intel_pt_insn->length;
