@@ -104,7 +104,6 @@ struct sbhash_entry {
 };
 
 struct intel_pt_cache {
-	unsigned num_entries;
 	unsigned total_lookup;
 	unsigned missed;
 	struct sbhash_entry sbhash[SBHASH_SIZE];
@@ -191,18 +190,6 @@ static struct intel_pt_sb *lookup_decoding_hash(struct intel_pt_cache *cache,
 	return NULL;
 }
 
-static struct intel_pt_sb *alloc_sb(struct intel_pt_cache *cache)
-{
-	struct intel_pt_sb *sb;
-
-	sb = malloc(sizeof(struct intel_pt_sb));
-	if (!sb)
-		return NULL;
-	cache->num_entries++;
-	sb->hits = 0;
-	return sb;
-}
-
 static struct intel_pt_sb *insert_decoding_hash(struct intel_pt_cache *cache,
 						uint64_t ip)
 {
@@ -214,12 +201,13 @@ static struct intel_pt_sb *insert_decoding_hash(struct intel_pt_cache *cache,
 		struct intel_pt_sb *sb = cache->sbhash[hash].sb;
 
 		if (sb == NULL) { /* Empty slot. */
-			sb = alloc_sb(cache);
+			sb = malloc(sizeof(struct intel_pt_sb));
 			if (!sb)
 				return NULL;
 			cache->sbhash[hash].ip = ip;
 			cache->sbhash[hash].sb = sb;
 			sb->hash = hash;
+			sb->hits = 0;
 			return sb;
 		} else if ((sb->hits < SBHASH_REPL_THRESH ||
 			    cache->total_lookup - sb->stamp >=
