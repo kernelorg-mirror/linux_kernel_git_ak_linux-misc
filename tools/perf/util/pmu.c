@@ -13,6 +13,7 @@
 #include "pmu-events/pmu-events.h"	// Move to global file???
 #include "cpumap.h"
 #include "header.h"
+#include "cache.h"
 
 struct perf_pmu_format {
 	char *name;
@@ -1026,7 +1027,7 @@ void print_pmu_events(const char *event_glob, bool name_only)
 	int len, j;
 	struct pair *aliases;
 	int numdesc = 0;
-	int columns = 78;
+	int columns = pager_get_columns();
 
 	pmu = NULL;
 	len = 0;
