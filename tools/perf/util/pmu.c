@@ -9,6 +9,7 @@
 #include "pmu.h"
 #include "parse-events.h"
 #include "cpumap.h"
+#include "cache.h"
 #include "jevents.h"
 
 const char *json_file;
@@ -789,15 +790,6 @@ static void wordwrap(char *s, int start, int max, int corr)
 	}
 }
 
-static int get_columns(void)
-{
-	/*
-	 * Should ask the terminal with TIOCGWINSZ here, but we
-	 * need the original fd before the pager.
-	 */
-	return 79;
-}
-
 void print_pmu_events(const char *event_glob, bool name_only)
 {
 	struct perf_pmu *pmu;
@@ -807,7 +799,7 @@ void print_pmu_events(const char *event_glob, bool name_only)
 	int len, j;
 	struct pair *aliases;
 	int numdesc = 0;
-	int columns = get_columns();
+	int columns = pager_get_columns();
 
 	pmu = NULL;
 	len = 0;
