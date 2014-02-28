@@ -783,6 +783,141 @@ cleanup:
 	}
 }
 
+static void print_c2c_shared_cacheline_report(struct rb_root *hitm_tree,
+					      struct c2c_stats *shared_stats __maybe_unused,
+					      struct c2c_stats *c2c_stats __maybe_unused)
+{
+#define   SHM_TITLE  "Shared Data Cache Line Table"
+
+	struct rb_node	*next = rb_first(hitm_tree);
+	struct c2c_hit	*h;
+	char		header[256];
+	char		delimit[256];
+	u32		crecords;
+	u32		lclmiss;
+	u32		ldcnt;
+	double		p_hitm;
+	double		p_all;
+	int		totmiss;
+	int		rmt_hitm;
+	int		len;
+	int		pad;
+	int		i;
+
+	sprintf(header,"%28s  %8s  %8s  %8s  %8s  %28s  %18s  %28s  %18s  %8s  %28s",
+		" ",
+		"Total",
+		"%All ",
+		" ",
+		"Total",
+		"---- Core Load Hit ----",
+		"-- LLC Load Hit --",
+		"----- LLC Load Hitm -----",
+		"-- Load Dram --",
+		"LLC  ",
+		"---- Store Reference ----");
+
+	len = strlen(header);
+	delimit[0] = '\0';
+
+	for (i = 0; i < len; i++)
+		strcat(delimit, "=");
+
+	printf("\n\n");
+	printf("%s\n", delimit);
+	printf("\n");
+	pad = (strlen(header)/2) - (strlen(SHM_TITLE)/2);
+	for (i = 0; i < pad; i++)
+		printf(" ");
+	printf("%s\n", SHM_TITLE);
+	printf("\n");
+	printf("%s\n", header);
+
+	sprintf(header, "%8s  %18s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s  %8s",
+		"Index",
+		"Phys Adrs",
+		"Records",
+		"Ld Miss",
+		"%hitm",
+		"Loads",
+		"FB",
+		"L1D",
+		"L2D",
+		"Lcl",
+		"Rmt",
+		"Total",
+		"Lcl",
+		"Rmt",
+		"Lcl",
+		"Rmt",
+		"Ld Miss",
+		"Total",
+		"L1Hit",
+		"L1Miss");
+
+	printf("%s\n", header);
+	printf("%s\n", delimit);
+
+	rmt_hitm    = c2c_stats->t.rmt_hitm;
+	totmiss     = c2c_stats->t.lcl_dram +
+		      c2c_stats->t.rmt_dram +
+		      c2c_stats->t.rmt_hit +
+		      c2c_stats->t.rmt_hitm;
+
+	i = 0;
+	while (next) {
+		h = rb_entry(next, struct c2c_hit, rb_node);
+		next = rb_next(&h->rb_node);
+
+		lclmiss  = h->stats.t.lcl_dram +
+			   h->stats.t.rmt_dram +
+			   h->stats.t.rmt_hitm +
+			   h->stats.t.rmt_hit;
+
+		ldcnt    = lclmiss +
+			   h->stats.t.ld_fbhit +
+			   h->stats.t.ld_l1hit +
+			   h->stats.t.ld_l2hit +
+			   h->stats.t.ld_llchit +
+			   h->stats.t.lcl_hitm;
+
+		crecords = ldcnt +
+			   h->stats.t.st_l1hit +
+			   h->stats.t.st_l1miss;
+
+		p_hitm = (double)h->stats.t.rmt_hitm / (double)rmt_hitm;
+		p_all  = (double)h->stats.t.rmt_hitm / (double)totmiss;
+
+		/* stop when the percentage gets to low */
+		if (p_hitm < DISPLAY_LINE_LIMIT)
+			break;
+
+		printf("%8d  %#18lx  %8u  %7.2f%%  %7.2f%%  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u  %8u\n",
+			i,
+			h->cacheline,
+			crecords,
+			100. * p_all,
+			100. * p_hitm,
+			ldcnt,
+			h->stats.t.ld_fbhit,
+			h->stats.t.ld_l1hit,
+			h->stats.t.ld_l2hit,
+			h->stats.t.ld_llchit,
+			h->stats.t.rmt_hit,
+			h->stats.t.lcl_hitm + h->stats.t.rmt_hitm,
+			h->stats.t.lcl_hitm,
+			h->stats.t.rmt_hitm,
+			h->stats.t.lcl_dram,
+			h->stats.t.rmt_dram,
+			lclmiss,
+			h->stats.t.store,
+			h->stats.t.st_l1hit,
+			h->stats.t.st_l1miss);
+
+		i++;
+	}
+}
+
 static void print_hitm_cacheline_header(void)
 {
 #define SHARING_REPORT_TITLE  "Shared Cache Line Distribution Pareto"
@@ -1290,6 +1425,7 @@ static void c2c_analyze_hitms(struct perf_c2c *c2c)
 		free(h);
 
 	print_shared_cacheline_info(&hitm_stats, shared_clines);
+	print_c2c_shared_cacheline_report(&hitm_tree, &hitm_stats, &c2c->stats);
 	print_c2c_hitm_report(&hitm_tree, &hitm_stats, &c2c->stats);
 
 cleanup:
