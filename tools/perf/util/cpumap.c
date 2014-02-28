@@ -317,3 +317,153 @@ int cpu_map__build_core_map(struct cpu_map *cpus, struct cpu_map **corep)
 {
 	return cpu_map__build_map(cpus, corep, cpu_map__get_core);
 }
+
+/* setup simple routines to easily access node numbers given a cpu number */
+
+
+#define PATH_SYS_NODE   "/sys/devices/system/node"
+
+/* Determine highest possible cpu in the system for sparse allocation */
+static void set_max_cpu_num(void)
+{
+	FILE *fp;
+	char buf[256];
+	int num;
+
+	/* set up default */
+	max_cpu_num = 4096;
+
+	/* get the highest possible cpu number for a sparse allocation */
+	fp = fopen("/sys/devices/system/cpu/possible", "r");
+	if (!fp)
+		goto out;
+
+	num = fread(&buf, 1, sizeof(buf), fp);
+	if (!num)
+		goto out_close;
+	buf[num] = '\0';
+
+	/* start on the right, to find highest cpu num */
+	while (--num) {
+		if ((buf[num] == ',') || (buf[num] == '-')) {
+			num++;
+			break;
+		}
+	}
+	if (sscanf(&buf[num], "%d", &max_cpu_num) < 1)
+		goto out_close;
+
+	max_cpu_num++;
+
+	fclose(fp);
+	return;
+
+out_close:
+	fclose(fp);
+out:
+	pr_err("Failed to read max cpus, using default of %d\n",
+		max_cpu_num);
+	return;
+}
+
+/* Determine highest possible node in the system for sparse allocation */
+static void set_max_node_num(void)
+{
+	FILE *fp;
+	char buf[256];
+	int num;
+
+	/* set up default */
+	max_node_num = 8;
+
+	/* get the highest possible cpu number for a sparse allocation */
+	fp = fopen("/sys/devices/system/node/possible", "r");
+	if (!fp)
+		goto out;
+
+	num = fread(&buf, 1, sizeof(buf), fp);
+	if (!num)
+		goto out_close;
+	buf[num] = '\0';
+
+	/* start on the right, to find highest node num */
+	while (--num) {
+		if ((buf[num] == ',') || (buf[num] == '-')) {
+			num++;
+			break;
+		}
+	}
+	if (sscanf(&buf[num], "%d", &max_node_num) < 1)
+		goto out_close;
+
+	max_node_num++;
+
+	fclose(fp);
+	return;
+
+out_close:
+	fclose(fp);
+out:
+	pr_err("Failed to read max nodes, using default of %d\n",
+		max_node_num);
+	return;
+}
+
+static int init_cpunode_map(void)
+{
+	int i;
+
+	set_max_cpu_num();
+	set_max_node_num();
+
+	cpunode_map = calloc(max_cpu_num, sizeof(int));
+	if (!cpunode_map) {
+		pr_err("%s: calloc failed\n", __func__);
+		goto out;
+	}
+
+	for (i = 0; i < max_cpu_num; i++)
+		cpunode_map[i] = -1;
+
+	return 0;
+out:
+	return -1;
+}
+
+int cpu_map__setup_cpunode_map(void)
+{
+	struct dirent *dent1, *dent2;
+	DIR *dir1, *dir2;
+	unsigned int cpu, mem;
+	char buf[PATH_MAX];
+
+	/* initialize globals */
+	if (init_cpunode_map())
+		return -1;
+
+	dir1 = opendir(PATH_SYS_NODE);
+	if (!dir1)
+		return 0;
+
+	/* walk tree and setup map */
+	while ((dent1 = readdir(dir1)) != NULL) {
+		if (dent1->d_type != DT_DIR ||
+		    sscanf(dent1->d_name, "node%u", &mem) < 1)
+			continue;
+
+		snprintf(buf, PATH_MAX, "%s/%s", PATH_SYS_NODE, dent1->d_name);
+		dir2 = opendir(buf);
+		if (!dir2)
+			continue;
+		while ((dent2 = readdir(dir2)) != NULL) {
+			if (dent2->d_type != DT_LNK ||
+			    sscanf(dent2->d_name, "cpu%u", &cpu) < 1)
+				continue;
+			cpunode_map[cpu] = mem;
+		}
+		closedir(dir2);
+	}
+	closedir(dir1);
+	return 0;
+}
+
