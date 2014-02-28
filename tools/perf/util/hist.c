@@ -365,7 +365,8 @@ static struct hist_entry *add_hist_entry(struct hists *hists,
 		 */
 		cmp = hist_entry__cmp(he, entry);
 
-		if (!cmp) {
+		if (!cmp && !sort__wants_unique) {
+
 			he_stat__add_period(&he->stat, period, weight);
 
 			/*
