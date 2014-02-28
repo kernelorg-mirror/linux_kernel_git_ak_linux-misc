@@ -685,6 +685,104 @@ static void c2c_hit__update_stats(struct c2c_stats *new,
 	new->total_period	+= old->total_period;
 }
 
+LIST_HEAD(ref_tree);
+LIST_HEAD(ref_tree_sorted);
+struct refs {
+	struct list_head	list;
+	int			nr;
+	const char		*name;
+	const char		*long_name;
+};
+
+static int update_ref_list(struct hist_entry *entry)
+{
+	struct refs *p;
+	struct dso *dso = entry->mem_info->iaddr.map->dso;
+	const char *name = dso->short_name;
+
+	list_for_each_entry(p, &ref_tree, list) {
+		if (!strcmp(p->name, name))
+			goto found;
+	}
+
+	p = zalloc(sizeof(struct refs));
+	if (!p)
+		return -1;
+	p->name = name;
+	p->long_name = dso->long_name;
+	list_add_tail(&p->list, &ref_tree);
+
+found:
+	p->nr++;
+	return 0;
+}
+
+static void print_symbol_record_count(struct rb_root *tree)
+{
+	struct rb_node *next = rb_first(tree);
+	struct hist_entry *he;
+	struct refs *p, *q, *pn;
+	char      string[256];
+	char      delimit[256];
+	int       i;
+	int       idx = 0;
+
+	/* gather symbol references */
+	while (next) {
+		he = rb_entry(next, struct hist_entry, rb_node_in);
+		next = rb_next(&he->rb_node_in);
+
+		if (update_ref_list(he)) {
+			pr_err("Could not update reference tree\n");
+			goto cleanup;
+		}
+	}
+
+	/* sort on number of references per symbol */
+	list_for_each_entry_safe(p, pn, &ref_tree, list) {
+		list_del_init(&p->list);
+		list_for_each_entry(q, &ref_tree_sorted, list) {
+			if (p->nr > q->nr) {
+				list_add_tail(&p->list, &q->list);
+				break;
+			}
+		}
+		if (list_empty(&p->list))
+			list_add_tail(&p->list, &ref_tree_sorted);
+	}
+
+	/* print header info */
+	sprintf(string, "%5s   %8s   %-32s  %-80s",
+		"Index",
+		"Records",
+		"Object Name",
+		"Object Path");
+
+	delimit[0] = '\0';
+	for (i = 0; i < (int)strlen(string); i++) strcat(delimit, "=");
+
+	printf("\n\n");
+	printf("%s\n", delimit);
+	printf("%50s %s\n", " ", "Object Name, Path & Reference Counts");
+	printf("\n");
+	printf("%s\n", string);
+	printf("%s\n", delimit);
+
+	/* print out table */
+	list_for_each_entry(p, &ref_tree_sorted, list) {
+		printf("%5d   %8d   %-32s  %-80s\n",
+			idx, p->nr, p->name, p->long_name);
+		idx++;
+	}
+	printf("\n");
+
+cleanup:
+	list_for_each_entry_safe(p, pn, &ref_tree_sorted, list) {
+		list_del(&p->list);
+		free(p);
+	}
+}
+
 static void print_hitm_cacheline_header(void)
 {
 #define SHARING_REPORT_TITLE  "Shared Cache Line Distribution Pareto"
@@ -1266,6 +1364,7 @@ static int perf_c2c__process_events(struct perf_session *session,
 		dump_rb_tree(c2c->hists.entries_in, c2c);
 	print_c2c_trace_report(c2c);
 	c2c_analyze_hitms(c2c);
+	print_symbol_record_count(c2c->hists.entries_in);
 
 err:
 	return err;
