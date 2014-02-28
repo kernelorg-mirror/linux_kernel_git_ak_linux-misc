@@ -616,6 +616,55 @@ err:
 
 #define HAS_HITMS(h) (h->stats.t.lcl_hitm || h->stats.t.rmt_hitm)
 
+static void dump_rb_tree(struct rb_root *tree,
+			 struct perf_c2c *c2c __maybe_unused)
+{
+	struct rb_node *next = rb_first(tree);
+	struct hist_entry *he;
+	u64 cl = 0;
+	int idx = 0;
+
+	printf("# Summary: Total entries - %d\n", c2c->stats.nr_entries);
+	printf("# HITMs: Local - %d   Remote - %d     Total - %d\n",
+		c2c->stats.t.lcl_hitm, c2c->stats.t.rmt_hitm,
+		(c2c->stats.t.lcl_hitm + c2c->stats.t.rmt_hitm));
+
+	printf("%6s %3s %3s %3s %8s %16s %6s %16s %16s %16s %32s %8s\n",
+		"Idx", "Hit", "Maj", "Min", "Ino", "InoGen", "Pid", 
+		"Daddr", "Iaddr", "Data Src", "(string)", "cpumode");
+	while (next) {
+		char data_src[32];
+		u64 val;
+
+		he = rb_entry(next, struct hist_entry, rb_node_in);
+		next = rb_next(&he->rb_node_in);
+
+		if ((!he->color) || (cl != CLADRS(he->mem_info->daddr.al_addr))) {
+			printf("\n");
+			cl = CLADRS(he->mem_info->daddr.al_addr);
+		}
+
+		val = he->mem_info->data_src.val;
+		perf_c2c__scnprintf_data_src(data_src, sizeof(data_src), val);
+
+		printf("%6d %3s %3x %3x %8lx %16lx %6d %16lx %16lx %16lx %32s %8x\n",
+			idx,
+			(PERF_MEM_S(SNOOP,HITM) & val) ? " * " : "   ",
+			he->mem_info->daddr.map->maj,
+			he->mem_info->daddr.map->min,
+			he->mem_info->daddr.map->ino,
+			he->mem_info->daddr.map->ino_generation,
+			he->thread->pid_,
+			he->mem_info->daddr.addr,
+			he->mem_info->iaddr.addr,
+			val,
+			data_src,
+			he->cpumode);
+
+		idx++;
+	}
+}
+
 static void c2c_hit__update_stats(struct c2c_stats *new,
 				  struct c2c_stats *old)
 {
@@ -1213,6 +1262,8 @@ static int perf_c2c__process_events(struct perf_session *session,
 		goto err;
 	}
 
+	if (verbose > 2)
+		dump_rb_tree(c2c->hists.entries_in, c2c);
 	print_c2c_trace_report(c2c);
 	c2c_analyze_hitms(c2c);
 
