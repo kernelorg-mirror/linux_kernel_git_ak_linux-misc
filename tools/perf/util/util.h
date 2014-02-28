@@ -318,8 +318,10 @@ unsigned long parse_tag_value(const char *str, struct parse_tag *tags);
 #define SRCLINE_UNKNOWN  ((char *) "??:0")
 
 struct dso;
+struct symbol;
 
-char *get_srcline(struct dso *dso, unsigned long addr);
+char *get_srcline(struct dso *dso, unsigned long addr, struct symbol *sym,
+		  bool show_sym);
 void free_srcline(char *srcline);
 
 int filename__read_int(const char *filename, int *value);
