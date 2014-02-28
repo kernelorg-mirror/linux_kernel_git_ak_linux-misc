@@ -977,6 +977,151 @@ struct sort_entry sort_transaction = {
 	.se_width_idx	= HISTC_TRANSACTION,
 };
 
+static int64_t
+sort__physid_cmp(struct hist_entry *left, struct hist_entry *right)
+{
+        u64 l, r;
+        struct map *l_map = left->mem_info->daddr.map;
+        struct map *r_map = right->mem_info->daddr.map;
+
+	/* store all NULL mem maps at the bottom */
+	/* shouldn't even need this check, should have stubs */
+	if (!left->mem_info->daddr.map || !right->mem_info->daddr.map)
+		return 1;
+
+        /* group event types together */
+        if (left->cpumode > right->cpumode) return -1;
+        if (left->cpumode < right->cpumode) return 1;
+
+        if (l_map->maj > r_map->maj) return -1;
+        if (l_map->maj < r_map->maj) return 1;
+
+        if (l_map->min > r_map->min) return -1;
+        if (l_map->min < r_map->min) return 1;
+
+        if (l_map->ino > r_map->ino) return -1;
+        if (l_map->ino < r_map->ino) return 1;
+
+        if (l_map->ino_generation > r_map->ino_generation) return -1;
+        if (l_map->ino_generation < r_map->ino_generation) return 1;
+
+        /*
+         * Addresses with no major/minor numbers are assumed to be
+         * anonymous in userspace.  Sort those on pid then address.
+         *
+         * The kernel and non-zero major/minor mapped areas are
+         * assumed to be unity mapped.  Sort those on address then pid.
+         */
+
+        /* al_addr does all the right addr - start + offset calculations */
+        l = left->mem_info->daddr.al_addr;
+        r = right->mem_info->daddr.al_addr;
+
+        if (l_map->maj || l_map->min || l_map->ino || l_map-> ino_generation) {
+                /* mmapped areas */
+
+                /* hack to mark similar regions, 'right' is new entry */
+                /* entries with same maj/min/ino/inogen are in same address space */
+                right->color = TRUE;
+
+                if (l > r) return -1;
+                if (l < r) return 1;
+
+                /* sorting by iaddr makes calculations easier later */
+                if (left->mem_info->iaddr.al_addr > right->mem_info->iaddr.al_addr) return -1;
+                if (left->mem_info->iaddr.al_addr < right->mem_info->iaddr.al_addr) return 1;
+
+                if (left->thread->pid_ > right->thread->pid_) return -1;
+                if (left->thread->pid_ < right->thread->pid_) return 1;
+
+                if (left->thread->tid > right->thread->tid) return -1;
+                if (left->thread->tid < right->thread->tid) return 1;
+        } else if (left->cpumode == PERF_RECORD_MISC_KERNEL) {
+                /* kernel mapped areas where 'start' doesn't matter */
+
+                /* hack to mark similar regions, 'right' is new entry */
+                /* whole kernel region is in the same address space */
+                right->color = TRUE;
+
+                if (l > r) return -1;
+                if (l < r) return 1;
+
+                /* sorting by iaddr makes calculations easier later */
+                if (left->mem_info->iaddr.al_addr > right->mem_info->iaddr.al_addr) return -1;
+                if (left->mem_info->iaddr.al_addr < right->mem_info->iaddr.al_addr) return 1;
+
+                if (left->thread->pid_ > right->thread->pid_) return -1;
+                if (left->thread->pid_ < right->thread->pid_) return 1;
+
+                if (left->thread->tid > right->thread->tid) return -1;
+                if (left->thread->tid < right->thread->tid) return 1;
+        } else {
+                /* userspace anonymous */
+                if (left->thread->pid_ > right->thread->pid_) return -1;
+                if (left->thread->pid_ < right->thread->pid_) return 1;
+
+                if (left->thread->tid > right->thread->tid) return -1;
+                if (left->thread->tid < right->thread->tid) return 1;
+
+	         /* hack to mark similar regions, 'right' is new entry */
+                /* userspace anonymous address space is contained within pid */
+                right->color = TRUE;
+
+                if (l > r) return -1;
+                if (l < r) return 1;
+
+                /* sorting by iaddr makes calculations easier later */
+                if (left->mem_info->iaddr.al_addr > right->mem_info->iaddr.al_addr) return -1;
+                if (left->mem_info->iaddr.al_addr < right->mem_info->iaddr.al_addr) return 1;
+        }
+
+	/* sanity check the maps; only mmaped areas should have different maps */
+	if ((left->mem_info->daddr.map != right->mem_info->daddr.map) &&
+	     !right->mem_info->daddr.map->maj && !right->mem_info->daddr.map->min)
+		pr_debug("physid_cmp: Similar entries have different maps\n");
+
+        return 0;
+}
+
+static int hist_entry__physid_snprintf(struct hist_entry *he, char *bf,
+					    size_t size, unsigned int width)
+{
+	char buf[256];
+	char *p = buf;
+
+	if (!he->mem_info->daddr.map) {
+        	sprintf(p, "%3x %3x %8lx %8lx %6d %16lx %16lx %16lx %8x\n",
+                        -1,
+                        -1,
+                        -1UL,
+                        -1UL,
+                        he->thread->pid_,
+                        -1UL,
+                        he->mem_info->daddr.addr,
+                        he->mem_info->iaddr.al_addr,
+                        he->cpumode);
+	} else {
+	        sprintf(p, "%3x %3x %8lx %8lx %6d %16lx %16lx %16lx %8x\n",
+                        he->mem_info->daddr.map->maj,
+                        he->mem_info->daddr.map->min,
+                        he->mem_info->daddr.map->ino,
+                        he->mem_info->daddr.map->ino_generation,
+                        he->thread->pid_,
+                        he->mem_info->daddr.map->start,
+                        he->mem_info->daddr.addr,
+                        he->mem_info->iaddr.al_addr,
+                        he->cpumode);
+	}
+	return repsep_snprintf(bf, size, "%-*s", width, buf);
+}
+
+struct sort_entry sort_physid = {
+	.se_header	= "Physid (major, minor, inode, inode generation, pid, start, Data addr, IP, cpumode)",
+	.se_cmp		= sort__physid_cmp,
+	.se_snprintf	= hist_entry__physid_snprintf,
+	.se_width_idx	= HISTC_PHYSID,
+};
+
 struct sort_dimension {
 	const char		*name;
 	struct sort_entry	*entry;
@@ -1023,6 +1168,7 @@ static struct sort_dimension memory_sort_dimensions[] = {
 	DIM(SORT_MEM_TLB, "tlb", sort_mem_tlb),
 	DIM(SORT_MEM_LVL, "mem", sort_mem_lvl),
 	DIM(SORT_MEM_SNOOP, "snoop", sort_mem_snoop),
+	DIM(SORT_MEM_PHYSID, "physid", sort_physid),
 };
 
 #undef DIM
@@ -1182,6 +1328,8 @@ void sort__setup_elide(FILE *output)
 					"tlb", output);
 		sort_entry__setup_elide(&sort_dso, symbol_conf.dso_list,
 					"snoop", output);
+		sort_entry__setup_elide(&sort_physid, symbol_conf.dso_list,
+					"physid", output);
 	}
 
 	/*

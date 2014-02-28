@@ -87,11 +87,13 @@ struct hist_entry {
 	u64			ip;
 	u64			transaction;
 	s32			cpu;
+	u8			cpumode;
 
 	struct hist_entry_diff	diff;
 
 	/* We are added by hists__add_dummy_entry. */
 	bool			dummy;
+	bool			color;
 
 	/* XXX These two should move to some tree widget lib */
 	u16			row_offset;
@@ -166,6 +168,7 @@ enum sort_type {
 	SORT_MEM_TLB,
 	SORT_MEM_LVL,
 	SORT_MEM_SNOOP,
+	SORT_MEM_PHYSID,
 };
 
 /*

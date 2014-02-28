@@ -62,6 +62,7 @@ enum hist_column {
 	HISTC_MEM_LVL,
 	HISTC_MEM_SNOOP,
 	HISTC_TRANSACTION,
+	HISTC_PHYSID,
 	HISTC_NR_COLS, /* Last entry */
 };
 
