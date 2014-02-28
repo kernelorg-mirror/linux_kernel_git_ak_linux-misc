@@ -12,6 +12,7 @@ struct stats
 void update_stats(struct stats *stats, u64 val);
 double avg_stats(struct stats *stats);
 double stddev_stats(struct stats *stats);
+double stderr_stats(struct stats *stats);
 double rel_stddev_stats(double stddev, double avg);
 
 static inline void init_stats(struct stats *stats)

@@ -33,6 +33,7 @@ double avg_stats(struct stats *stats)
  * http://en.wikipedia.org/wiki/Stddev
  *
  * The std dev of the mean is related to the std dev by:
+ * (also known as standard error)
  *
  *             s
  * s_mean = -------
@@ -40,6 +41,18 @@ double avg_stats(struct stats *stats)
  *
  */
 double stddev_stats(struct stats *stats)
+{
+	double variance;
+
+	if (stats->n < 2)
+		return 0.0;
+
+	variance = stats->M2 / (stats->n - 1);
+
+	return sqrt(variance);
+}
+
+double stderr_stats(struct stats *stats)
 {
 	double variance, variance_mean;
 
