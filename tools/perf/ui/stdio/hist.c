@@ -536,3 +536,40 @@ size_t events_stats__fprintf(struct events_stats *stats, FILE *fp)
 
 	return ret;
 }
+
+size_t generic_entry_callchain__fprintf(struct callchain_root *unsorted_callchain,
+					u64 total_samples, u64 relative_samples,
+					int left_margin, FILE *fp)
+{
+	struct rb_root sorted_chain;
+	u64 min_callchain_hits;
+
+	if (!symbol_conf.use_callchain)
+		return 0;
+
+	min_callchain_hits = total_samples * (callchain_param.min_percent / 100);
+
+	callchain_param.sort(&sorted_chain, unsorted_callchain,
+				min_callchain_hits, &callchain_param);
+
+	switch (callchain_param.mode) {
+	case CHAIN_GRAPH_REL:
+		return callchain__fprintf_graph(fp, &sorted_chain, relative_samples,
+						left_margin);
+		break;
+	case CHAIN_GRAPH_ABS:
+		return callchain__fprintf_graph(fp, &sorted_chain, total_samples,
+						left_margin);
+		break;
+	case CHAIN_FLAT:
+		return callchain__fprintf_flat(fp, &sorted_chain, total_samples);
+		break;
+	case CHAIN_NONE:
+		break;
+	default:
+		pr_err("Bad callchain mode\n");
+	}
+
+	return 0;
+}
+
