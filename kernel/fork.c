@@ -869,6 +869,8 @@ static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
 
 	tsk->mm = NULL;
 	tsk->active_mm = NULL;
+	tsk->clear_page = NULL;
+	tsk->clear_count = 0;
 
 	/*
 	 * Are we cloning a kernel thread?

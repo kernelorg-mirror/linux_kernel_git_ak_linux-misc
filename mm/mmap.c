@@ -36,6 +36,7 @@
 #include <linux/sched/sysctl.h>
 #include <linux/notifier.h>
 #include <linux/memory.h>
+#include <linux/rtm.h>
 
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
@@ -779,6 +780,11 @@ again:			remove_next = 1 + (end > next->vm_end);
 	if (anon_vma) {
 		VM_BUG_ON(adjust_next && next->anon_vma &&
 			  anon_vma != next->anon_vma);
+		/* 
+		 * For now to avoid too many transactions. 
+		 * TBD batch this lock.
+		 */
+		disable_txn();
 		anon_vma_lock_write(anon_vma);
 		anon_vma_interval_tree_pre_update_vma(vma);
 		if (adjust_next)
@@ -844,6 +850,7 @@ again:			remove_next = 1 + (end > next->vm_end);
 		if (adjust_next)
 			anon_vma_interval_tree_post_update_vma(next);
 		anon_vma_unlock_write(anon_vma);
+		reenable_txn();
 	}
 	if (mapping)
 		mutex_unlock(&mapping->i_mmap_mutex);
@@ -2544,9 +2551,12 @@ int vm_munmap(unsigned long start, size_t len)
 	int ret;
 	struct mm_struct *mm = current->mm;
 
+	/* Usually flushes TLBs, so don't elide */
+	disable_txn();
 	down_write(&mm->mmap_sem);
 	ret = do_munmap(mm, start, len);
 	up_write(&mm->mmap_sem);
+	reenable_txn();
 	return ret;
 }
 EXPORT_SYMBOL(vm_munmap);

@@ -43,6 +43,7 @@
 #include <linux/backing-dev.h>
 #include <linux/bitops.h>
 #include <linux/ratelimit.h>
+#include <linux/rtm.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/jbd2.h>
@@ -889,7 +890,7 @@ void __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
 {
 	unsigned long freed;
 
-	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+	BUG_ON(!_xtest() && !mutex_is_locked(&journal->j_checkpoint_mutex));
 
 	/*
 	 * We cannot afford for write to remain in drive's caches since as
@@ -1388,7 +1389,7 @@ void jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
 {
 	journal_superblock_t *sb = journal->j_superblock;
 
-	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+	BUG_ON(!_xtest() && !mutex_is_locked(&journal->j_checkpoint_mutex));
 	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
 		  tail_block, tail_tid);
 
@@ -1415,7 +1416,7 @@ static void jbd2_mark_journal_empty(journal_t *journal)
 {
 	journal_superblock_t *sb = journal->j_superblock;
 
-	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+	BUG_ON(!_xtest() && !mutex_is_locked(&journal->j_checkpoint_mutex));
 	read_lock(&journal->j_state_lock);
 	/* Is it already empty? */
 	if (sb->s_start == 0) {
