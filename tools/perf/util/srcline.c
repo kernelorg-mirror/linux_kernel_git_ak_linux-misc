@@ -258,6 +258,12 @@ char *get_srcline(struct dso *dso, unsigned long addr, struct symbol *sym,
 	unsigned line = 0;
 	char *srcline;
 	const char *dso_name;
+	char astr[50];
+
+	if (verbose)
+		snprintf(astr, sizeof astr, " %#lx", addr);
+	else
+		astr[0] = 0;
 
 	if (!dso->has_srcline)
 		goto out;
@@ -276,7 +282,12 @@ char *get_srcline(struct dso *dso, unsigned long addr, struct symbol *sym,
 	if (!addr2line(dso_name, addr, &file, &line, dso))
 		goto out;
 
-	if (asprintf(&srcline, "%s:%u", basename(file), line) < 0) {
+	if (line == 0) {
+		free(file);
+		goto fallback;
+	}
+
+	if (asprintf(&srcline, "%s:%u%s", basename(file), line, astr) < 0) {
 		free(file);
 		goto out;
 	}
@@ -291,9 +302,10 @@ out:
 		dso->has_srcline = 0;
 		dso__free_a2l(dso);
 	}
+fallback:
 	if (sym) {
-		if (asprintf(&srcline, "%s+%ld", show_sym ? sym->name : "",
-					addr - sym->start) < 0)
+		if (asprintf(&srcline, "%s+%ld%s", show_sym ? sym->name : "",
+					addr - sym->start, astr) < 0)
 			return SRCLINE_UNKNOWN;
 	} else if (asprintf(&srcline, "%s[%lx]", dso->short_name, addr) < 0)
 		return SRCLINE_UNKNOWN;
