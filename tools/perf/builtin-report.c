@@ -742,7 +742,8 @@ repeat:
 		callchain_param.branch_callstack = 1;
 		callchain_param.key = CCKEY_ADDRESS;
 		symbol_conf.use_callchain = true;
-		callchain_register_param(&callchain_param);
+		if (callchain_register_param(&callchain_param) < 0)
+			pr_err("Cannot register callchain parameters");
 		if (sort_order == default_sort_order)
 			sort_order = "srcline,symbol,dso";
 		branch_mode = 0;
