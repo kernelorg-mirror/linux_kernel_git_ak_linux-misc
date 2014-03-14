@@ -14,6 +14,7 @@
 
 struct perf_pmu_alias {
 	char *name;
+	char *desc;
 	struct list_head terms;
 	struct list_head list;
 	char unit[UNIT_MAX_LEN+1];
@@ -171,16 +172,11 @@ error:
 	return -1;
 }
 
-static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FILE *file)
+static int __perf_pmu__new_alias(struct list_head *list, char *name,
+				 char *dir, char *desc, char *val)
 {
 	struct perf_pmu_alias *alias;
-	char buf[256];
 	int ret;
-
-	ret = fread(buf, 1, sizeof(buf), file);
-	if (ret == 0)
-		return -EINVAL;
-	buf[ret] = 0;
 
 	alias = malloc(sizeof(*alias));
 	if (!alias)
@@ -190,22 +186,43 @@ static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FI
 	alias->scale = 1.0;
 	alias->unit[0] = '\0';
 
-	ret = parse_events_terms(&alias->terms, buf);
+	ret = parse_events_terms(&alias->terms, val);
 	if (ret) {
+		pr_err("Cannot parse alias %s: %d\n", val, ret);
 		free(alias);
 		return ret;
 	}
 
 	alias->name = strdup(name);
-	/*
-	 * load unit name and scale if available
-	 */
-	perf_pmu__parse_unit(alias, dir, name);
-	perf_pmu__parse_scale(alias, dir, name);
 
+	if (dir) {
+		/*
+		 * load unit name and scale if available
+		 */
+		perf_pmu__parse_unit(alias, dir, name);
+		perf_pmu__parse_scale(alias, dir, name);
+	}
+
+	alias->desc = desc ? strdup(desc) : NULL;
 	list_add_tail(&alias->list, list);
 
 	return 0;
+}
+
+static int perf_pmu__new_alias(struct list_head *list,
+			       char *dir,
+			       char *name,
+			       FILE *file)
+{
+	char buf[256];
+	int ret;
+
+	ret = fread(buf, 1, sizeof(buf), file);
+	if (ret == 0)
+		return -EINVAL;
+	buf[ret] = 0;
+
+	return __perf_pmu__new_alias(list, name, dir, NULL, buf);
 }
 
 /*
