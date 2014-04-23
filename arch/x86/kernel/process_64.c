@@ -48,6 +48,7 @@
 #include <asm/syscalls.h>
 #include <asm/debugreg.h>
 #include <asm/switch_to.h>
+#include <asm/fsgs.h>
 
 asmlinkage extern void ret_from_fork(void);
 
@@ -260,6 +261,27 @@ void compat_start_thread(struct pt_regs *regs, u32 new_ip, u32 new_sp)
 }
 #endif
 
+/* Out of line to be protected from kprobes. */
+
+/* Interrupts are disabled here. */
+static noinline __kprobes void switch_gs_base(unsigned long gs)
+{
+	swapgs();
+	wrgsbase(gs);
+	swapgs();
+}
+
+/* Interrupts are disabled here. */
+static noinline __kprobes unsigned long read_user_gsbase(void)
+{
+	unsigned long gs;
+
+	swapgs();
+	gs = rdgsbase();
+	swapgs();
+	return gs;
+}
+
 /*
  *	switch_to(x,y) should switch tasks from x to y.
  *
@@ -291,6 +313,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 */
 	savesegment(fs, fsindex);
 	savesegment(gs, gsindex);
+	if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
+		prev->fs = rdfsbase();
+		prev->gs = read_user_gsbase();
+	}
 
 	/*
 	 * Load TLS before restoring any segments so that segment loads
@@ -330,6 +356,8 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		loadsegment(ds, next->ds);
 
 	/*
+	 * Description of code path without FSGSBASE:
+	 *
 	 * Switch FS and GS.
 	 *
 	 * These are even more complicated than DS and ES: they have
@@ -361,8 +389,11 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 * base address.
 	 *
 	 * Note: This all depends on arch_prctl being the only way that
-	 * user code can override the segment base.  Once wrfsbase and
-	 * wrgsbase are enabled, most of this code will need to change.
+	 * user code can override the segment base.
+	 *
+	 * Description with FSGSBASE:
+	 * We simply save/restore the bases, and the indexes.
+	 *
 	 */
 	if (unlikely(fsindex | next->fsindex | prev->fs)) {
 		loadsegment(fs, next->fsindex);
@@ -379,8 +410,12 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		if (fsindex)
 			prev->fs = 0;
 	}
-	if (next->fs)
-		wrmsrl(MSR_FS_BASE, next->fs);
+	if (next->fs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE))
+			wrfsbase(next->fs);
+		else
+			wrmsrl(MSR_FS_BASE, next->fs);
+	}
 	prev->fsindex = fsindex;
 
 	if (unlikely(gsindex | next->gsindex | prev->gs)) {
@@ -390,8 +425,12 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		if (gsindex)
 			prev->gs = 0;
 	}
-	if (next->gs)
-		wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+	if (next->gs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE))
+			switch_gs_base(next->gs);
+		else
+			wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+	}
 	prev->gsindex = gsindex;
 
 	switch_fpu_finish(next_fpu, fpu_switch);

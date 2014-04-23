@@ -1018,6 +1018,9 @@ static void identify_cpu(struct cpuinfo_x86 *c)
 #endif
 	/* The boot/hotplug time assigment got cleared, restore it */
 	c->logical_proc_id = topology_phys_to_logical_pkg(c->phys_proc_id);
+
+	if (cpu_has(c, X86_FEATURE_FSGSBASE))
+		cr4_set_bits(X86_CR4_FSGSBASE);
 }
 
 /*
@@ -1422,8 +1425,14 @@ void cpu_init(void)
 	 */
 	if (!oist->ist[0]) {
 		char *estacks = per_cpu(exception_stacks, cpu);
+		void *gs = per_cpu(irq_stack_union.gs_base, cpu);
 
 		for (v = 0; v < N_EXCEPTION_STACKS; v++) {
+			/* Store GS at bottom of stack for bootstrap access */
+			*(void **)estacks = gs;
+			/* Put it on every 4K entry */
+			if (exception_stack_sizes[v] > EXCEPTION_STKSZ)
+				*(void **)(estacks + EXCEPTION_STKSZ) = gs;
 			estacks += exception_stack_sizes[v];
 			oist->ist[v] = t->x86_tss.ist[v] =
 					(unsigned long)estacks;
