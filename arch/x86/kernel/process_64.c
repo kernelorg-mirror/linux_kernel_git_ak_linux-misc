@@ -49,6 +49,7 @@
 #include <asm/syscalls.h>
 #include <asm/debugreg.h>
 #include <asm/switch_to.h>
+#include <asm/fsgs.h>
 
 asmlinkage extern void ret_from_fork(void);
 
@@ -261,6 +262,27 @@ void start_thread_ia32(struct pt_regs *regs, u32 new_ip, u32 new_sp)
 }
 #endif
 
+/* Out of line to be protected from kprobes. */
+
+/* Interrupts are disabled here. */
+static noinline __kprobes void switch_gs(unsigned long gs)
+{
+	swapgs();
+	wrgsbase(gs);
+	swapgs();
+}
+
+/* Interrupts are disabled here. */
+static noinline __kprobes unsigned long read_user_gs(void)
+{
+	unsigned long gs;
+
+	swapgs();
+	gs = rdgsbase();
+	swapgs();
+	return gs;
+}
+
 /*
  *	switch_to(x,y) should switch tasks from x to y.
  *
@@ -293,6 +315,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 */
 	savesegment(fs, fsindex);
 	savesegment(gs, gsindex);
+	if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
+		prev->fs = rdfsbase();
+		prev->gs = read_user_gs();
+	}
 
 	/*
 	 * Load TLS before restoring any segments so that segment loads
@@ -381,8 +407,12 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		if (fsindex)
 			prev->fs = 0;
 	}
-	if (next->fs)
-		wrmsrl(MSR_FS_BASE, next->fs);
+	if (next->fs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE))
+			wrfsbase(next->fs);
+		else
+			wrmsrl(MSR_FS_BASE, next->fs);
+	}
 	prev->fsindex = fsindex;
 
 	if (unlikely(gsindex | next->gsindex | prev->gs)) {
@@ -392,8 +422,12 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		if (gsindex)
 			prev->gs = 0;
 	}
-	if (next->gs)
-		wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+	if (next->gs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE))
+			switch_gs(next->gs);
+		else
+			wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+	}
 	prev->gsindex = gsindex;
 
 	switch_fpu_finish(next_p, fpu);

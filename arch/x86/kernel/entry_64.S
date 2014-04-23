@@ -58,6 +58,8 @@
 #include <asm/context_tracking.h>
 #include <asm/smap.h>
 #include <asm/pgtable_types.h>
+#include <asm/alternative-asm.h>
+#include <asm/fsgs.h>
 #include <linux/err.h>
 
 /* Avoid __ASSEMBLER__'ifying <linux/audit.h> just for this.  */
@@ -65,6 +67,19 @@
 #define AUDIT_ARCH_X86_64	(EM_X86_64|__AUDIT_ARCH_64BIT|__AUDIT_ARCH_LE)
 #define __AUDIT_ARCH_64BIT 0x80000000
 #define __AUDIT_ARCH_LE	   0x40000000
+
+.macro ALTERNATIVE_MAYBE_JUMP target,feature
+33:
+	ASM_NOP5	/* May be replaced with jump to target */
+34:
+	.section .altinstr_replacement,"ax"
+35:	.byte 0xe9 /* 32bit near jump */
+	.long \target-34b
+	.previous
+	.section .altinstructions,"a"
+	altinstruction_entry 33b,35b,\feature,5,5
+	.previous
+.endm
 
 	.code64
 	.section .entry.text, "ax"
@@ -218,32 +233,61 @@ ENDPROC(native_usergs_sysret64)
 	CFI_REL_OFFSET r15, R15+\offset
 	.endm
 
+/* Values of the ebx flag: */
+#define DO_SWAPGS	 1 /* Use SWAPGS at end */
+#define DO_NOTHING	 0 /* Back to ring 0 with same gs */
+
+/*
+ * Stack layout:
+ * +16 pt_regs
+ * +8  stack mask for ist or 0
+ * +0  return address.
+ */
+#define OFF 16
+#define STKMSK 8
+
 ENTRY(save_paranoid)
-	XCPT_FRAME 1 RDI+8
+	XCPT_FRAME 1 RDI+OFF
 	cld
-	movq %rdi, RDI+8(%rsp)
-	movq %rsi, RSI+8(%rsp)
-	movq_cfi rdx, RDX+8
-	movq_cfi rcx, RCX+8
-	movq_cfi rax, RAX+8
-	movq %r8, R8+8(%rsp)
-	movq %r9, R9+8(%rsp)
-	movq %r10, R10+8(%rsp)
-	movq %r11, R11+8(%rsp)
-	movq_cfi rbx, RBX+8
-	movq %rbp, RBP+8(%rsp)
-	movq %r12, R12+8(%rsp)
-	movq %r13, R13+8(%rsp)
-	movq %r14, R14+8(%rsp)
-	movq %r15, R15+8(%rsp)
-	movl $1,%ebx
+	movq %rdi, RDI+OFF(%rsp)
+	movq %rsi, RSI+OFF(%rsp)
+	movq_cfi rdx, RDX+OFF
+	movq_cfi rcx, RCX+OFF
+	movq_cfi rax, RAX+OFF
+	movq %r8, R8+OFF(%rsp)
+	movq %r9, R9+OFF(%rsp)
+	movq %r10, R10+OFF(%rsp)
+	movq %r11, R11+OFF(%rsp)
+	movq_cfi rbx, RBX+OFF
+	movq %rbp, RBP+OFF(%rsp)
+	movq %r12, R12+OFF(%rsp)
+	movq %r13, R13+OFF(%rsp)
+	movq %r14, R14+OFF(%rsp)
+	movq %r15, R15+OFF(%rsp)
+	movq $-1,ORIG_RAX+OFF(%rsp)	/* no syscall to restart */
+	ALTERNATIVE_MAYBE_JUMP paranoid_save_gs,X86_FEATURE_FSGSBASE
+	movl $DO_NOTHING,%ebx
 	movl $MSR_GS_BASE,%ecx
 	rdmsr
 	testl %edx,%edx
 	js 1f	/* negative -> in kernel */
 	SWAPGS
-	xorl %ebx,%ebx
+	movl $DO_SWAPGS,%ebx
 1:	ret
+
+	/* Faster version not using RDMSR, and also not assuming
+	 * anything about the previous GS value.
+	 * This allows the user to arbitarily change GS using
+	 * WRGSBASE.
+	 */
+paranoid_save_gs:
+	RDGSBASE_R15			# read previous gs
+	movq STKMSK(%rsp),%rax		# get ist stack mask
+	andq %rsp,%rax			# get bottom of stack
+	movq (%rax),%rdi		# get expected GS
+	WRGSBASE_RDI			# set gs for kernel
+	ret
+
 	CFI_ENDPROC
 END(save_paranoid)
 
@@ -1026,7 +1070,8 @@ apicinterrupt IRQ_WORK_VECTOR \
  */
 #define INIT_TSS_IST(x) PER_CPU_VAR(init_tss) + (TSS_ist + ((x) - 1) * 8)
 
-.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1
+.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1 \
+		stack_mask=-EXCEPTION_STKSZ
 ENTRY(\sym)
 	/* Sanity check */
 	.if \shift_ist != -1 && \paranoid == 0
@@ -1055,7 +1100,10 @@ ENTRY(\sym)
 	testl $3, CS(%rsp)		/* If coming from userspace, switch */
 	jnz 1f				/* stacks. */
 	.endif
+	pushq_cfi $\stack_mask		/* ist stack size */
 	call save_paranoid
+	/* r15: previous gs */
+	popq_cfi %rax			/* Drop ist stack size */
 	.else
 	call error_entry
 	.endif
@@ -1090,7 +1138,7 @@ ENTRY(\sym)
 	.endif
 
 	.if \paranoid
-	jmp paranoid_exit		/* %ebx: no swapgs flag */
+	jmp paranoid_exit		/* %ebx: no swapgs flag, r15: old gs */
 	.else
 	jmp error_exit			/* %ebx: no swapgs flag */
 	.endif
@@ -1311,9 +1359,12 @@ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
 	hyperv_callback_vector hyperv_vector_handler
 #endif /* CONFIG_HYPERV */
 
-idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
-idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
+idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
+	 stack_mask=-DEBUG_STKSZ
+idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
+	 stack_mask=-DEBUG_STKSZ
 idtentry stack_segment do_stack_segment has_error_code=1
+
 #ifdef CONFIG_XEN
 idtentry xen_debug do_debug has_error_code=0
 idtentry xen_int3 do_int3 has_error_code=0
@@ -1339,7 +1390,7 @@ idtentry machine_check has_error_code=0 paranoid=1 do_sym=*machine_check_vector(
 	 * to try to handle preemption here.
 	 */
 
-	/* ebx:	no swapgs flag */
+	/* ebx:	no swapgs flag, r15: prev gs */
 ENTRY(paranoid_exit)
 	DEFAULT_FRAME
 	DISABLE_INTERRUPTS(CLBR_NONE)
@@ -1347,9 +1398,11 @@ ENTRY(paranoid_exit)
 	testl %ebx,%ebx				/* swapgs needed? */
 	jnz paranoid_restore
 	TRACE_IRQS_IRETQ 0
+	ALTERNATIVE_MAYBE_JUMP paranoid_restore_gs,X86_FEATURE_FSGSBASE
 	SWAPGS_UNSAFE_STACK
-	RESTORE_ALL 8
-	INTERRUPT_RETURN
+	jmp paranoid_restore
+paranoid_restore_gs:
+	WRGSBASE_R15
 paranoid_restore:
 	TRACE_IRQS_IRETQ_DEBUG 0
 	RESTORE_ALL 8
@@ -1650,6 +1703,7 @@ end_repeat_nmi:
 	pushq_cfi $-1		/* ORIG_RAX: no syscall to restart */
 	subq $ORIG_RAX-R15, %rsp
 	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
+	pushq_cfi $-EXCEPTION_STKSZ	/* ist stack size */
 	/*
 	 * Use save_paranoid to handle SWAPGS, but no need to use paranoid_exit
 	 * as we should not be calling schedule in NMI context.
@@ -1658,6 +1712,8 @@ end_repeat_nmi:
 	 * exceptions might do.
 	 */
 	call save_paranoid
+	/* r15: previous gs */
+	popq_cfi %rax		/* pop ist size */
 	DEFAULT_FRAME 0
 
 	/*
@@ -1682,11 +1738,15 @@ end_repeat_nmi:
 	je 1f
 	movq %r12, %cr2
 1:
-	
+
 	testl %ebx,%ebx				/* swapgs needed? */
 	jnz nmi_restore
+	ALTERNATIVE_MAYBE_JUMP nmi_gs_restore,X86_FEATURE_FSGSBASE
 nmi_swapgs:
 	SWAPGS_UNSAFE_STACK
+	jmp nmi_restore
+nmi_gs_restore:
+	WRGSBASE_R15				/* restore gs */
 nmi_restore:
 	/* Pop the extra iret frame at once */
 	RESTORE_ALL 6*8
