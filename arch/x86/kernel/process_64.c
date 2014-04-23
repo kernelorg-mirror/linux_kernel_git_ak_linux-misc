@@ -49,6 +49,7 @@
 #include <asm/syscalls.h>
 #include <asm/debugreg.h>
 #include <asm/switch_to.h>
+#include <asm/fsgs.h>
 
 asmlinkage extern void ret_from_fork(void);
 
@@ -311,6 +312,16 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	 */
 	savesegment(fs, fsindex);
 	savesegment(gs, gsindex);
+	if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
+		prev->fs = rdfsbase();
+		/* Interrupts are disabled here. */
+		if (!prev->gs_saved) {
+			swapgs();
+			prev->gs = rdgsbase();
+			swapgs();
+		}
+		prev->gs_saved = 0;
+	}
 
 	load_TLS(next, cpu);
 
@@ -341,8 +352,12 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 			prev->fs = 0;
 	}
 	/* when next process has a 64bit base use it */
-	if (next->fs)
-		wrmsrl(MSR_FS_BASE, next->fs);
+	if (next->fs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE))
+			wrfsbase(next->fs);
+		else
+			wrmsrl(MSR_FS_BASE, next->fs);
+	}
 	prev->fsindex = fsindex;
 
 	if (unlikely(gsindex | next->gsindex | prev->gs)) {
@@ -350,8 +365,16 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 		if (gsindex)
 			prev->gs = 0;
 	}
-	if (next->gs)
-		wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+	if (next->gs) {
+		if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
+			/* Interrupts are disabled here. */
+			swapgs();
+			wrgsbase(next->gs);
+			swapgs();
+		} else {
+			wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
+		}
+	}
 	prev->gsindex = gsindex;
 
 	switch_fpu_finish(next_p, fpu);

@@ -953,6 +953,9 @@ static void identify_cpu(struct cpuinfo_x86 *c)
 #ifdef CONFIG_NUMA
 	numa_add_cpu(smp_processor_id());
 #endif
+
+	if (cpu_has(c, X86_FEATURE_FSGSBASE))
+		set_in_cr4(X86_CR4_FSGSBASE);
 }
 
 #ifdef CONFIG_X86_64
@@ -1338,10 +1341,13 @@ void cpu_init(void)
 	 */
 	if (!oist->ist[0]) {
 		char *estacks = per_cpu(exception_stacks, cpu);
+		void *gs = per_cpu(irq_stack_union.gs_base, cpu);
 
 		for (v = 0; v < N_EXCEPTION_STACKS; v++) {
 			if (v == DEBUG_STACK - 1)
 				estacks = per_cpu(debug_stack, cpu);
+			/* Store GS at bottom of stack for bootstrap access */
+			*(void **)estacks = gs;
 			estacks += exception_stack_sizes[v];
 			oist->ist[v] = t->x86_tss.ist[v] =
 					(unsigned long)estacks;

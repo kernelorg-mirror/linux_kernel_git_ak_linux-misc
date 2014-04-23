@@ -85,6 +85,10 @@ int main(void)
 
 	DEFINE(__NR_ia32_syscall_max, sizeof(syscalls_ia32) - 1);
 	DEFINE(IA32_NR_syscalls, sizeof(syscalls_ia32));
+	BLANK();
+
+	OFFSET(task_thread_gs, task_struct, thread.gs);
+	OFFSET(task_thread_gs_saved, task_struct, thread.gs_saved);
 
 	return 0;
 }

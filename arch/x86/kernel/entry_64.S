@@ -58,6 +58,8 @@
 #include <asm/context_tracking.h>
 #include <asm/smap.h>
 #include <asm/pgtable_types.h>
+#include <asm/alternative-asm.h>
+#include <asm/fsgs.h>
 #include <linux/err.h>
 
 /* Avoid __ASSEMBLER__'ifying <linux/audit.h> just for this.  */
@@ -283,32 +285,86 @@ ENDPROC(native_usergs_sysret64)
 	TRACE_IRQS_OFF
 	.endm
 
+/* Values of the ebx flag: */
+#define DO_RESTORE_R15	 2 /* Restore GS at end */
+#define DO_SWAPGS	 1 /* Use SWAPGS at end */
+#define DO_NOTHING	 0 /* Back to ring 0 with same gs */
+
+/*
+ * Stack layout:
+ * +16 pt_regs
+ * +8  stack mask for ist or 0
+ * +0  return address.
+ */
+#define OFF 16
+#define STKMSK 8
+
 ENTRY(save_paranoid)
-	XCPT_FRAME 1 RDI+8
+	XCPT_FRAME 1 RDI+OFF
 	cld
-	movq %rdi, RDI+8(%rsp)
-	movq %rsi, RSI+8(%rsp)
-	movq_cfi rdx, RDX+8
-	movq_cfi rcx, RCX+8
-	movq_cfi rax, RAX+8
-	movq %r8, R8+8(%rsp)
-	movq %r9, R9+8(%rsp)
-	movq %r10, R10+8(%rsp)
-	movq %r11, R11+8(%rsp)
-	movq_cfi rbx, RBX+8
-	movq %rbp, RBP+8(%rsp)
-	movq %r12, R12+8(%rsp)
-	movq %r13, R13+8(%rsp)
-	movq %r14, R14+8(%rsp)
-	movq %r15, R15+8(%rsp)
-	movl $1,%ebx
+	movq %rdi, RDI+OFF(%rsp)
+	movq %rsi, RSI+OFF(%rsp)
+	movq_cfi rdx, RDX+OFF
+	movq_cfi rcx, RCX+OFF
+	movq_cfi rax, RAX+OFF
+	movq %r8, R8+OFF(%rsp)
+	movq %r9, R9+OFF(%rsp)
+	movq %r10, R10+OFF(%rsp)
+	movq %r11, R11+OFF(%rsp)
+	movq_cfi rbx, RBX+OFF
+	movq %rbp, RBP+OFF(%rsp)
+	movq %r12, R12+OFF(%rsp)
+	movq %r13, R13+OFF(%rsp)
+	movq %r14, R14+OFF(%rsp)
+	movq %r15, R15+OFF(%rsp)
+	movq $-1,ORIG_RAX+OFF(%rsp)	/* no syscall to restart */
+33:
+	ASM_NOP5	/* May be replaced with jump to paranoid_save_gs */
+34:
+	movl $DO_NOTHING,%ebx
 	movl $MSR_GS_BASE,%ecx
 	rdmsr
 	testl %edx,%edx
 	js 1f	/* negative -> in kernel */
 	SWAPGS
-	xorl %ebx,%ebx
+	movl $DO_SWAPGS,%ebx
 1:	ret
+
+	/* Patch in jump to paranoid_save_gs for X86_FEATURE_FSGSBASE */
+	.section .altinstr_replacement,"ax"
+35:	.byte 0xe9 /* 32bit near jump */
+	.long paranoid_save_gs-34b
+	.previous
+	.section .altinstructions,"a"
+	altinstruction_entry 33b,35b,X86_FEATURE_FSGSBASE,5,5
+	.previous
+
+	/* Faster version not using RDMSR, and also not assuming
+	 * anything about the previous GS value.
+	 * This allows the user to arbitarily change GS using
+	 * WRGSBASE.
+	 */
+paranoid_save_gs:
+	RDGSBASE_R15			# read previous gs
+	movq STKMSK(%rsp),%rax		# get ist stack mask
+	andq %rsp,%rax			# get bottom of stack
+	movq (%rax),%rdi		# get expected GS
+	WRGSBASE_RDI			# set gs for kernel
+	mov $DO_RESTORE_R15,%ebx	# flag for exit code
+	testl $3,CS+OFF(%rsp)		# did we come from ring 0?
+	je paranoid_save_gs_kernel
+	/*
+	 * Saving GS in the task struct allows a debugger to manipulate
+	 * it. We only do this when coming from ring 3 to avoid recursion
+	 * clobbering the state.
+	 */
+	movq PER_CPU_VAR(current_task),%rcx # get current
+	movb $1,task_thread_gs_saved(%rcx)  # tell context switch gs is
+					    # is already saved
+	movq %r15,task_thread_gs(%rcx)      # save gs in task struct
+paranoid_save_gs_kernel:
+	ret
+
 	CFI_ENDPROC
 END(save_paranoid)
 
@@ -1053,7 +1109,8 @@ apicinterrupt IRQ_WORK_VECTOR \
  */
 #define INIT_TSS_IST(x) PER_CPU_VAR(init_tss) + (TSS_ist + ((x) - 1) * 8)
 
-.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1
+.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1 \
+		stack_mask=-EXCEPTION_STKSZ
 ENTRY(\sym)
 	/* Sanity check */
 	.if \shift_ist != -1 && \paranoid == 0
@@ -1077,7 +1134,10 @@ ENTRY(\sym)
 	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
 
 	.if \paranoid
+	pushq_cfi $\stack_mask		/* ist stack size */
 	call save_paranoid
+	/* r15: previous gs */
+	popq_cfi %rax			/* Drop ist stack size */
 	.else
 	call error_entry
 	.endif
@@ -1112,7 +1172,7 @@ ENTRY(\sym)
 	.endif
 
 	.if \paranoid
-	jmp paranoid_exit		/* %ebx: no swapgs flag */
+	jmp paranoid_exit		/* %ebx: no swapgs flag, r15: old gs */
 	.else
 	jmp error_exit			/* %ebx: no swapgs flag */
 	.endif
@@ -1300,8 +1360,10 @@ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
 	hyperv_callback_vector hyperv_vector_handler
 #endif /* CONFIG_HYPERV */
 
-idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
-idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
+idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
+	 stack_mask=-DEBUG_STKSZ
+idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
+	 stack_mask=-DEBUG_STKSZ
 idtentry stack_segment do_stack_segment has_error_code=1 paranoid=1
 #ifdef CONFIG_XEN
 idtentry xen_debug do_debug has_error_code=0
@@ -1330,18 +1392,24 @@ idtentry machine_check has_error_code=0 paranoid=1 do_sym=*machine_check_vector(
 	 * hard flags at once, atomically)
 	 */
 
-	/* ebx:	no swapgs flag */
+	/* ebx:	no swapgs flag, r15: gs if ebx == DO_RESTORE_R15 */
 ENTRY(paranoid_exit)
 	DEFAULT_FRAME
 	DISABLE_INTERRUPTS(CLBR_NONE)
 	TRACE_IRQS_OFF_DEBUG
-	testl %ebx,%ebx				/* swapgs needed? */
-	jnz paranoid_restore
+	cmpl  $DO_NOTHING,%ebx		/* swapgs needed? */
+	je  paranoid_restore
 	testl $3,CS(%rsp)
 	jnz   paranoid_userspace
 paranoid_swapgs:
 	TRACE_IRQS_IRETQ 0
+	cmpl  $DO_RESTORE_R15,%ebx	/* restore gs? */
+	je  paranoid_restore_gs
 	SWAPGS_UNSAFE_STACK
+	RESTORE_ALL 8
+	jmp irq_return
+paranoid_restore_gs:
+	WRGSBASE_R15
 	RESTORE_ALL 8
 	jmp irq_return
 paranoid_restore:
@@ -1350,29 +1418,43 @@ paranoid_restore:
 	jmp irq_return
 paranoid_userspace:
 	GET_THREAD_INFO(%rcx)
-	movl TI_flags(%rcx),%ebx
-	andl $_TIF_WORK_MASK,%ebx
-	jz paranoid_swapgs
+	movl TI_flags(%rcx),%ebp
+	andl $_TIF_WORK_MASK,%ebp
+	jz paranoid_clear_gs_flag
 	movq %rsp,%rdi			/* &pt_regs */
 	call sync_regs
 	movq %rax,%rsp			/* switch stack for scheduling */
-	testl $_TIF_NEED_RESCHED,%ebx
+	testl $_TIF_NEED_RESCHED,%ebp
 	jnz paranoid_schedule
-	movl %ebx,%edx			/* arg3: thread flags */
+	movl %ebp,%edx			/* arg3: thread flags */
 	TRACE_IRQS_ON
 	ENABLE_INTERRUPTS(CLBR_NONE)
 	xorl %esi,%esi 			/* arg2: oldset */
 	movq %rsp,%rdi 			/* arg1: &pt_regs */
 	call do_notify_resume
-	DISABLE_INTERRUPTS(CLBR_NONE)
-	TRACE_IRQS_OFF
-	jmp paranoid_userspace
+	jmp paranoid_after_schedule
+paranoid_clear_gs_flag:
+	movq PER_CPU_VAR(current_task),%rcx
+	movb $0,task_thread_gs_saved(%rcx)
+	jmp paranoid_swapgs
 paranoid_schedule:
 	TRACE_IRQS_ON
 	ENABLE_INTERRUPTS(CLBR_ANY)
 	SCHEDULE_USER
+paranoid_after_schedule:
 	DISABLE_INTERRUPTS(CLBR_ANY)
 	TRACE_IRQS_OFF
+	cmpl $DO_RESTORE_R15,%ebx
+	jne  paranoid_userspace
+	movq PER_CPU_VAR(current_task),%rcx
+	cmpb $0,task_thread_gs_saved(%rcx) /* did we schedule? */
+	jne  paranoid_userspace		   /* did not schedule: keep our gs */
+	/*
+	 * Otherwise the context switch has put the correct gs into
+	 * kernel_gs, so we can just end with swapgs and it
+	 * will DTRT.
+	 */
+	mov  $DO_SWAPGS,%ebx		   /* force swapgs after schedule */
 	jmp paranoid_userspace
 	CFI_ENDPROC
 END(paranoid_exit)
@@ -1663,6 +1745,7 @@ end_repeat_nmi:
 	pushq_cfi $-1		/* ORIG_RAX: no syscall to restart */
 	subq $ORIG_RAX-R15, %rsp
 	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
+	pushq_cfi $-EXCEPTION_STKSZ	/* ist stack size */
 	/*
 	 * Use save_paranoid to handle SWAPGS, but no need to use paranoid_exit
 	 * as we should not be calling schedule in NMI context.
@@ -1671,6 +1754,8 @@ end_repeat_nmi:
 	 * exceptions might do.
 	 */
 	call save_paranoid
+	/* r15: previous gs */
+	popq_cfi %rax		/* pop ist size */
 	DEFAULT_FRAME 0
 
 	/*
@@ -1695,11 +1780,21 @@ end_repeat_nmi:
 	je 1f
 	movq %r12, %cr2
 1:
-	
+	cmpl $DO_RESTORE_R15,%ebx
+	je nmi_gs_restore
 	testl %ebx,%ebx				/* swapgs needed? */
 	jnz nmi_restore
 nmi_swapgs:
 	SWAPGS_UNSAFE_STACK
+	jmp nmi_restore
+nmi_gs_restore:
+	/* If we came from ring 3 clear the saved gs flag. */
+	testl $3,CS(%rsp)
+	je   nmi_wrgsbase
+	movq PER_CPU_VAR(current_task),%rcx
+	movb $0,task_thread_gs_saved(%rcx)
+nmi_wrgsbase:
+	WRGSBASE_R15				/* restore gs */
 nmi_restore:
 	/* Pop the extra iret frame at once */
 	RESTORE_ALL 6*8

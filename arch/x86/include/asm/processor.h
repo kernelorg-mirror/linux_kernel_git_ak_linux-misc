@@ -522,6 +522,10 @@ struct thread_struct {
 	 * a short time
 	 */
 	unsigned char fpu_counter;
+	/*
+	 * Set to one when gs is already saved.
+	 */
+	unsigned char  gs_saved;
 };
 
 /*
