@@ -589,6 +589,9 @@ static void init_amd_k8(struct cpuinfo_x86 *c)
 	if ((level >= 0x0f48 && level < 0x0f50) || level >= 0x0f58)
 		set_cpu_cap(c, X86_FEATURE_REP_GOOD);
 
+	/* Early steppings needed a mfence on swapgs. */
+	set_cpu_bug(c, X86_BUG_SWAPGS_MFENCE);
+
 	/*
 	 * Some BIOSes incorrectly force this feature, but only K8 revision D
 	 * (model = 0x14) and later actually support it.
