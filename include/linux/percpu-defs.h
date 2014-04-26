@@ -163,6 +163,10 @@
 	DEFINE_PER_CPU_SECTION(type, name, "..page_aligned")		\
 	__aligned(PAGE_SIZE)
 
+#define DEFINE_PER_CPU_2PAGE_ALIGNED(type, name)			\
+	DEFINE_PER_CPU_SECTION(type, name, "..page_aligned")		\
+	__aligned(2*PAGE_SIZE)
+
 /*
  * Declaration/definition used for per-CPU variables that must be read mostly.
  */
