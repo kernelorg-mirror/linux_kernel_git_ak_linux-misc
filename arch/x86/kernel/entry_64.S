@@ -1216,12 +1216,20 @@ ENTRY(native_load_gs_index)
 	SWAPGS
 gs_change:
 	movl %edi,%gs
-2:	mfence		/* workaround */
+2:	ASM_NOP3	/* may be replaced with mfence */
 	SWAPGS
 	popfq_cfi
 	ret
 	CFI_ENDPROC
 END(native_load_gs_index)
+
+	/* Early K8 systems needed an mfence after swapgs to workaround a bug */
+	.section .altinstr_replacement,"ax"
+3:	mfence
+	.previous
+	.section .altinstructions,"a"
+	altinstruction_entry 2b,3b,X86_FEATURE_SWAPGS_MFENCE,3,3
+	.previous
 
 	_ASM_EXTABLE(gs_change,bad_gs)
 	.section .fixup,"ax"
