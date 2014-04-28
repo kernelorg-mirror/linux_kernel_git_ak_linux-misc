@@ -35,6 +35,7 @@
 #include <asm/desc.h>
 #include <asm/fpu/internal.h>
 #include <asm/mtrr.h>
+#include <asm/hwcap.h>
 #include <linux/numa.h>
 #include <asm/asm.h>
 #include <asm/cpu.h>
@@ -49,6 +50,8 @@
 #endif
 
 #include "cpu.h"
+
+unsigned elf_hwcap2 __read_mostly;
 
 /* all of these masks are initialized in setup_cpu_local_masks() */
 cpumask_var_t cpu_initialized_mask;
@@ -1019,8 +1022,10 @@ static void identify_cpu(struct cpuinfo_x86 *c)
 	/* The boot/hotplug time assigment got cleared, restore it */
 	c->logical_proc_id = topology_phys_to_logical_pkg(c->phys_proc_id);
 
-	if (cpu_has(c, X86_FEATURE_FSGSBASE))
+	if (cpu_has(c, X86_FEATURE_FSGSBASE)) {
+		elf_hwcap2 |= HWCAP2_FSGSBASE;
 		cr4_set_bits(X86_CR4_FSGSBASE);
+	}
 }
 
 /*
