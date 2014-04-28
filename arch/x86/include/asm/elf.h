@@ -256,6 +256,13 @@ extern int force_personality32;
 
 #define ELF_HWCAP		(boot_cpu_data.x86_capability[0])
 
+extern unsigned kernel_enabled_features;
+
+/* HWCAP2 supplies kernel enabled CPU feature, so that the application
+   can know that it can safely use them. The bits are defined in
+   uapi/asm/hwcap.h. */
+#define ELF_HWCAP2		kernel_enabled_features;
+
 /* This yields a string that ld.so will use to load implementation
    specific libraries for optimization.  This is more specific in
    intent than poking at uname or /proc/cpuinfo.
