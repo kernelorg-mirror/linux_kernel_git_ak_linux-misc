@@ -7288,6 +7288,12 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	atomic_switch_perf_msrs(vmx);
 	debugctlmsr = get_debugctlmsr();
 
+	/* Move this somewhere else? */
+	if (vcpu->arch.pmu.ds_area)
+		add_atomic_switch_msr(vmx, MSR_IA32_DS_AREA,
+				      vcpu->arch.pmu.ds_area,
+				      perf_get_ds_area());
+
 	vmx->__launched = vmx->loaded_vmcs->launched;
 	asm(
 		/* Store host registers */

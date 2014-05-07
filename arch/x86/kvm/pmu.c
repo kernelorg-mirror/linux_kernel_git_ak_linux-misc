@@ -15,9 +15,11 @@
 #include <linux/types.h>
 #include <linux/kvm_host.h>
 #include <linux/perf_event.h>
+#include <linux/highmem.h>
 #include "x86.h"
 #include "cpuid.h"
 #include "lapic.h"
+#include "mmu.h"
 
 static struct kvm_arch_event_perf_mapping {
 	u8 eventsel;
@@ -36,8 +38,22 @@ static struct kvm_arch_event_perf_mapping {
 	[7] = { 0x00, 0x30, PERF_COUNT_HW_REF_CPU_CYCLES },
 };
 
+struct debug_store {
+	u64	bts_buffer_base;
+	u64	bts_index;
+	u64	bts_absolute_maximum;
+	u64	bts_interrupt_threshold;
+	u64	pebs_buffer_base;
+	u64	pebs_index;
+	u64	pebs_absolute_maximum;
+	u64	pebs_interrupt_threshold;
+	u64	pebs_event_reset[4];
+};
+
 /* mapping between fixed pmc index and arch_events array */
 int fixed_pmc_events[] = {1, 0, 7};
+
+static u64 host_perf_cap __read_mostly;
 
 static bool pmc_is_gp(struct kvm_pmc *pmc)
 {
@@ -108,7 +124,10 @@ static void kvm_perf_overflow(struct perf_event *perf_event,
 {
 	struct kvm_pmc *pmc = perf_event->overflow_handler_context;
 	struct kvm_pmu *pmu = &pmc->vcpu->arch.pmu;
-	__set_bit(pmc->idx, (unsigned long *)&pmu->global_status);
+	if (perf_event->attr.precise_ip)
+		__set_bit(62, (unsigned long *)&pmu->global_status);
+	else
+		__set_bit(pmc->idx, (unsigned long *)&pmu->global_status);
 }
 
 static void kvm_perf_overflow_intr(struct perf_event *perf_event,
@@ -160,7 +179,7 @@ static void stop_counter(struct kvm_pmc *pmc)
 
 static void reprogram_counter(struct kvm_pmc *pmc, u32 type,
 		unsigned config, bool exclude_user, bool exclude_kernel,
-		bool intr, bool in_tx, bool in_tx_cp)
+		bool intr, bool in_tx, bool in_tx_cp, bool pebs)
 {
 	struct perf_event *event;
 	struct perf_event_attr attr = {
@@ -177,18 +196,20 @@ static void reprogram_counter(struct kvm_pmc *pmc, u32 type,
 		attr.config |= HSW_IN_TX;
 	if (in_tx_cp)
 		attr.config |= HSW_IN_TX_CHECKPOINTED;
+	if (pebs)
+		attr.precise_ip = 1;
 
 	attr.sample_period = (-pmc->counter) & pmc_bitmask(pmc);
 
-	event = perf_event_create_kernel_counter(&attr, -1, current,
-						 intr ? kvm_perf_overflow_intr :
-						 kvm_perf_overflow, pmc);
+	event = __perf_event_create_kernel_counter(&attr, -1, current,
+						 (intr || pebs) ?
+						 kvm_perf_overflow_intr :
+						 kvm_perf_overflow, pmc, true);
 	if (IS_ERR(event)) {
 		printk_once("kvm: pmu event creation failed %ld\n",
 				PTR_ERR(event));
 		return;
 	}
-	event->guest_owned = true;
 
 	pmc->perf_event = event;
 	clear_bit(pmc->idx, (unsigned long*)&pmc->vcpu->arch.pmu.reprogram_pmi);
@@ -211,7 +232,8 @@ static unsigned find_arch_event(struct kvm_pmu *pmu, u8 event_select,
 	return arch_events[i].event_type;
 }
 
-static void reprogram_gp_counter(struct kvm_pmc *pmc, u64 eventsel)
+static void reprogram_gp_counter(struct kvm_pmu *pmu, struct kvm_pmc *pmc,
+				 u64 eventsel)
 {
 	unsigned config, type = PERF_TYPE_RAW;
 	u8 event_select, unit_mask;
@@ -248,7 +270,8 @@ static void reprogram_gp_counter(struct kvm_pmc *pmc, u64 eventsel)
 			!(eventsel & ARCH_PERFMON_EVENTSEL_OS),
 			eventsel & ARCH_PERFMON_EVENTSEL_INT,
 			(eventsel & HSW_IN_TX),
-			(eventsel & HSW_IN_TX_CHECKPOINTED));
+			(eventsel & HSW_IN_TX_CHECKPOINTED),
+			test_bit(pmc->idx, (unsigned long *)&pmu->pebs_enable));
 }
 
 static void reprogram_fixed_counter(struct kvm_pmc *pmc, u8 en_pmi, int idx)
@@ -265,7 +288,7 @@ static void reprogram_fixed_counter(struct kvm_pmc *pmc, u8 en_pmi, int idx)
 			arch_events[fixed_pmc_events[idx]].event_type,
 			!(en & 0x2), /* exclude user */
 			!(en & 0x1), /* exclude kernel */
-			pmi, false, false);
+			pmi, false, false, false);
 }
 
 static inline u8 fixed_en_pmi(u64 ctrl, int idx)
@@ -298,7 +321,7 @@ static void reprogram_idx(struct kvm_pmu *pmu, int idx)
 		return;
 
 	if (pmc_is_gp(pmc))
-		reprogram_gp_counter(pmc, pmc->eventsel);
+		reprogram_gp_counter(pmu, pmc, pmc->eventsel);
 	else {
 		int fidx = idx - INTEL_PMC_IDX_FIXED;
 		reprogram_fixed_counter(pmc,
@@ -323,6 +346,12 @@ bool kvm_pmu_msr(struct kvm_vcpu *vcpu, u32 msr)
 	int ret;
 
 	switch (msr) {
+	case MSR_IA32_DS_AREA:
+	case MSR_IA32_PEBS_ENABLE:
+	case MSR_IA32_PERF_CAPABILITIES:
+		ret = perf_pebs_virtualization() ? 1 : 0;
+		break;
+
 	case MSR_CORE_PERF_FIXED_CTR_CTRL:
 	case MSR_CORE_PERF_GLOBAL_STATUS:
 	case MSR_CORE_PERF_GLOBAL_CTRL:
@@ -356,6 +385,18 @@ int kvm_pmu_get_msr(struct kvm_vcpu *vcpu, u32 index, u64 *data)
 	case MSR_CORE_PERF_GLOBAL_OVF_CTRL:
 		*data = pmu->global_ovf_ctrl;
 		return 0;
+	case MSR_IA32_DS_AREA:
+		*data = pmu->ds_area;
+		return 0;
+	case MSR_IA32_PEBS_ENABLE:
+		*data = pmu->pebs_enable;
+		return 0;
+	case MSR_IA32_PERF_CAPABILITIES:
+		/* Report host PEBS format to guest */
+		*data = host_perf_cap &
+			(PERF_CAP_PEBS_TRAP | PERF_CAP_ARCH_REG |
+			 PERF_CAP_PEBS_FORMAT);
+		return 0;
 	default:
 		if ((pmc = get_gp_pmc(pmu, index, MSR_IA32_PERFCTR0)) ||
 				(pmc = get_fixed_pmc(pmu, index))) {
@@ -367,6 +408,109 @@ int kvm_pmu_get_msr(struct kvm_vcpu *vcpu, u32 index, u64 *data)
 		}
 	}
 	return 1;
+}
+
+static void kvm_pmu_release_pin(struct kvm_vcpu *vcpu)
+{
+	struct kvm_pmu *pmu = &vcpu->arch.pmu;
+	int i;
+
+	for (i = 0; i < pmu->num_pinned_pages; i++)
+		put_page(pmu->pinned_pages[i]);
+	pmu->num_pinned_pages = 0;
+}
+
+static struct page *get_guest_page(struct kvm_vcpu *vcpu,
+				   unsigned long addr)
+{
+	unsigned long pfn;
+	struct x86_exception exception;
+	gpa_t gpa = vcpu->arch.walk_mmu->gva_to_gpa(vcpu, addr,
+						    PFERR_WRITE_MASK,
+						    &exception);
+
+	if (gpa == UNMAPPED_GVA) {
+		printk_once("Cannot translate guest page %lx\n", addr);
+		return NULL;
+	}
+	pfn = gfn_to_pfn(vcpu->kvm, gpa_to_gfn(gpa));
+	if (is_error_noslot_pfn(pfn)) {
+		printk_once("gfn_to_pfn failed for %llx\n", gpa);
+		return NULL;
+	}
+	return pfn_to_page(pfn);
+}
+
+static int pin_and_copy(struct kvm_vcpu *vcpu,
+			unsigned long addr, void *dst, int len,
+			struct page **p)
+{
+	unsigned long offset = addr & ~PAGE_MASK;
+	void *map;
+
+	*p = get_guest_page(vcpu, addr);
+	if (!*p)
+		return -EIO;
+	map = kmap(*p);
+	memcpy(dst, map + offset, len);
+	kunmap(map);
+	return 0;
+}
+
+/*
+ * Pin the DS area and the PEBS buffer while PEBS is active,
+ * because the CPU cannot tolerate EPT faults for PEBS updates.
+ *
+ * We assume that any guest who changes the DS buffer disables
+ * PEBS first and does not change the page tables during operation.
+ *
+ * When the guest violates these assumptions it may crash itself.
+ * This is expected to not happen with standard profilers.
+ *
+ * No need to clean up anything, as the caller will always eventually
+ * unpin pages.
+ */
+
+static void kvm_pmu_pebs_pin(struct kvm_vcpu *vcpu)
+{
+	struct kvm_pmu *pmu = &vcpu->arch.pmu;
+	struct debug_store ds;
+	int pg;
+	unsigned len;
+	unsigned long offset;
+	unsigned long addr;
+
+	offset = pmu->ds_area & ~PAGE_MASK;
+	len = sizeof(struct debug_store);
+	len = min_t(unsigned, PAGE_SIZE - offset, len);
+	if (pin_and_copy(vcpu, pmu->ds_area, &ds, len,
+			 &pmu->pinned_pages[0]) < 0) {
+		printk_once("Cannot pin ds area %llx\n", pmu->ds_area);
+		return;
+	}
+	pmu->num_pinned_pages++;
+	if (len < sizeof(struct debug_store)) {
+		if (pin_and_copy(vcpu, pmu->ds_area + len, (void *)&ds + len,
+				  sizeof(struct debug_store) - len,
+				  &pmu->pinned_pages[1]) < 0)
+			return;
+		pmu->num_pinned_pages++;
+	}
+
+	pg = pmu->num_pinned_pages;
+	for (addr = ds.pebs_buffer_base;
+	     addr < ds.pebs_absolute_maximum && pg < MAX_PINNED_PAGES;
+	     addr += PAGE_SIZE, pg++) {
+		pmu->pinned_pages[pg] = get_guest_page(vcpu, addr);
+		if (!pmu->pinned_pages[pg]) {
+			printk_once("Cannot pin PEBS buffer %lx (%llx-%llx)\n",
+				 addr,
+				 ds.pebs_buffer_base,
+				 ds.pebs_absolute_maximum);
+			break;
+		}
+	}
+	pmu->num_pinned_pages = pg;
 }
 
 int kvm_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
@@ -407,6 +551,20 @@ int kvm_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			return 0;
 		}
 		break;
+	case MSR_IA32_DS_AREA:
+		pmu->ds_area = data;
+		return 0;
+	case MSR_IA32_PEBS_ENABLE:
+		if (data & ~0xf0000000fULL)
+			break;
+		if (data && data != pmu->pebs_enable) {
+			kvm_pmu_release_pin(vcpu);
+			kvm_pmu_pebs_pin(vcpu);
+		} else if (data == 0 && pmu->pebs_enable) {
+			kvm_pmu_release_pin(vcpu);
+		}
+		pmu->pebs_enable = data;
+		return 0;
 	default:
 		if ((pmc = get_gp_pmc(pmu, index, MSR_IA32_PERFCTR0)) ||
 				(pmc = get_fixed_pmc(pmu, index))) {
@@ -418,7 +576,7 @@ int kvm_pmu_set_msr(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 			if (data == pmc->eventsel)
 				return 0;
 			if (!(data & pmu->reserved_bits)) {
-				reprogram_gp_counter(pmc, data);
+				reprogram_gp_counter(pmu, pmc, data);
 				return 0;
 			}
 		}
@@ -514,6 +672,9 @@ void kvm_pmu_init(struct kvm_vcpu *vcpu)
 	}
 	init_irq_work(&pmu->irq_work, trigger_pmi);
 	kvm_pmu_cpuid_update(vcpu);
+
+	if (boot_cpu_has(X86_FEATURE_PDCM))
+		rdmsrl_safe(MSR_IA32_PERF_CAPABILITIES, &host_perf_cap);
 }
 
 void kvm_pmu_reset(struct kvm_vcpu *vcpu)
@@ -538,6 +699,7 @@ void kvm_pmu_reset(struct kvm_vcpu *vcpu)
 void kvm_pmu_destroy(struct kvm_vcpu *vcpu)
 {
 	kvm_pmu_reset(vcpu);
+	kvm_pmu_release_pin(vcpu);
 }
 
 void kvm_handle_pmu_event(struct kvm_vcpu *vcpu)

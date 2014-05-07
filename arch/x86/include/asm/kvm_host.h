@@ -319,6 +319,8 @@ struct kvm_pmc {
 	struct kvm_vcpu *vcpu;
 };
 
+#define MAX_PINNED_PAGES 17 /* 64k buffer + ds */
+
 struct kvm_pmu {
 	unsigned nr_arch_gp_counters;
 	unsigned nr_arch_fixed_counters;
@@ -335,6 +337,10 @@ struct kvm_pmu {
 	struct kvm_pmc fixed_counters[INTEL_PMC_MAX_FIXED];
 	struct irq_work irq_work;
 	u64 reprogram_pmi;
+	u64 pebs_enable;
+	u64 ds_area;
+	struct page *pinned_pages[MAX_PINNED_PAGES];
+	unsigned num_pinned_pages;
 };
 
 enum {
