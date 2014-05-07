@@ -998,6 +998,53 @@ static void intel_pmu_drain_pebs_core(struct pt_regs *iregs)
 	__intel_pmu_pebs_event(event, iregs, at);
 }
 
+/*
+ * We may be running with virtualized PEBS, so the PEBS record
+ * was logged into the guest's DS and is invisible to us.
+ *
+ * For guest-owned counters we always have to check the counter
+ * and see if they are overflowed, because PEBS thresholds
+ * are not reported in the GLOBAL_STATUS.
+ *
+ * In this case just trigger a fake event for KVM to forward
+ * to the guest as PMI.  The guest will then see the real PEBS
+ * record and read the counter values.
+ *
+ * The contents of the event do not matter.
+ */
+static void intel_pmu_handle_guest_pebs(struct cpu_hw_events *cpuc,
+					struct pt_regs *iregs)
+{
+	int bit;
+	struct perf_event *event;
+
+	if (!cpuc->intel_ctrl_guest_owned)
+		return;
+
+	for_each_set_bit(bit, (unsigned long *)&cpuc->intel_ctrl_guest_owned,
+			 x86_pmu.max_pebs_events) {
+		struct perf_sample_data data;
+		s64 count;
+		int shift;
+
+		event = cpuc->events[bit];
+		if (!event->attr.precise_ip)
+			continue;
+		rdpmcl(event->hw.event_base_rdpmc, count);
+
+		/* sign extend */
+		shift = 64 - x86_pmu.cntval_bits;
+		count = ((s64)((u64)count << shift)) >> shift;
+
+		if (count < 0)
+			continue;
+
+		perf_sample_data_init(&data, 0, event->hw.last_period);
+		if (perf_event_overflow(event, &data, iregs))
+			x86_pmu_stop(event, 0);
+	}
+}
+
 static void intel_pmu_drain_pebs_nhm(struct pt_regs *iregs)
 {
 	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
@@ -1009,6 +1056,8 @@ static void intel_pmu_drain_pebs_nhm(struct pt_regs *iregs)
 
 	if (!x86_pmu.pebs_active)
 		return;
+
+	intel_pmu_handle_guest_pebs(cpuc, iregs);
 
 	at  = (struct pebs_record_nhm *)(unsigned long)ds->pebs_buffer_base;
 	top = (struct pebs_record_nhm *)(unsigned long)ds->pebs_index;
