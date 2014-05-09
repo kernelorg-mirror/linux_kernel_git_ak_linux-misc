@@ -2399,6 +2399,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.pebs_constraints = intel_slm_pebs_event_constraints;
 		x86_pmu.extra_regs = intel_slm_extra_regs;
 		x86_pmu.er_flags |= ERF_HAS_RSP_1;
+		x86_pmu.pebs_virtualization = true;
 		pr_cont("Silvermont events, ");
 		break;
 

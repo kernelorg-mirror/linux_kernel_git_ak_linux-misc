@@ -429,6 +429,26 @@ void reserve_ds_buffers(void)
 	put_online_cpus();
 }
 
+unsigned long long perf_get_ds_area(void)
+{
+	return (u64)__get_cpu_var(cpu_hw_events).ds;
+}
+EXPORT_SYMBOL_GPL(perf_get_ds_area);
+
+unsigned long long perf_get_pebs_enable(void)
+{
+	struct cpu_hw_events *cpuc = &__get_cpu_var(cpu_hw_events);
+
+	return cpuc->pebs_enabled;
+}
+EXPORT_SYMBOL_GPL(perf_get_pebs_enable);
+
+bool perf_pebs_virtualization(void)
+{
+	return x86_pmu.pebs_virtualization;
+}
+EXPORT_SYMBOL_GPL(perf_pebs_virtualization);
+
 /*
  * BTS
  */
