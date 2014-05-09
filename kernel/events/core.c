@@ -7249,10 +7249,10 @@ err_fd:
  * @task: task to profile (NULL for percpu)
  */
 struct perf_event *
-perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
+__perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 				 struct task_struct *task,
 				 perf_overflow_handler_t overflow_handler,
-				 void *context)
+				 void *context, bool guest_owned)
 {
 	struct perf_event_context *ctx;
 	struct perf_event *event;
@@ -7268,6 +7268,7 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 		err = PTR_ERR(event);
 		goto err;
 	}
+	event->guest_owned = guest_owned;
 
 	account_event(event);
 
@@ -7290,7 +7291,7 @@ err_free:
 err:
 	return ERR_PTR(err);
 }
-EXPORT_SYMBOL_GPL(perf_event_create_kernel_counter);
+EXPORT_SYMBOL_GPL(__perf_event_create_kernel_counter);
 
 void perf_pmu_migrate_context(struct pmu *pmu, int src_cpu, int dst_cpu)
 {

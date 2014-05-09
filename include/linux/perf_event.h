@@ -437,6 +437,8 @@ struct perf_event {
 	int				cgrp_defer_enabled;
 #endif
 
+	bool				guest_owned;	/* Owned by a guest */
+
 #endif /* CONFIG_PERF_EVENTS */
 };
 
@@ -550,11 +552,22 @@ extern int perf_event_refresh(struct perf_event *event, int refresh);
 extern void perf_event_update_userpage(struct perf_event *event);
 extern int perf_event_release_kernel(struct perf_event *event);
 extern struct perf_event *
+__perf_event_create_kernel_counter(struct perf_event_attr *attr,
+				int cpu,
+				struct task_struct *task,
+				perf_overflow_handler_t callback,
+				void *context, bool guest_owned);
+static inline struct perf_event *
 perf_event_create_kernel_counter(struct perf_event_attr *attr,
 				int cpu,
 				struct task_struct *task,
 				perf_overflow_handler_t callback,
-				void *context);
+				void *context)
+{
+	return __perf_event_create_kernel_counter(attr, cpu, task, callback,
+						  context, false);
+}
+
 extern void perf_pmu_migrate_context(struct pmu *pmu,
 				int src_cpu, int dst_cpu);
 extern u64 perf_event_read_value(struct perf_event *event,

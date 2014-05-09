@@ -163,6 +163,7 @@ struct cpu_hw_events {
 	 */
 	u64				intel_ctrl_guest_mask;
 	u64				intel_ctrl_host_mask;
+	u64				intel_ctrl_guest_owned;
 	struct perf_guest_switch_msr	guest_switch_msrs[X86_PMC_IDX_MAX];
 
 	/*

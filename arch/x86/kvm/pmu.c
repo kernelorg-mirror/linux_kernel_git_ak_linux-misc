@@ -188,6 +188,7 @@ static void reprogram_counter(struct kvm_pmc *pmc, u32 type,
 				PTR_ERR(event));
 		return;
 	}
+	event->guest_owned = true;
 
 	pmc->perf_event = event;
 	clear_bit(pmc->idx, (unsigned long*)&pmc->vcpu->arch.pmu.reprogram_pmi);
