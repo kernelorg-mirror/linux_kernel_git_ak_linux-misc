@@ -431,7 +431,7 @@ void reserve_ds_buffers(void)
 
 unsigned long long perf_get_ds_area(void)
 {
-	return (u64)__get_cpu_var(cpu_hw_events).ds;
+	return (unsigned long)__get_cpu_var(cpu_hw_events).ds;
 }
 EXPORT_SYMBOL_GPL(perf_get_ds_area);
 
