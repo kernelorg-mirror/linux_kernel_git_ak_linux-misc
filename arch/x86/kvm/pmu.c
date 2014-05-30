@@ -420,6 +420,8 @@ static void kvm_pmu_release_pin(struct kvm_vcpu *vcpu)
 	pmu->num_pinned_pages = 0;
 }
 
+/* XXX what protects the page table walking?
+   The other KVM code doesn't seem to take a lock here either. */
 static struct page *get_guest_page(struct kvm_vcpu *vcpu,
 				   unsigned long addr)
 {
@@ -438,7 +440,7 @@ static struct page *get_guest_page(struct kvm_vcpu *vcpu,
 		printk_once("gfn_to_pfn failed for %llx\n", gpa);
 		return NULL;
 	}
-	return pfn_to_page(pfn);
+	return get_page(pfn_to_page(pfn));
 }
 
 static int pin_and_copy(struct kvm_vcpu *vcpu,
@@ -453,7 +455,7 @@ static int pin_and_copy(struct kvm_vcpu *vcpu,
 		return -EIO;
 	map = kmap(*p);
 	memcpy(dst, map + offset, len);
-	kunmap(map);
+	kunmap(*p);
 	return 0;
 }
 
