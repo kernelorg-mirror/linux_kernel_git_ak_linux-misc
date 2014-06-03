@@ -348,8 +348,10 @@ bool kvm_pmu_msr(struct kvm_vcpu *vcpu, u32 msr)
 	switch (msr) {
 	case MSR_IA32_DS_AREA:
 	case MSR_IA32_PEBS_ENABLE:
+		ret = pmu->supports_pebs;
+		break;
 	case MSR_IA32_PERF_CAPABILITIES:
-		ret = perf_pebs_virtualization() ? 1 : 0;
+		ret = 1;
 		break;
 
 	case MSR_CORE_PERF_FIXED_CTR_CTRL:
@@ -392,10 +394,13 @@ int kvm_pmu_get_msr(struct kvm_vcpu *vcpu, u32 index, u64 *data)
 		*data = pmu->pebs_enable;
 		return 0;
 	case MSR_IA32_PERF_CAPABILITIES:
-		/* Report host PEBS format to guest */
-		*data = host_perf_cap &
-			(PERF_CAP_PEBS_TRAP | PERF_CAP_ARCH_REG |
-			 PERF_CAP_PEBS_FORMAT);
+		if (pmu->supports_pebs) {
+			/* Report host PEBS format to guest */
+			*data = host_perf_cap &
+				(PERF_CAP_PEBS_TRAP | PERF_CAP_ARCH_REG |
+				 PERF_CAP_PEBS_FORMAT);
+		} else
+			*data = 0;
 		return 0;
 	default:
 		if ((pmc = get_gp_pmc(pmu, index, MSR_IA32_PERFCTR0)) ||
@@ -654,6 +659,12 @@ void kvm_pmu_cpuid_update(struct kvm_vcpu *vcpu)
 	    (boot_cpu_has(X86_FEATURE_HLE) || boot_cpu_has(X86_FEATURE_RTM)) &&
 	    (entry->ebx & (X86_FEATURE_HLE|X86_FEATURE_RTM)))
 		pmu->reserved_bits ^= HSW_IN_TX|HSW_IN_TX_CHECKPOINTED;
+
+	entry = kvm_find_cpuid_entry(vcpu, 1, 0);
+	pmu->supports_pebs = perf_pebs_virtualization() &&
+		(entry->edx & (1U << (X86_FEATURE_DS % 32))) &&
+		(entry->ecx & (1U << (X86_FEATURE_PDCM % 32))) &&
+		(entry->ecx & (1U << (X86_FEATURE_DTES64 % 32)));
 }
 
 void kvm_pmu_init(struct kvm_vcpu *vcpu)

@@ -340,6 +340,7 @@ struct kvm_pmu {
 	u64 pebs_enable;
 	u64 ds_area;
 	struct page *pinned_pages[MAX_PINNED_PAGES];
+	int supports_pebs;
 	unsigned num_pinned_pages;
 };
 
