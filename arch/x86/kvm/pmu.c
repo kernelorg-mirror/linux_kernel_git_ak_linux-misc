@@ -432,6 +432,7 @@ static struct page *get_guest_page(struct kvm_vcpu *vcpu,
 {
 	unsigned long pfn;
 	struct x86_exception exception;
+	struct page *page;
 	gpa_t gpa = vcpu->arch.walk_mmu->gva_to_gpa(vcpu, addr,
 						    PFERR_WRITE_MASK,
 						    &exception);
@@ -445,7 +446,10 @@ static struct page *get_guest_page(struct kvm_vcpu *vcpu,
 		printk_once("gfn_to_pfn failed for %llx\n", gpa);
 		return NULL;
 	}
-	return get_page(pfn_to_page(pfn));
+	page = pfn_to_page(pfn);
+	get_page(page);
+	trace_printk("count after get %d\n", atomic_read(&page->_count));
+	return page;
 }
 
 static int pin_and_copy(struct kvm_vcpu *vcpu,
