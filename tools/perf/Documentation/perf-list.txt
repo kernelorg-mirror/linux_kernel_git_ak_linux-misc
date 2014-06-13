@@ -8,7 +8,7 @@ perf-list - List all symbolic event types
 SYNOPSIS
 --------
 [verse]
-'perf list' [hw|sw|cache|tracepoint|pmu|event_glob]
+'perf list' [--no-desc] [hw|sw|cache|tracepoint|pmu|event_glob]
 
 DESCRIPTION
 -----------
@@ -22,6 +22,9 @@ Specify JSON event list file to use for parsing events. Files can be
 automatically downloaded with perf download.
 The JSON event file can be also specified with the EVENTMAP environment
 variable.
+
+--no-desc::
+Don't print descriptions.
 
 
 [[EVENT_MODIFIERS]] EVENT MODIFIERS
