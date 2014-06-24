@@ -152,6 +152,8 @@ static inline notrace unsigned long arch_local_irq_save(void)
 #endif /* CONFIG_PARAVIRT */
 
 #ifndef __ASSEMBLY__
+#include <linux/rtm.h>
+
 static inline int arch_irqs_disabled_flags(unsigned long flags)
 {
 	return !(flags & X86_EFLAGS_IF);
@@ -159,8 +161,11 @@ static inline int arch_irqs_disabled_flags(unsigned long flags)
 
 static inline int arch_irqs_disabled(void)
 {
-	unsigned long flags = arch_local_save_flags();
+	unsigned long flags;
 
+	if (_xtest())
+		return 1;
+	flags = arch_local_save_flags();
 	return arch_irqs_disabled_flags(flags);
 }
 
