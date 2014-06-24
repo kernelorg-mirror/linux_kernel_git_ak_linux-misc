@@ -2720,12 +2720,20 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct file *file = iocb->ki_filp;
 	struct inode *inode = file->f_mapping->host;
 	ssize_t ret;
+	bool disabled = false;
 
 	BUG_ON(iocb->ki_pos != pos);
 
+	/* Larger copies exceed the capacity of the transaction */
+	if (nr_segs > 1 || (nr_segs == 1 && iov[0].iov_len > 256)) {
+		disable_txn();
+		disabled = true;
+	}
 	mutex_lock(&inode->i_mutex);
 	ret = __generic_file_aio_write(iocb, iov, nr_segs);
 	mutex_unlock(&inode->i_mutex);
+	if (disabled)
+		reenable_txn();
 
 	if (ret > 0) {
 		ssize_t err;
