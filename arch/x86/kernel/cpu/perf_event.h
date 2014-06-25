@@ -240,6 +240,11 @@ struct cpu_hw_events {
 	int excl_thread_id; /* 0 or 1 */
 
 	/*
+	 * Counter freezing state.
+	 */
+	int				frozen_enabled;
+
+	/*
 	 * AMD specific bits
 	 */
 	struct amd_nb			*amd_nb;
