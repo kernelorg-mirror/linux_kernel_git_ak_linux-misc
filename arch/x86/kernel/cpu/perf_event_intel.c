@@ -1596,6 +1596,23 @@ static void intel_pmu_nhm_enable_all(int added)
 	intel_pmu_enable_all(added);
 }
 
+static inline bool event_can_freeze(struct perf_event *event)
+{
+	return x86_pmu.version >= 4;
+}
+
+static void enable_counter_freeze(void)
+{
+	update_debugctlmsr(get_debugctlmsr() |
+			DEBUGCTLMSR_FREEZE_PERFMON_ON_PMI);
+}
+
+static void disable_counter_freeze(void)
+{
+	update_debugctlmsr(get_debugctlmsr() &
+			~DEBUGCTLMSR_FREEZE_PERFMON_ON_PMI);
+}
+
 static inline u64 intel_pmu_get_status(void)
 {
 	u64 status;
@@ -1648,6 +1665,14 @@ static void intel_pmu_disable_event(struct perf_event *event)
 	 */
 	if (needs_branch_stack(event))
 		intel_pmu_lbr_disable(event);
+
+	/*
+	 * We could disable freezing here, but doesn't hurt if it's on.
+	 * perf remembers the state, and someone else will likely
+	 * reinitialize.
+	 *
+	 * This avoids an extra MSR write in many situations.
+	 */
 
 	if (unlikely(hwc->config_base == MSR_ARCH_PERFMON_FIXED_CTR_CTRL)) {
 		intel_pmu_disable_fixed(hwc);
@@ -1714,6 +1739,11 @@ static void intel_pmu_enable_event(struct perf_event *event)
 		cpuc->intel_ctrl_guest_mask |= (1ull << hwc->idx);
 	if (event->attr.exclude_guest)
 		cpuc->intel_ctrl_host_mask |= (1ull << hwc->idx);
+
+	if (x86_pmu.version >= 4 && !cpuc->frozen_enabled) {
+		enable_counter_freeze();
+		cpuc->frozen_enabled = 1;
+	}
 
 	if (unlikely(event_is_checkpointed(event)))
 		cpuc->intel_cp_status |= (1ull << hwc->idx);
@@ -1800,6 +1830,7 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	u64 status;
 	u64 orig_status;
 	int handled;
+	bool freeze;
 
 	cpuc = this_cpu_ptr(&cpu_hw_events);
 
@@ -1809,7 +1840,18 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	 */
 	if (!x86_pmu.late_ack)
 		apic_write(APIC_LVTPC, APIC_DM_NMI);
-	__intel_pmu_disable_all();
+	/*
+	 * With counter freezing the CPU freezes counters on PMI.
+	 * This makes measurements more accurate and generally has
+	 * lower overhead, as we need to change less registers.
+	 *
+	 * We only freeze when all events are in fixed period mode.
+	 */
+	freeze = cpuc->frozen_enabled > 0;
+	if (!freeze)
+		__intel_pmu_disable_all();
+	else
+		intel_pmu_maybe_disable_bts();
 	handled = intel_pmu_drain_bts_buffer();
 	handled += intel_bts_interrupt();
 	status = intel_pmu_get_status();
@@ -1918,7 +1960,10 @@ done:
 	 */
 	if (x86_pmu.status_ack_after_apic) {
 		intel_pmu_ack_status(orig_status);
-		__intel_pmu_enable_all(0, true);
+		if (!freeze)
+			__intel_pmu_enable_all(0, true);
+		else
+			intel_pmu_maybe_enable_bts();
 	}
 	return handled;
 }
@@ -2908,6 +2953,11 @@ static void intel_pmu_cpu_dying(int cpu)
 	free_excl_cntrs(cpu);
 
 	fini_debug_store_on_cpu(cpu);
+
+	if (cpuc->frozen_enabled) {
+		cpuc->frozen_enabled = 0;
+		disable_counter_freeze();
+	}
 }
 
 static void intel_pmu_sched_task(struct perf_event_context *ctx,
@@ -3644,6 +3694,13 @@ __init int intel_pmu_init(void)
 		x86_pmu.perfctr = MSR_IA32_PMC0;
 		pr_cont("full-width counters, ");
 	}
+
+	/*
+	 * For arch perfmon 4 use counter freezing to avoid
+	 * several MSR accesses in the PMI.
+	 */
+	if (x86_pmu.version >= 4)
+		pr_cont("counter freezing, ");
 
 	return 0;
 }
