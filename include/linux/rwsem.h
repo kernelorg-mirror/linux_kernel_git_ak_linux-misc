@@ -44,12 +44,6 @@ extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
 /* Include the arch specific part */
 #include <asm/rwsem.h>
 
-#ifndef ARCH_HAS_RWSEM_STATE
-#define down_read_state(a, b) down_read(a)
-#define down_read_trylock_state(a, b) down_read_trylock(a)
-#define up_read_state(a, b) up_read(a)
-#endif
-
 /* In all implementations count != 0 means locked */
 static inline int rwsem_is_locked(struct rw_semaphore *sem)
 {
@@ -57,6 +51,24 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 	return sem->count != 0;
 }
 
+#endif
+
+#ifndef ARCH_HAS_RWSEM_STATE
+
+static inline void down_read_state(struct rw_semaphore *sem, int *state)
+{
+	down_read(sem);
+}
+
+static inline int down_read_state(struct rw_semaphore *sem, int *state)
+{
+	return down_read_trylock(sem);
+}
+
+static inline void up_read_state(struct rw_semaphore *sem, int state)
+{
+	up_read(sem);
+}
 #endif
 
 /* Common initializer macros and functions */
