@@ -186,13 +186,20 @@ static int shmem_reserve_inode(struct super_block *sb)
 {
 	struct shmem_sb_info *sbinfo = SHMEM_SB(sb);
 	if (sbinfo->max_inodes) {
-		spin_lock(&sbinfo->stat_lock);
-		if (!sbinfo->free_inodes) {
-			spin_unlock(&sbinfo->stat_lock);
+		/*
+		 * We could take the stat_lock here.
+		 * It is not needed to protect the (percpu) counter.
+		 * However it would avoid a race with remount
+		 * with a shrinking inode limit where during a short
+		 * window the file system could go over the new limit.
+		 * Doesn't seem worth taking the lock every time here.
+		 * just for this.
+		 * Note with lock-elision the lock would be nearly free.
+		 */
+		if (percpu_counter_compare(&sbinfo->used_inodes,
+					   sbinfo->max_inodes) >= 0)
 			return -ENOSPC;
-		}
-		sbinfo->free_inodes--;
-		spin_unlock(&sbinfo->stat_lock);
+		percpu_counter_add(&sbinfo->used_inodes, 1);
 	}
 	return 0;
 }
@@ -200,11 +207,8 @@ static int shmem_reserve_inode(struct super_block *sb)
 static void shmem_free_inode(struct super_block *sb)
 {
 	struct shmem_sb_info *sbinfo = SHMEM_SB(sb);
-	if (sbinfo->max_inodes) {
-		spin_lock(&sbinfo->stat_lock);
-		sbinfo->free_inodes++;
-		spin_unlock(&sbinfo->stat_lock);
-	}
+	if (sbinfo->max_inodes)
+		percpu_counter_add(&sbinfo->used_inodes, -1);
 }
 
 /**
@@ -1835,7 +1839,8 @@ static int shmem_statfs(struct dentry *dentry, struct kstatfs *buf)
 	}
 	if (sbinfo->max_inodes) {
 		buf->f_files = sbinfo->max_inodes;
-		buf->f_ffree = sbinfo->free_inodes;
+		buf->f_ffree = sbinfo->max_inodes -
+				percpu_counter_sum(&sbinfo->used_inodes);
 	}
 	/* else leave those fields 0 like simple_statfs */
 	return 0;
@@ -2423,7 +2428,6 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 {
 	struct shmem_sb_info *sbinfo = SHMEM_SB(sb);
 	struct shmem_sb_info config = *sbinfo;
-	unsigned long inodes;
 	int error = -EINVAL;
 
 	config.mpol = NULL;
@@ -2431,10 +2435,9 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 		return error;
 
 	spin_lock(&sbinfo->stat_lock);
-	inodes = sbinfo->max_inodes - sbinfo->free_inodes;
 	if (percpu_counter_compare(&sbinfo->used_blocks, config.max_blocks) > 0)
 		goto out;
-	if (config.max_inodes < inodes)
+	if (percpu_counter_compare(&sbinfo->used_inodes, config.max_inodes) > 0)
 		goto out;
 	/*
 	 * Those tests disallow limited->unlimited while any are in use;
@@ -2449,7 +2452,6 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 	error = 0;
 	sbinfo->max_blocks  = config.max_blocks;
 	sbinfo->max_inodes  = config.max_inodes;
-	sbinfo->free_inodes = config.max_inodes - inodes;
 
 	/*
 	 * Preserve previous mempolicy unless mpol remount option was specified.
@@ -2490,6 +2492,7 @@ static void shmem_put_super(struct super_block *sb)
 	struct shmem_sb_info *sbinfo = SHMEM_SB(sb);
 
 	percpu_counter_destroy(&sbinfo->used_blocks);
+	percpu_counter_destroy(&sbinfo->used_inodes);
 	mpol_put(sbinfo->mpol);
 	kfree(sbinfo);
 	sb->s_fs_info = NULL;
@@ -2537,7 +2540,8 @@ int shmem_fill_super(struct super_block *sb, void *data, int silent)
 	spin_lock_init(&sbinfo->stat_lock);
 	if (percpu_counter_init(&sbinfo->used_blocks, 0))
 		goto failed;
-	sbinfo->free_inodes = sbinfo->max_inodes;
+	if (percpu_counter_init(&sbinfo->used_inodes, 0))
+		goto failed_blocks_counter;
 
 	sb->s_maxbytes = MAX_LFS_FILESIZE;
 	sb->s_blocksize = PAGE_CACHE_SIZE;
@@ -2562,6 +2566,8 @@ int shmem_fill_super(struct super_block *sb, void *data, int silent)
 		goto failed;
 	return 0;
 
+failed_blocks_counter:
+	percpu_counter_destroy(&sbinfo->used_blocks);
 failed:
 	shmem_put_super(sb);
 	return err;
