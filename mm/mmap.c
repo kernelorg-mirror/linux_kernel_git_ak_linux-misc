@@ -266,7 +266,17 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 	struct mm_struct *mm = current->mm;
 	unsigned long min_brk;
 	bool populate;
+	bool shrinking = false;
 
+	/*
+	 * Disable speculation if we're shrinking the mapping.
+	 * This would invetiably lead to an abort because of the
+	 * TLB flush.
+	 */
+	if (brk <= mm->brk) {
+		shrinking = true;
+		disable_txn();
+	}
 	down_write(&mm->mmap_sem);
 
 #ifdef CONFIG_COMPAT_BRK
@@ -320,6 +330,8 @@ set_brk:
 	mm->brk = brk;
 	populate = newbrk > oldbrk && (mm->def_flags & VM_LOCKED) != 0;
 	up_write(&mm->mmap_sem);
+	if (shrinking)
+		reenable_txn();
 	if (populate)
 		mm_populate(oldbrk, newbrk - oldbrk);
 	return brk;
@@ -327,6 +339,8 @@ set_brk:
 out:
 	retval = mm->brk;
 	up_write(&mm->mmap_sem);
+	if (shrinking)
+		reenable_txn();
 	return retval;
 }
 
