@@ -391,7 +391,8 @@ static inline int cant_mount(const struct dentry *dentry)
 static inline void dont_mount(struct dentry *dentry)
 {
 	spin_lock(&dentry->d_lock);
-	dentry->d_flags |= DCACHE_CANT_MOUNT;
+	if (!(dentry->d_flags & DCACHE_CANT_MOUNT))
+		dentry->d_flags |= DCACHE_CANT_MOUNT;
 	spin_unlock(&dentry->d_lock);
 }
 
