@@ -1479,7 +1479,7 @@ static void sched_ttwu_pending(void)
 	struct rq *rq = this_rq();
 	struct llist_node *llist = llist_del_all(&rq->wake_list);
 	struct task_struct *p;
-
+	disable_txn();
 	raw_spin_lock(&rq->lock);
 
 	while (llist) {
@@ -1489,6 +1489,7 @@ static void sched_ttwu_pending(void)
 	}
 
 	raw_spin_unlock(&rq->lock);
+	reenable_txn();
 }
 
 void scheduler_ipi(void)
@@ -2425,12 +2426,13 @@ void scheduler_tick(void)
 	struct task_struct *curr = rq->curr;
 
 	sched_clock_tick();
-
+	disable_txn();
 	raw_spin_lock(&rq->lock);
 	update_rq_clock(rq);
 	curr->sched_class->task_tick(rq, curr, 0);
 	update_cpu_load_active(rq);
 	raw_spin_unlock(&rq->lock);
+	reenable_txn();
 
 	perf_event_task_tick();
 

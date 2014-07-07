@@ -5376,7 +5376,7 @@ static void update_blocked_averages(int cpu)
 	struct rq *rq = cpu_rq(cpu);
 	struct cfs_rq *cfs_rq;
 	unsigned long flags;
-
+	disable_txn();
 	raw_spin_lock_irqsave(&rq->lock, flags);
 	update_rq_clock(rq);
 	/*
@@ -5393,6 +5393,7 @@ static void update_blocked_averages(int cpu)
 	}
 
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
+	reenable_txn();
 }
 
 /*

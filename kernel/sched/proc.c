@@ -560,7 +560,7 @@ void update_cpu_load_nohz(void)
 
 	if (curr_jiffies == this_rq->last_load_update_tick)
 		return;
-
+	disable_txn();
 	raw_spin_lock(&this_rq->lock);
 	pending_updates = curr_jiffies - this_rq->last_load_update_tick;
 	if (pending_updates) {
@@ -572,6 +572,7 @@ void update_cpu_load_nohz(void)
 		__update_cpu_load(this_rq, 0, pending_updates);
 	}
 	raw_spin_unlock(&this_rq->lock);
+	reenable_txn();
 }
 #endif /* CONFIG_NO_HZ */
 
