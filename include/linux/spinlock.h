@@ -105,6 +105,11 @@ do {								\
 #endif
 
 #define raw_spin_is_locked(lock)	arch_spin_is_locked(&(lock)->raw_lock)
+#ifdef arch_spin_is_locked_other
+#define raw_spin_is_locked_other(lock)	arch_spin_is_locked_other(&(lock)->raw_lock)
+#else
+#define raw_spin_is_locked_other(lock)	arch_spin_is_locked(&(lock)->raw_lock)
+#endif
 
 #ifdef CONFIG_GENERIC_LOCKBREAK
 #define raw_spin_is_contended(lock) ((lock)->break_lock)
@@ -381,6 +386,15 @@ static inline void spin_unlock_wait(spinlock_t *lock)
 static inline int spin_is_locked(spinlock_t *lock)
 {
 	return raw_spin_is_locked(&lock->rlock);
+}
+
+/*
+ * Only use this if you're not expecting to hold that lock
+ * yourself currently, just some other task.
+ */
+static inline int spin_is_locked_other(spinlock_t *lock)
+{
+	return raw_spin_is_locked_other(&lock->rlock);
 }
 
 static inline int spin_is_contended(spinlock_t *lock)
