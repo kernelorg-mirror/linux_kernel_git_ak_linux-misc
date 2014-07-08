@@ -199,6 +199,14 @@ static inline int arch_spin_is_locked(arch_spinlock_t *lock)
 	return tmp.tail != tmp.head;
 }
 
+static inline int __arch_spin_is_locked_other(arch_spinlock_t *lock)
+{
+	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
+
+	return tmp.tail != tmp.head;
+}
+#define arch_spin_is_locked_other(l) __arch_spin_is_locked_other(l)
+
 static inline int arch_spin_is_contended(arch_spinlock_t *lock)
 {
 	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
