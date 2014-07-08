@@ -2606,7 +2606,7 @@ SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
 static inline void verify_mm_writelocked(struct mm_struct *mm)
 {
 #ifdef CONFIG_DEBUG_VM
-	if (unlikely(down_read_trylock(&mm->mmap_sem))) {
+	if (!_xtest() && unlikely(down_read_trylock(&mm->mmap_sem))) {
 		WARN_ON(1);
 		up_read(&mm->mmap_sem);
 	}
