@@ -141,6 +141,31 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 		return 0;
 
 	if (sysctl_overcommit_memory == OVERCOMMIT_GUESS) {
+		long extra = totalreserve_pages;
+
+		/*
+		 * Reserve some for root
+		 */
+		if (!cap_sys_admin)
+			extra += sysctl_admin_reserve_kbytes >> (PAGE_SHIFT - 10);
+
+		/*
+		 * Somewhat inaccurate fast path. Should only err on the side
+		 * of failing early.
+		 */
+		if (get_nr_swap_pages() >= pages + extra)
+			return 0;
+		if (global_page_state_compare(NR_FREE_PAGES, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_FILE_PAGES, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_SHMEM, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_SLAB_RECLAIMABLE, pages + extra) >= 0)
+			return 0;
+
+		/* Slow path. */
+
 		free = global_page_state(NR_FREE_PAGES);
 		free += global_page_state(NR_FILE_PAGES);
 
@@ -162,6 +187,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 		 */
 		free += global_page_state(NR_SLAB_RECLAIMABLE);
 
+		free -= extra;
+
 		/*
 		 * Leave reserved pages. The pages are not for anonymous pages.
 		 */
@@ -169,12 +196,6 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 			goto error;
 		else
 			free -= totalreserve_pages;
-
-		/*
-		 * Reserve some for root
-		 */
-		if (!cap_sys_admin)
-			free -= sysctl_admin_reserve_kbytes >> (PAGE_SHIFT - 10);
 
 		if (free > pages)
 			return 0;
@@ -3165,9 +3186,14 @@ void mm_drop_all_locks(struct mm_struct *mm)
 void __init mmap_init(void)
 {
 	int ret;
+	int i;
 
 	ret = percpu_counter_init(&vm_committed_as, 0);
 	VM_BUG_ON(ret);
+	for(i = 0; i < NR_VM_ZONE_STAT_ITEMS; i++) {
+		ret = percpu_counter_init_reuse(&vm_stat[i], 0);
+		VM_BUG_ON(ret);
+	}
 }
 
 /*

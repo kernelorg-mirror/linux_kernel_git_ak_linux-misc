@@ -769,8 +769,9 @@ static bool over_bground_thresh(struct backing_dev_info *bdi)
 
 	global_dirty_limits(&background_thresh, &dirty_thresh);
 
-	if (global_page_state(NR_FILE_DIRTY) +
-	    global_page_state(NR_UNSTABLE_NFS) > background_thresh)
+	if (global_page_state_compare(NR_FILE_DIRTY, background_thresh) >= 0)
+		return true;
+	if (global_page_state_compare(NR_UNSTABLE_NFS, background_thresh) >= 0)
 		return true;
 
 	if (bdi_stat(bdi, BDI_RECLAIMABLE) >
