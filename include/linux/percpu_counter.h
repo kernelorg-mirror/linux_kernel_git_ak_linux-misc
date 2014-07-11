@@ -22,18 +22,33 @@ struct percpu_counter {
 	struct list_head list;	/* All percpu_counters are on a list */
 #endif
 	s32 __percpu *counters;
+	int initialized;
 };
 
 extern int percpu_counter_batch;
 
 int __percpu_counter_init(struct percpu_counter *fbc, s64 amount,
-			  struct lock_class_key *key);
+			  struct lock_class_key *key, int reuse);
 
 #define percpu_counter_init(fbc, value)					\
 	({								\
 		static struct lock_class_key __key;			\
 									\
-		__percpu_counter_init(fbc, value, &__key);		\
+		__percpu_counter_init(fbc, value, &__key, 0);		\
+	})
+
+/*
+ * Reuse means the counter was guaranteed zeroed initially and someone
+ * may have used it before the *_init call. This is useful for counters
+ * that may be used before mem_init(), because we cannot allocate
+ * per cpu memory that early. The early uses need to be all single
+ * threaded.
+ */
+#define percpu_counter_init_reuse(fbc, value)				\
+	({								\
+		static struct lock_class_key __key;			\
+									\
+		__percpu_counter_init(fbc, value, &__key, 1);		\
 	})
 
 void percpu_counter_destroy(struct percpu_counter *fbc);
@@ -92,6 +107,12 @@ struct percpu_counter {
 static inline int percpu_counter_init(struct percpu_counter *fbc, s64 amount)
 {
 	fbc->count = amount;
+	return 0;
+}
+
+static inline int percpu_counter_init_reuse(struct percpu_counter *fbc, s64 amount)
+{
+	fbc->count += amount;
 	return 0;
 }
 
