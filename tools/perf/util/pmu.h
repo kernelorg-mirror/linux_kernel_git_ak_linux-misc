@@ -47,5 +47,7 @@ bool pmu_have_event(const char *pname, const char *name);
 
 int perf_pmu__test(void);
 
+int pmu_iterate_events(int (*func)(const char *, const char *name));
+
 extern const char *json_file;
 #endif /* __PMU_H */
