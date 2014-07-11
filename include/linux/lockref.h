@@ -17,9 +17,15 @@
 #include <linux/spinlock.h>
 #include <generated/bounds.h>
 
+/*
+ * With RTM_LOCKS lock is 8 bytes. However only the first four
+ * bytes matter for atomic purposes, the rest is just optional
+ * hints. So we can still use lockrefs.
+ */
 #define USE_CMPXCHG_LOCKREF \
 	(IS_ENABLED(CONFIG_ARCH_USE_CMPXCHG_LOCKREF) && \
-	 IS_ENABLED(CONFIG_SMP) && SPINLOCK_SIZE <= 4)
+	 IS_ENABLED(CONFIG_SMP) && (SPINLOCK_SIZE <= 4 || \
+		 (IS_ENABLED(CONFIG_RTM_LOCKS) && SPINLOCK_SIZE <= 8)))
 
 struct lockref {
 	union {
