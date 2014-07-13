@@ -1513,6 +1513,40 @@ static int update_time(struct inode *inode, struct timespec *time, int flags)
 	return 0;
 }
 
+/*
+ * Non blocking version of touch_atime for RCU usage.
+ * When -ECHILD is returned retry in non-RCU mode with a full
+ * touch_atime.
+ */
+int touch_atime_nonblock(const struct path *path)
+{
+	struct inode *inode = path->dentry->d_inode;
+	struct vfsmount *mnt = path->mnt;
+	struct timespec now;
+
+	if (inode->i_flags & S_NOATIME)
+		return 0;
+	if (IS_NOATIME(inode))
+		return 0;
+	if ((inode->i_sb->s_flags & MS_NODIRATIME) && S_ISDIR(inode->i_mode))
+		return 0;
+
+	if (mnt->mnt_flags & MNT_NOATIME)
+		return 0;
+	if ((mnt->mnt_flags & MNT_NODIRATIME) && S_ISDIR(inode->i_mode))
+		return 0;
+
+	now = current_fs_time(inode->i_sb);
+
+	if (!relatime_need_update(mnt, inode, now))
+		return 0;
+
+	if (timespec_equal(&inode->i_atime, &now))
+		return 0;
+
+	return -ECHILD;
+}
+
 /**
  *	touch_atime	-	update the access time
  *	@path: the &struct path to update
@@ -1527,24 +1561,7 @@ void touch_atime(const struct path *path)
 	struct inode *inode = path->dentry->d_inode;
 	struct timespec now;
 
-	if (inode->i_flags & S_NOATIME)
-		return;
-	if (IS_NOATIME(inode))
-		return;
-	if ((inode->i_sb->s_flags & MS_NODIRATIME) && S_ISDIR(inode->i_mode))
-		return;
-
-	if (mnt->mnt_flags & MNT_NOATIME)
-		return;
-	if ((mnt->mnt_flags & MNT_NODIRATIME) && S_ISDIR(inode->i_mode))
-		return;
-
-	now = current_fs_time(inode->i_sb);
-
-	if (!relatime_need_update(mnt, inode, now))
-		return;
-
-	if (timespec_equal(&inode->i_atime, &now))
+	if (touch_atime_nonblock(path) == 0)
 		return;
 
 	if (!sb_start_write_trylock(inode->i_sb))
@@ -1561,6 +1578,8 @@ void touch_atime(const struct path *path)
 	 * We may also fail on filesystems that have the ability to make parts
 	 * of the fs read only, e.g. subvolumes in Btrfs.
 	 */
+	now = current_fs_time(inode->i_sb);
+
 	update_time(inode, &now, S_ATIME);
 	__mnt_drop_write(mnt);
 skip_update:

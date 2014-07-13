@@ -1738,6 +1738,7 @@ enum file_time_flags {
 };
 
 extern void touch_atime(const struct path *);
+extern int touch_atime_nonblock(const struct path *);
 static inline void file_accessed(struct file *file)
 {
 	if (!(file->f_flags & O_NOATIME))
