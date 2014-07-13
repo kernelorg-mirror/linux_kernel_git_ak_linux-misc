@@ -1493,6 +1493,8 @@ static void free_link(char *link)
 
 static void *fuse_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
 	nd_set_link(nd, read_link(dentry));
 	return NULL;
 }
@@ -2062,7 +2064,7 @@ static const struct inode_operations fuse_common_inode_operations = {
 
 static const struct inode_operations fuse_symlink_inode_operations = {
 	.setattr	= fuse_setattr,
-	.follow_link	= fuse_follow_link,
+	.follow_link_rcu = fuse_follow_link,
 	.put_link	= fuse_put_link,
 	.readlink	= generic_readlink,
 	.getattr	= fuse_getattr,

@@ -1437,6 +1437,10 @@ static void *proc_pid_follow_link(struct dentry *dentry, struct nameidata *nd)
 	struct path path;
 	int error = -EACCES;
 
+	/* Needed? */
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
 	/* Are we allowed to snoop on the tasks file descriptors? */
 	if (!proc_fd_access_allowed(inode))
 		goto out;
@@ -1497,7 +1501,7 @@ out:
 
 const struct inode_operations proc_pid_link_inode_operations = {
 	.readlink	= proc_pid_readlink,
-	.follow_link	= proc_pid_follow_link,
+	.follow_link_rcu = proc_pid_follow_link,
 	.setattr	= proc_setattr,
 };
 

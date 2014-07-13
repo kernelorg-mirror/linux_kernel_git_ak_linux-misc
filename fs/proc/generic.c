@@ -170,7 +170,7 @@ static void *proc_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 static const struct inode_operations proc_link_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= proc_follow_link,
+	.follow_link_rcu = proc_follow_link,
 };
 
 /*

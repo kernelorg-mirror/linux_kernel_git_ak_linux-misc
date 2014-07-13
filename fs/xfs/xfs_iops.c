@@ -410,6 +410,18 @@ xfs_vn_follow_link(
 	char			*link;
 	int			error = -ENOMEM;
 
+	/*
+	 * We could do a RCU fast path without copying and
+	 * with non blocking inode trylock, but this would require a
+	 * reliable way to check if the symlink is 0 terminated.
+	 * Unfortunately XFS seems * to store symlinks without 0 on disk
+	 * and in memory.
+	 *
+	 * So disable RCU lookups for now.
+	 */
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
 	link = kmalloc(MAXPATHLEN+1, GFP_KERNEL);
 	if (!link)
 		goto out_err;
@@ -1160,7 +1172,7 @@ static const struct inode_operations xfs_dir_ci_inode_operations = {
 
 static const struct inode_operations xfs_symlink_inode_operations = {
 	.readlink		= generic_readlink,
-	.follow_link		= xfs_vn_follow_link,
+	.follow_link_rcu	= xfs_vn_follow_link,
 	.put_link		= kfree_put_link,
 	.getattr		= xfs_vn_getattr,
 	.setattr		= xfs_vn_setattr,

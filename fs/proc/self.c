@@ -21,9 +21,13 @@ static int proc_self_readlink(struct dentry *dentry, char __user *buffer,
 
 static void *proc_self_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct pid_namespace *ns = dentry->d_sb->s_fs_info;
-	pid_t tgid = task_tgid_nr_ns(current, ns);
+	struct pid_namespace *ns;
+	pid_t tgid;
 	char *name = ERR_PTR(-ENOENT);
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+	ns = dentry->d_sb->s_fs_info;
+	tgid = task_tgid_nr_ns(current, ns);
 	if (tgid) {
 		/* 11 for max length of signed int in decimal + NULL term */
 		name = kmalloc(12, GFP_KERNEL);
@@ -38,7 +42,7 @@ static void *proc_self_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 static const struct inode_operations proc_self_inode_operations = {
 	.readlink	= proc_self_readlink,
-	.follow_link	= proc_self_follow_link,
+	.follow_link_rcu = proc_self_follow_link,
 	.put_link	= kfree_put_link,
 };
 

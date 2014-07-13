@@ -688,7 +688,11 @@ out:
 static void *ecryptfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	size_t len;
-	char *buf = ecryptfs_readlink_lower(dentry, &len);
+	char *buf;
+
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+	buf = ecryptfs_readlink_lower(dentry, &len);
 	if (IS_ERR(buf))
 		goto out;
 	fsstack_copy_attr_atime(dentry->d_inode,
@@ -1108,7 +1112,7 @@ out:
 
 const struct inode_operations ecryptfs_symlink_iops = {
 	.readlink = generic_readlink,
-	.follow_link = ecryptfs_follow_link,
+	.follow_link_rcu = ecryptfs_follow_link,
 	.put_link = kfree_put_link,
 	.permission = ecryptfs_permission,
 	.setattr = ecryptfs_setattr,

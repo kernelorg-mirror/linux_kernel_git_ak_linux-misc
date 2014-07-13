@@ -499,11 +499,15 @@ cifs_follow_link(struct dentry *direntry, struct nameidata *nd)
 	unsigned int xid;
 	char *full_path = NULL;
 	char *target_path = NULL;
-	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
+	struct cifs_sb_info *cifs_sb;
 	struct tcon_link *tlink = NULL;
 	struct cifs_tcon *tcon;
 	struct TCP_Server_Info *server;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
+	cifs_sb = CIFS_SB(inode->i_sb);
 	xid = get_xid();
 
 	tlink = cifs_sb_tlink(cifs_sb);

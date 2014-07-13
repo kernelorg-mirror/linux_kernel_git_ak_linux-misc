@@ -877,7 +877,7 @@ const struct inode_operations cifs_file_inode_ops = {
 
 const struct inode_operations cifs_symlink_inode_ops = {
 	.readlink = generic_readlink,
-	.follow_link = cifs_follow_link,
+	.follow_link_rcu = cifs_follow_link,
 	.put_link = kfree_put_link,
 	.permission = cifs_permission,
 	/* BB add the following two eventually */

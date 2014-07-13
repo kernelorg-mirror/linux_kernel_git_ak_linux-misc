@@ -643,8 +643,11 @@ static int hppfs_readlink(struct dentry *dentry, char __user *buffer,
 
 static void *hppfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct dentry *proc_dentry = HPPFS_I(dentry->d_inode)->proc_dentry;
+	struct dentry *proc_dentry;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+	proc_dentry = HPPFS_I(dentry->d_inode)->proc_dentry;
 	return proc_dentry->d_inode->i_op->follow_link(proc_dentry, nd);
 }
 
@@ -663,7 +666,7 @@ static const struct inode_operations hppfs_dir_iops = {
 
 static const struct inode_operations hppfs_link_iops = {
 	.readlink	= hppfs_readlink,
-	.follow_link	= hppfs_follow_link,
+	.follow_link_rcu = hppfs_follow_link,
 	.put_link	= hppfs_put_link,
 };
 

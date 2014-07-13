@@ -115,7 +115,11 @@ static int kernfs_getlink(struct dentry *dentry, char *path)
 static void *kernfs_iop_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	int error = -ENOMEM;
-	unsigned long page = get_zeroed_page(GFP_KERNEL);
+	unsigned long page;
+
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+	page = get_zeroed_page(GFP_KERNEL);
 	if (page) {
 		error = kernfs_getlink(dentry, (char *) page);
 		if (error < 0)
@@ -139,7 +143,7 @@ const struct inode_operations kernfs_symlink_iops = {
 	.getxattr	= kernfs_iop_getxattr,
 	.listxattr	= kernfs_iop_listxattr,
 	.readlink	= generic_readlink,
-	.follow_link	= kernfs_iop_follow_link,
+	.follow_link_rcu = kernfs_iop_follow_link,
 	.put_link	= kernfs_iop_put_link,
 	.setattr	= kernfs_iop_setattr,
 	.getattr	= kernfs_iop_getattr,

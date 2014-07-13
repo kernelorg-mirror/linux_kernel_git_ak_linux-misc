@@ -109,12 +109,16 @@ static struct dentry *proc_ns_get_dentry(struct super_block *sb,
 static void *proc_ns_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct inode *inode = dentry->d_inode;
-	struct super_block *sb = inode->i_sb;
+	struct super_block *sb;
 	struct proc_inode *ei = PROC_I(inode);
 	struct task_struct *task;
 	struct path ns_path;
 	void *error = ERR_PTR(-EACCES);
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
+	sb = inode->i_sb;
 	task = get_proc_task(inode);
 	if (!task)
 		goto out;
@@ -171,7 +175,7 @@ out:
 
 static const struct inode_operations proc_ns_link_inode_operations = {
 	.readlink	= proc_ns_readlink,
-	.follow_link	= proc_ns_follow_link,
+	.follow_link_rcu = proc_ns_follow_link,
 	.setattr	= proc_setattr,
 };
 

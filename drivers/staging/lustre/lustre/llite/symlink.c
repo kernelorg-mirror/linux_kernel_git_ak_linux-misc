@@ -122,6 +122,9 @@ static void *ll_follow_link(struct dentry *dentry, struct nameidata *nd)
 	int rc;
 	char *symname = NULL;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
 	CDEBUG(D_VFSTRACE, "VFS Op\n");
 	/* Limit the recursive symlink depth to 5 instead of default
 	 * 8 links when kernel has 4k stack to prevent stack overflow.
@@ -156,7 +159,7 @@ static void ll_put_link(struct dentry *dentry, struct nameidata *nd, void *cooki
 struct inode_operations ll_fast_symlink_inode_operations = {
 	.readlink	= generic_readlink,
 	.setattr	= ll_setattr,
-	.follow_link	= ll_follow_link,
+	.follow_link_rcu = ll_follow_link,
 	.put_link	= ll_put_link,
 	.getattr	= ll_getattr,
 	.permission	= ll_inode_permission,

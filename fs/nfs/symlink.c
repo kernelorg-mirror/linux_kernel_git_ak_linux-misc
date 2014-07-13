@@ -49,6 +49,8 @@ static void *nfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	struct page *page;
 	void *err;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
 	err = ERR_PTR(nfs_revalidate_mapping(inode, inode->i_mapping));
 	if (err)
 		goto read_failed;
@@ -71,7 +73,7 @@ read_failed:
  */
 const struct inode_operations nfs_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= nfs_follow_link,
+	.follow_link_rcu = nfs_follow_link,
 	.put_link	= page_put_link,
 	.getattr	= nfs_getattr,
 	.setattr	= nfs_setattr,

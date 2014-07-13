@@ -1563,6 +1563,9 @@ static void *gfs2_follow_link(struct dentry *dentry, struct nameidata *nd)
 	char *buf;
 	int error;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
 	gfs2_holder_init(ip->i_gl, LM_ST_SHARED, 0, &i_gh);
 	error = gfs2_glock_nq(&i_gh);
 	if (error) {
@@ -1983,7 +1986,7 @@ const struct inode_operations gfs2_dir_iops = {
 
 const struct inode_operations gfs2_symlink_iops = {
 	.readlink = generic_readlink,
-	.follow_link = gfs2_follow_link,
+	.follow_link_rcu = gfs2_follow_link,
 	.put_link = kfree_put_link,
 	.permission = gfs2_permission,
 	.setattr = gfs2_setattr,

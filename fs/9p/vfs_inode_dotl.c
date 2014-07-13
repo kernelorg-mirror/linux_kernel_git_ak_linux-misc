@@ -914,11 +914,15 @@ v9fs_vfs_follow_link_dotl(struct dentry *dentry, struct nameidata *nd)
 {
 	int retval;
 	struct p9_fid *fid;
-	char *link = __getname();
+	char *link;
 	char *target;
+
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
 
 	p9_debug(P9_DEBUG_VFS, "%s\n", dentry->d_name.name);
 
+	link = __getname();
 	if (!link) {
 		link = ERR_PTR(-ENOMEM);
 		goto ndset;
@@ -1005,7 +1009,7 @@ const struct inode_operations v9fs_file_inode_operations_dotl = {
 
 const struct inode_operations v9fs_symlink_inode_operations_dotl = {
 	.readlink = generic_readlink,
-	.follow_link = v9fs_vfs_follow_link_dotl,
+	.follow_link_rcu = v9fs_vfs_follow_link_dotl,
 	.put_link = v9fs_vfs_put_link,
 	.getattr = v9fs_vfs_getattr_dotl,
 	.setattr = v9fs_vfs_setattr_dotl,

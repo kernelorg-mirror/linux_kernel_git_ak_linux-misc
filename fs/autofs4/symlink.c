@@ -16,6 +16,9 @@ static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
 	struct autofs_info *ino = autofs4_dentry_ino(dentry);
+
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
 	if (ino && !autofs4_oz_mode(sbi))
 		ino->last_used = jiffies;
 	nd_set_link(nd, dentry->d_inode->i_private);
@@ -24,5 +27,5 @@ static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 const struct inode_operations autofs4_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= autofs4_follow_link
+	.follow_link_rcu = autofs4_follow_link
 };

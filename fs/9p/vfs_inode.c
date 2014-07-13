@@ -1281,10 +1281,14 @@ done:
 static void *v9fs_vfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	int len = 0;
-	char *link = __getname();
+	char *link;
+
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
 
 	p9_debug(P9_DEBUG_VFS, "%s\n", dentry->d_name.name);
 
+	link = __getname();
 	if (!link)
 		link = ERR_PTR(-ENOMEM);
 	else {
@@ -1529,7 +1533,7 @@ static const struct inode_operations v9fs_file_inode_operations = {
 
 static const struct inode_operations v9fs_symlink_inode_operations = {
 	.readlink = generic_readlink,
-	.follow_link = v9fs_vfs_follow_link,
+	.follow_link_rcu = v9fs_vfs_follow_link,
 	.put_link = v9fs_vfs_put_link,
 	.getattr = v9fs_vfs_getattr,
 	.setattr = v9fs_vfs_setattr,

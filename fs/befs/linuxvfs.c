@@ -87,7 +87,7 @@ static const struct inode_operations befs_fast_symlink_inode_operations = {
 
 static const struct inode_operations befs_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= befs_follow_link,
+	.follow_link_rcu	= befs_follow_link,
 	.put_link	= kfree_put_link,
 };
 
@@ -479,10 +479,15 @@ befs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct super_block *sb = dentry->d_sb;
 	befs_inode_info *befs_ino = BEFS_I(dentry->d_inode);
-	befs_data_stream *data = &befs_ino->i_data.ds;
-	befs_off_t len = data->size;
+	befs_data_stream *data;
+	befs_off_t len;
 	char *link;
 
+	if (nd->flags & LOOKUP_RCU)
+		return ERR_PTR(-ECHILD);
+
+	data = &befs_ino->i_data.ds;
+	len = data->size;
 	if (len == 0) {
 		befs_error(sb, "Long symlink with illegal length");
 		link = ERR_PTR(-EIO);
