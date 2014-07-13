@@ -4454,12 +4454,22 @@ int generic_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 EXPORT_SYMBOL(generic_readlink);
 
 /* get the link contents into pagecache */
-static char *page_getlink(struct dentry * dentry, struct page **ppage)
+static char *page_getlink(struct dentry * dentry, struct page **ppage, bool rcu)
 {
 	char *kaddr;
 	struct page *page;
-	struct address_space *mapping = dentry->d_inode->i_mapping;
-	page = read_mapping_page(mapping, 0, NULL);
+	struct inode *inode = dentry->d_inode;
+	struct address_space *mapping;
+
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	mapping = inode->i_mapping;
+	if (rcu) {
+		page = pagecache_get_page(mapping, 0, 0, 0, 0);
+		if (!page)
+			return ERR_PTR(-ECHILD);
+	} else
+		page = read_mapping_page(mapping, 0, NULL);
 	if (IS_ERR(page))
 		return (char*)page;
 	*ppage = page;
@@ -4487,7 +4497,8 @@ static char *page_getlink(struct dentry * dentry, struct page **ppage)
 int page_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 {
 	struct page *page = NULL;
-	int res = readlink_copy(buffer, buflen, page_getlink(dentry, &page));
+	int res = readlink_copy(buffer, buflen, page_getlink(dentry, &page,
+				false));
 	if (page) {
 		kunmap(page);
 		page_cache_release(page);
@@ -4499,7 +4510,7 @@ EXPORT_SYMBOL(page_readlink);
 void *page_follow_link_light(struct dentry *dentry, struct nameidata *nd)
 {
 	struct page *page = NULL;
-	nd_set_link(nd, page_getlink(dentry, &page));
+	nd_set_link(nd, page_getlink(dentry, &page, nd->flags & LOOKUP_RCU));
 	return page;
 }
 EXPORT_SYMBOL(page_follow_link_light);
