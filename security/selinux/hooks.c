@@ -2767,6 +2767,22 @@ static int selinux_inode_follow_link(struct dentry *dentry, struct nameidata *na
 {
 	const struct cred *cred = current_cred();
 
+	if (nameidata->flags & LOOKUP_RCU) {
+		struct inode *inode = dentry->d_inode;
+		struct common_audit_data ad;
+		struct inode_security_struct *isec;
+		u32 sid;
+
+		ad.type = LSM_AUDIT_DATA_DENTRY;
+		ad.u.dentry = dentry;
+		validate_creds(cred);
+		if (unlikely(IS_PRIVATE(inode)))
+			return 0;
+		sid = cred_sid(cred);
+		isec = inode->i_security;
+		return avc_has_perm_rcu(sid, isec->sid, isec->sclass, FILE__READ, &ad);
+	}
+
 	return dentry_has_perm(cred, dentry, FILE__READ);
 }
 

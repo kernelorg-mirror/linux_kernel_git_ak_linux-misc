@@ -150,6 +150,9 @@ int avc_has_perm_noaudit(u32 ssid, u32 tsid,
 int avc_has_perm(u32 ssid, u32 tsid,
 		 u16 tclass, u32 requested,
 		 struct common_audit_data *auditdata);
+int avc_has_perm_rcu(u32 ssid, u32 tsid,
+		 u16 tclass, u32 requested,
+		 struct common_audit_data *auditdata);
 
 u32 avc_policy_seqno(void);
 

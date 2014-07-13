@@ -774,6 +774,23 @@ int avc_has_perm(u32 ssid, u32 tsid, u16 tclass,
 	return rc;
 }
 
+/*
+ * Version of avc_has_perm in RCU context. When returning -ECHILD
+ * caller has to retry non RCU with avc_has_perm().
+ */
+int avc_has_perm_rcu(u32 ssid, u32 tsid, u16 tclass,
+		 u32 requested, struct common_audit_data *auditdata)
+{
+	struct av_decision avd;
+	int rc;
+	u32 denied;
+
+	rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, 0, &avd);
+	if (avc_audit_required(requested, &avd, rc, 0, &denied))
+		return -ECHILD;
+	return rc;
+}
+
 u32 avc_policy_seqno(void)
 {
 	return avc_cache.latest_notif;
