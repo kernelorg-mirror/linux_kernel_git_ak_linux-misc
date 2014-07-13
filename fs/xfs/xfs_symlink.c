@@ -165,6 +165,52 @@ xfs_readlink(
 	return error;
 }
 
+/*
+ * Fast path version of readlink that never blocks.
+ * Only works for inline symlinks.
+ * When anything goes wrong there is a full xfs_readlink retry.
+ */
+int
+xfs_readlink_nowait(
+	struct xfs_inode *ip,
+	char		**link)
+{
+	xfs_fsize_t	pathlen;
+	struct xfs_mount *mp = ip->i_mount;
+	int error;
+
+	if (XFS_FORCED_SHUTDOWN(mp))
+		return XFS_ERROR(EIO);
+
+	if (!xfs_ilock_nowait(ip, XFS_ILOCK_SHARED))
+		return XFS_ERROR(ECHILD);
+
+	pathlen = ip->i_d.di_size;
+	error = XFS_ERROR(ECHILD); /* Please retry */
+	if (!pathlen)
+		goto out;
+
+	/* Check handling done on retry */
+	if (pathlen < 0 || pathlen > MAXPATHLEN)
+		goto out;
+
+	/*
+	 * We can only do this if the symlink is smaller than the inline
+	 * length. Otherwise there is no guarantee there is a 0 byte
+	 * at the end.
+	 */
+	if ((ip->i_df.if_flags & XFS_IFINLINE) &&
+	    pathlen < sizeof(XFS_IFORK_PTR(ip, XFS_DATA_FORK)->if_u2.if_inline_data)) {
+		*link = ip->i_df.if_u1.if_data;
+		error = 0;
+	} else
+		error = XFS_ERROR(ECHILD);
+
+   out:
+	xfs_iunlock(ip, XFS_ILOCK_SHARED);
+	return error;
+}
+
 int
 xfs_symlink(
 	struct xfs_inode	*dp,

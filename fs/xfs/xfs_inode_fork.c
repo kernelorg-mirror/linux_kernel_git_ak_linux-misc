@@ -637,6 +637,8 @@ xfs_idata_realloc(
 			ASSERT(ifp->if_real_bytes != 0);
 			memcpy(ifp->if_u2.if_inline_data, ifp->if_u1.if_data,
 			      new_size);
+			if (new_size < sizeof(ifp->if_u2.if_inline_data))
+				ifp->if_u2.if_inline_data[new_size] = 0;
 			kmem_free(ifp->if_u1.if_data);
 			ifp->if_u1.if_data = ifp->if_u2.if_inline_data;
 		}

@@ -397,6 +397,13 @@ xfs_vn_rename(
 						XFS_I(new_inode) : NULL);
 }
 
+STATIC void
+xfs_vn_put_link(struct dentry *de, struct nameidata *nd, void *cookie)
+{
+	if (cookie)
+		kfree_put_link(de, nd, cookie);
+}
+
 /*
  * careful here - this function can get called recursively, so
  * we need to be very careful about how much stack we use.
@@ -408,20 +415,17 @@ xfs_vn_follow_link(
 	struct nameidata	*nd)
 {
 	char			*link;
-	int			error = -ENOMEM;
+	int			error;
 
-	/*
-	 * We could do a RCU fast path without copying and
-	 * with non blocking inode trylock, but this would require a
-	 * reliable way to check if the symlink is 0 terminated.
-	 * Unfortunately XFS seems * to store symlinks without 0 on disk
-	 * and in memory.
-	 *
-	 * So disable RCU lookups for now.
-	 */
-	if (nd->flags & LOOKUP_RCU)
-		return ERR_PTR(-ECHILD);
+	if (nd->flags & LOOKUP_RCU) {
+		error = xfs_readlink_nowait(XFS_I(dentry->d_inode), &link);
+		if (error)
+			return ERR_PTR(-ECHILD);
+		nd_set_link(nd, link);
+		return NULL;
+	}
 
+	error = -ENOMEM;
 	link = kmalloc(MAXPATHLEN+1, GFP_KERNEL);
 	if (!link)
 		goto out_err;
@@ -431,7 +435,8 @@ xfs_vn_follow_link(
 		goto out_kfree;
 
 	nd_set_link(nd, link);
-	return NULL;
+	/* Indicate link needs to be freed */
+	return link;
 
  out_kfree:
 	kfree(link);
@@ -1173,7 +1178,7 @@ static const struct inode_operations xfs_dir_ci_inode_operations = {
 static const struct inode_operations xfs_symlink_inode_operations = {
 	.readlink		= generic_readlink,
 	.follow_link_rcu	= xfs_vn_follow_link,
-	.put_link		= kfree_put_link,
+	.put_link		= xfs_vn_put_link,
 	.getattr		= xfs_vn_getattr,
 	.setattr		= xfs_vn_setattr,
 	.setxattr		= generic_setxattr,
