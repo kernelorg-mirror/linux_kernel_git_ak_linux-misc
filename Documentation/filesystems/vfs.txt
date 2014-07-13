@@ -351,6 +351,7 @@ struct inode_operations {
 			struct inode *, struct dentry *, unsigned int);
 	int (*readlink) (struct dentry *, char __user *,int);
         void * (*follow_link) (struct dentry *, struct nameidata *);
+        void * (*follow_link_rcu) (struct dentry *, struct nameidata *);
         void (*put_link) (struct dentry *, struct nameidata *, void *);
 	int (*permission) (struct inode *, int);
 	int (*get_acl)(struct inode *, int);
@@ -437,6 +438,10 @@ otherwise noted.
 	inode it points to.  Only required if you want to support
 	symbolic links.  This method returns a void pointer cookie
 	that is passed to put_link().
+
+  follow_link_rcu: Same as follow_link, but must return -ECHILD
+        if it would block when nd->flags & LOOKUP_RCU is true.
+	The caller will then retry in non RCU mode.
 
   put_link: called by the VFS to release resources allocated by
   	follow_link().  The cookie returned by follow_link() is passed
