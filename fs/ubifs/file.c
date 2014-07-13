@@ -1301,8 +1301,12 @@ static void ubifs_invalidatepage(struct page *page, unsigned int offset,
 
 static void *ubifs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct ubifs_inode *ui = ubifs_inode(dentry->d_inode);
+	struct inode *inode = dentry->d_inode;
+	struct ubifs_inode *ui;
 
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	ui = ubifs_inode(inode);
 	nd_set_link(nd, ui->data);
 	return NULL;
 }
@@ -1570,7 +1574,7 @@ const struct inode_operations ubifs_file_inode_operations = {
 
 const struct inode_operations ubifs_symlink_inode_operations = {
 	.readlink    = generic_readlink,
-	.follow_link = ubifs_follow_link,
+	.follow_link_rcu = ubifs_follow_link,
 	.setattr     = ubifs_setattr,
 	.getattr     = ubifs_getattr,
 };

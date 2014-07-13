@@ -1673,14 +1673,19 @@ retry:
  */
 static void *ceph_sym_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct ceph_inode_info *ci = ceph_inode(dentry->d_inode);
+	struct inode *inode = dentry->d_inode;
+	struct ceph_inode_info *ci;
+
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	ci = ceph_inode(dentry->d_inode);
 	nd_set_link(nd, ci->i_symlink);
 	return NULL;
 }
 
 static const struct inode_operations ceph_symlink_iops = {
 	.readlink = generic_readlink,
-	.follow_link = ceph_sym_follow_link,
+	.follow_link_rcu = ceph_sym_follow_link,
 	.setattr = ceph_setattr,
 	.getattr = ceph_getattr,
 	.setxattr = ceph_setxattr,

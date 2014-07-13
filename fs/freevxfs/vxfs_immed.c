@@ -51,7 +51,7 @@ static int	vxfs_immed_readpage(struct file *, struct page *);
  */
 const struct inode_operations vxfs_immed_symlink_iops = {
 	.readlink =		generic_readlink,
-	.follow_link =		vxfs_immed_follow_link,
+	.follow_link_rcu =	vxfs_immed_follow_link,
 };
 
 /*
@@ -76,7 +76,12 @@ const struct address_space_operations vxfs_immed_aops = {
 static void *
 vxfs_immed_follow_link(struct dentry *dp, struct nameidata *np)
 {
-	struct vxfs_inode_info		*vip = VXFS_INO(dp->d_inode);
+	struct inode *inode = dp->d_inode;
+	struct vxfs_inode_info		*vip;
+
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	vip = VXFS_INO(dp->d_inode);
 	nd_set_link(np, vip->vii_immed.vi_immed);
 	return NULL;
 }

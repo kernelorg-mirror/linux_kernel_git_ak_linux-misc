@@ -21,7 +21,7 @@ static void *jffs2_follow_link(struct dentry *dentry, struct nameidata *nd);
 const struct inode_operations jffs2_symlink_inode_operations =
 {
 	.readlink =	generic_readlink,
-	.follow_link =	jffs2_follow_link,
+	.follow_link_rcu = jffs2_follow_link,
 	.setattr =	jffs2_setattr,
 	.setxattr =	jffs2_setxattr,
 	.getxattr =	jffs2_getxattr,
@@ -31,9 +31,14 @@ const struct inode_operations jffs2_symlink_inode_operations =
 
 static void *jffs2_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct jffs2_inode_info *f = JFFS2_INODE_INFO(dentry->d_inode);
-	char *p = (char *)f->target;
+	struct inode *inode = dentry->d_inode;
+	struct jffs2_inode_info *f;
+	char *p;
 
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	f = JFFS2_INODE_INFO(dentry->d_inode);
+	p = (char *)f->target;
 	/*
 	 * We don't acquire the f->sem mutex here since the only data we
 	 * use is f->target.

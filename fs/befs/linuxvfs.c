@@ -82,7 +82,7 @@ static const struct address_space_operations befs_aops = {
 
 static const struct inode_operations befs_fast_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= befs_fast_follow_link,
+	.follow_link_rcu = befs_fast_follow_link,
 };
 
 static const struct inode_operations befs_symlink_inode_operations = {
@@ -508,7 +508,13 @@ befs_follow_link(struct dentry *dentry, struct nameidata *nd)
 static void *
 befs_fast_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	befs_inode_info *befs_ino = BEFS_I(dentry->d_inode);
+	struct inode *inode = dentry->d_inode;
+	befs_inode_info *befs_ino;
+
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+
+	befs_ino = BEFS_I(inode);
 	nd_set_link(nd, befs_ino->i_data.symlink);
 	return NULL;
 }

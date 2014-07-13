@@ -23,8 +23,10 @@
 
 static void * ext3_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct ext3_inode_info *ei = EXT3_I(dentry->d_inode);
-	nd_set_link(nd, (char*)ei->i_data);
+	struct inode *inode = dentry->d_inode;
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	nd_set_link(nd, (char*)EXT3_I(inode)->i_data);
 	return NULL;
 }
 
@@ -43,7 +45,7 @@ const struct inode_operations ext3_symlink_inode_operations = {
 
 const struct inode_operations ext3_fast_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= ext3_follow_link,
+	.follow_link_rcu = ext3_follow_link,
 	.setattr	= ext3_setattr,
 #ifdef CONFIG_EXT3_FS_XATTR
 	.setxattr	= generic_setxattr,

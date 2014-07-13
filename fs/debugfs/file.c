@@ -44,13 +44,16 @@ const struct file_operations debugfs_file_operations = {
 
 static void *debugfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	nd_set_link(nd, dentry->d_inode->i_private);
+	struct inode *inode = dentry->d_inode;
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	nd_set_link(nd, inode->i_private);
 	return NULL;
 }
 
 const struct inode_operations debugfs_link_operations = {
 	.readlink       = generic_readlink,
-	.follow_link    = debugfs_follow_link,
+	.follow_link_rcu = debugfs_follow_link,
 };
 
 static int debugfs_u8_set(void *data, u64 val)

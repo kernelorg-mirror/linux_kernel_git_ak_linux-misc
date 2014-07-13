@@ -24,14 +24,17 @@
 
 static void *jfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	char *s = JFS_IP(dentry->d_inode)->i_inline;
-	nd_set_link(nd, s);
+	struct inode *inode = dentry->d_inode;
+
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	nd_set_link(nd, JFS_IP(inode)->i_inline);
 	return NULL;
 }
 
 const struct inode_operations jfs_fast_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= jfs_follow_link,
+	.follow_link_rcu = jfs_follow_link,
 	.setattr	= jfs_setattr,
 	.setxattr	= jfs_setxattr,
 	.getxattr	= jfs_getxattr,

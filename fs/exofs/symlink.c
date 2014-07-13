@@ -37,8 +37,12 @@
 
 static void *exofs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct exofs_i_info *oi = exofs_i(dentry->d_inode);
+	struct inode *inode = dentry->d_inode;
+	struct exofs_i_info *oi;
 
+	if (!inode)
+		return ERR_PTR(-ECHILD);
+	oi = exofs_i(inode);
 	nd_set_link(nd, (char *)oi->i_data);
 	return NULL;
 }
@@ -51,5 +55,5 @@ const struct inode_operations exofs_symlink_inode_operations = {
 
 const struct inode_operations exofs_fast_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= exofs_follow_link,
+	.follow_link_rcu = exofs_follow_link,
 };
