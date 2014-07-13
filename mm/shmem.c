@@ -117,13 +117,22 @@ static bool shmem_should_replace_page(struct page *page, gfp_t gfp);
 static int shmem_replace_page(struct page **pagep, gfp_t gfp,
 				struct shmem_inode_info *info, pgoff_t index);
 static int shmem_getpage_gfp(struct inode *inode, pgoff_t index,
-	struct page **pagep, enum sgp_type sgp, gfp_t gfp, int *fault_type);
+	struct page **pagep, enum sgp_type sgp, gfp_t gfp, int *fault_type,
+	bool rcu);
 
 static inline int shmem_getpage(struct inode *inode, pgoff_t index,
 	struct page **pagep, enum sgp_type sgp, int *fault_type)
 {
 	return shmem_getpage_gfp(inode, index, pagep, sgp,
-			mapping_gfp_mask(inode->i_mapping), fault_type);
+			mapping_gfp_mask(inode->i_mapping), fault_type, false);
+}
+
+static inline int shmem_getpage_rcu(struct inode *inode, pgoff_t index,
+	struct page **pagep, enum sgp_type sgp, int *fault_type,
+	bool rcu)
+{
+	return shmem_getpage_gfp(inode, index, pagep, sgp,
+			mapping_gfp_mask(inode->i_mapping), fault_type, rcu);
 }
 
 static inline struct shmem_sb_info *SHMEM_SB(struct super_block *sb)
@@ -1002,7 +1011,8 @@ static int shmem_replace_page(struct page **pagep, gfp_t gfp,
  * entry since a page cannot live in both the swap and page cache
  */
 static int shmem_getpage_gfp(struct inode *inode, pgoff_t index,
-	struct page **pagep, enum sgp_type sgp, gfp_t gfp, int *fault_type)
+	struct page **pagep, enum sgp_type sgp, gfp_t gfp, int *fault_type,
+	bool rcu)
 {
 	struct address_space *mapping = inode->i_mapping;
 	struct shmem_inode_info *info;
@@ -1044,6 +1054,9 @@ repeat:
 		*pagep = page;
 		return 0;
 	}
+
+	if (rcu)
+		return -ECHILD;
 
 	/*
 	 * Fast cache lookup did not find it:
@@ -2115,7 +2128,8 @@ static void *shmem_follow_short_symlink(struct dentry *dentry, struct nameidata 
 static void *shmem_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct page *page = NULL;
-	int error = shmem_getpage(dentry->d_inode, 0, &page, SGP_READ, NULL);
+	int error = shmem_getpage_rcu(dentry->d_inode, 0, &page, SGP_READ, NULL,
+			nd->flags & LOOKUP_RCU);
 	nd_set_link(nd, error ? ERR_PTR(error) : kmap(page));
 	if (page)
 		unlock_page(page);
@@ -2274,7 +2288,7 @@ static ssize_t shmem_listxattr(struct dentry *dentry, char *buffer, size_t size)
 
 static const struct inode_operations shmem_short_symlink_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= shmem_follow_short_symlink,
+	.follow_link_rcu = shmem_follow_short_symlink,
 #ifdef CONFIG_TMPFS_XATTR
 	.setxattr	= shmem_setxattr,
 	.getxattr	= shmem_getxattr,
@@ -2285,7 +2299,7 @@ static const struct inode_operations shmem_short_symlink_operations = {
 
 static const struct inode_operations shmem_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= shmem_follow_link,
+	.follow_link_rcu = shmem_follow_link,
 	.put_link	= shmem_put_link,
 #ifdef CONFIG_TMPFS_XATTR
 	.setxattr	= shmem_setxattr,
@@ -3004,7 +3018,7 @@ struct page *shmem_read_mapping_page_gfp(struct address_space *mapping,
 	int error;
 
 	BUG_ON(mapping->a_ops != &shmem_aops);
-	error = shmem_getpage_gfp(inode, index, &page, SGP_CACHE, gfp, NULL);
+	error = shmem_getpage_gfp(inode, index, &page, SGP_CACHE, gfp, NULL, false);
 	if (error)
 		page = ERR_PTR(error);
 	else
