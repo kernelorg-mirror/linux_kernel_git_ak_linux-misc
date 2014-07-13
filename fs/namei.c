@@ -4573,7 +4573,7 @@ EXPORT_SYMBOL(page_symlink);
 
 const struct inode_operations page_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= page_follow_link_light,
+	.follow_link_rcu = page_follow_link_light,
 	.put_link	= page_put_link,
 };
 EXPORT_SYMBOL(page_symlink_inode_operations);

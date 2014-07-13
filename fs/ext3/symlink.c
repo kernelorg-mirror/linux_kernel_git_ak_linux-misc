@@ -30,7 +30,7 @@ static void * ext3_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 const struct inode_operations ext3_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= page_follow_link_light,
+	.follow_link_rcu = page_follow_link_light,
 	.put_link	= page_put_link,
 	.setattr	= ext3_setattr,
 #ifdef CONFIG_EXT3_FS_XATTR

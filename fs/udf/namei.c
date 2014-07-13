@@ -1338,6 +1338,6 @@ const struct inode_operations udf_dir_inode_operations = {
 };
 const struct inode_operations udf_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= page_follow_link_light,
+	.follow_link_rcu = page_follow_link_light,
 	.put_link	= page_put_link,
 };

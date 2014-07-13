@@ -41,7 +41,7 @@ const struct inode_operations jfs_fast_symlink_inode_operations = {
 
 const struct inode_operations jfs_symlink_inode_operations = {
 	.readlink	= generic_readlink,
-	.follow_link	= page_follow_link_light,
+	.follow_link_rcu = page_follow_link_light,
 	.put_link	= page_put_link,
 	.setattr	= jfs_setattr,
 	.setxattr	= jfs_setxattr,
