@@ -581,6 +581,13 @@ drop_root_mnt:
 	return -ECHILD;
 }
 
+static int unlazy_walk_maybe(struct nameidata *nd, struct dentry *dentry)
+{
+	if (nd->flags & LOOKUP_RCU)
+		return unlazy_walk(nd, dentry);
+	return 0;
+}
+
 static inline int d_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	return dentry->d_op->d_revalidate(dentry, flags);
@@ -600,6 +607,7 @@ static int complete_walk(struct nameidata *nd)
 {
 	struct dentry *dentry = nd->path.dentry;
 	int status;
+	int oldflags = nd->flags;
 
 	if (nd->flags & LOOKUP_RCU) {
 		nd->flags &= ~LOOKUP_RCU;
@@ -637,7 +645,8 @@ static int complete_walk(struct nameidata *nd)
 	if (!status)
 		status = -ESTALE;
 
-	path_put(&nd->path);
+	if (!(oldflags & LOOKUP_RCU))
+		path_put(&nd->path);
 	return status;
 }
 
@@ -700,7 +709,8 @@ static inline void put_link(struct nameidata *nd, struct path *link, void *cooki
 	struct inode *inode = link->dentry->d_inode;
 	if (inode->i_op->put_link)
 		inode->i_op->put_link(link->dentry, nd, cookie);
-	path_put(link);
+	if (!(nd->flags & LOOKUP_RCU))
+		path_put(link);
 }
 
 int sysctl_protected_symlinks __read_mostly = 0;
@@ -819,55 +829,115 @@ static int may_linkat(struct path *link)
 	return -EPERM;
 }
 
+/*
+ * Follow a symlink.
+ * In RCU mode a bunch of operations need potential retries after unlazying
+ * the operation. This is also done here.
+ */
 static __always_inline int
 follow_link(struct path *link, struct nameidata *nd, void **p)
 {
 	struct dentry *dentry = link->dentry;
 	int error;
 	char *s;
+	void *(*follow_link_vec)(struct dentry *, struct nameidata *);
 
-	BUG_ON(nd->flags & LOOKUP_RCU);
-
-	if (link->mnt == nd->path.mnt)
+	if (link->mnt == nd->path.mnt /* && !(nd->flags & LOOKUP_RCU) */ )
 		mntget(link->mnt);
 
 	error = -ELOOP;
-	if (unlikely(current->total_link_count >= 40))
+	if (unlikely(current->total_link_count >= 40)) {
+		/* Ignore error here, as we already error out. */
+		unlazy_walk_maybe(nd, dentry);
 		goto out_put_nd_path;
+	}
 
-	cond_resched();
+	error = -ECHILD;
+	if (need_resched() || !dentry->d_inode->i_op->follow_link_rcu) {
+		if (unlazy_walk_maybe(nd, dentry))
+			goto out_put_nd_path;
+		cond_resched();
+	}
 	current->total_link_count++;
 
-	touch_atime(link);
+	if (touch_atime_nonblock(link) == -ECHILD) {
+		if (unlazy_walk_maybe(nd, dentry))
+			goto out_put_nd_path;
+		/* Retry */
+		touch_atime(link);
+	}
 	nd_set_link(nd, NULL);
 
 	error = security_inode_follow_link(link->dentry, nd);
-	if (error)
-		goto out_put_nd_path;
+	if (error) {
+		if (error == -ECHILD) {
+			if (unlazy_walk_maybe(nd, dentry))
+				goto out_put_nd_path;
+			/* Retry */
+			error = security_inode_follow_link(link->dentry, nd);
+		}
+		if (error)
+			goto out_put_nd_path;
+	}
 
 	nd->last_type = LAST_BIND;
-	*p = dentry->d_inode->i_op->follow_link(dentry, nd);
+
+	follow_link_vec = dentry->d_inode->i_op->follow_link_rcu;
+	if (!follow_link_vec)
+		follow_link_vec = dentry->d_inode->i_op->follow_link;
+
+	*p = follow_link_vec(dentry, nd);
 	error = PTR_ERR(*p);
-	if (IS_ERR(*p))
-		goto out_put_nd_path;
+	if (IS_ERR(*p)) {
+		if (error == -ECHILD)  {
+			if (unlazy_walk_maybe(nd, dentry))
+				goto out_put_nd_path;
+			/* Retry */
+			*p = follow_link_vec(dentry, nd);
+			error = PTR_ERR(*p);
+			if (IS_ERR(*p))
+				goto out_put_nd_path;
+			/* Retry succeeded. */
+		} else
+			goto out_put_nd_path;
+	}
 
 	error = 0;
 	s = nd_get_link(nd);
 	if (s) {
 		if (unlikely(IS_ERR(s))) {
-			path_put(&nd->path);
+			if (!(nd->flags & LOOKUP_RCU))
+				path_put(&nd->path);
 			put_link(nd, link, *p);
 			return PTR_ERR(s);
 		}
 		if (*s == '/') {
-			set_root(nd);
-			path_put(&nd->path);
-			nd->path = nd->root;
-			path_get(&nd->root);
+			if (nd->flags & LOOKUP_RCU) {
+				struct path oldpath;
+				unsigned oldseq;
+
+				oldpath = nd->path;
+				oldseq = nd->seq;
+				set_root_rcu(nd);
+				nd->path = nd->root;
+				if (read_seqcount_retry(&oldpath.dentry->d_seq, oldseq)) {
+					if (unlazy_walk(nd, dentry)) {
+						error = -ECHILD;
+						goto out_put_link;
+					}
+				}
+			} else {
+				set_root(nd);
+				path_put(&nd->path);
+				nd->path = nd->root;
+				path_get(&nd->root);
+			}
 			nd->flags |= LOOKUP_JUMPED;
 		}
 		nd->inode = nd->path.dentry->d_inode;
 		error = link_path_walk(s, nd);
+
+out_put_link:
 		if (unlikely(error))
 			put_link(nd, link, *p);
 	}
@@ -876,8 +946,10 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 
 out_put_nd_path:
 	*p = NULL;
-	path_put(&nd->path);
-	path_put(link);
+	if (!(nd->flags & LOOKUP_RCU)) {
+		path_put(&nd->path);
+		path_put(link);
+	}
 	return error;
 }
 
@@ -1547,12 +1619,6 @@ static inline int walk_component(struct nameidata *nd, struct path *path,
 		goto out_path_put;
 
 	if (should_follow_link(path->dentry, follow)) {
-		if (nd->flags & LOOKUP_RCU) {
-			if (unlikely(unlazy_walk(nd, path->dentry))) {
-				err = -ECHILD;
-				goto out_err;
-			}
-		}
 		BUG_ON(inode != path->dentry->d_inode);
 		return 1;
 	}
@@ -4353,7 +4419,10 @@ int generic_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 	int res;
 
 	nd.depth = 0;
-	cookie = dentry->d_inode->i_op->follow_link(dentry, &nd);
+	if (dentry->d_inode->i_op->follow_link_rcu)
+		cookie = dentry->d_inode->i_op->follow_link_rcu(dentry, &nd);
+	else
+		cookie = dentry->d_inode->i_op->follow_link(dentry, &nd);
 	if (IS_ERR(cookie))
 		return PTR_ERR(cookie);
 

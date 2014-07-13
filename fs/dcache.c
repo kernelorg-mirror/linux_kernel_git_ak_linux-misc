@@ -1581,7 +1581,8 @@ static unsigned d_flags_for_inode(struct inode *inode)
 				inode->i_opflags |= IOP_LOOKUP;
 		}
 	} else if (unlikely(!(inode->i_opflags & IOP_NOFOLLOW))) {
-		if (unlikely(inode->i_op->follow_link))
+		if (unlikely(inode->i_op->follow_link ||
+			     inode->i_op->follow_link_rcu))
 			add_flags = DCACHE_SYMLINK_TYPE;
 		else
 			inode->i_opflags |= IOP_NOFOLLOW;
