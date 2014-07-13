@@ -342,8 +342,7 @@ The following table gives rcu lookup statistics for a few simple workloads
 drop rcu that fail due to d_seq failure and requiring the entire path lookup
 again. Other cases are successful rcu-drops that are required before the final
 element, nodentry for missing dentry, revalidate for filesystem revalidate
-routine requiring rcu drop, permission for permission check requiring drop,
-and link for symlink traversal requiring drop.
+routine requiring rcu drop, permission for permission check requiring drop.
 
      rcu-lookups     restart  nodentry          link  revalidate  permission
 bootup     47121           0      4624          1010       10283        7852
@@ -371,6 +370,24 @@ rcu-walk mode. The further we get from common path elements (such as cwd or
 root), the less contended the dentry is likely to be. The closer we are to
 common path elements, the more likely they will exist in dentry cache.
 
+Handling symlinks with RCU
+==========================
+
+For resolving symlinks the file systems ->follow_link_rcu callback is called.
+This callback has to be RCU safe and not block. The convention is that
+it returns -ECHILD when it would block, which causes the VFS code
+to retry the symlink lookup in non RCU mode.
+
+While doing the symlink lookup it's possible that the dentry
+turns negative (its inode becomes NULL). It is safe to read
+the inode because it is RCU protected, but after reading
+the ->d_inode counter it always needs to be checked for zero.
+So low level file system callbacks have to return ECHILD
+if ->d_inode became zero.
+
+Once a symlink is created it can never change (without recreating
+the inode). This property is used to safely parse the string
+in RCU context.
 
 Papers and other documentation on dcache locking
 ================================================
