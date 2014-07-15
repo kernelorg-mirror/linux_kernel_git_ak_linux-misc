@@ -918,7 +918,7 @@ static void add_dquot_ref(struct super_block *sb, int type)
 #endif
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, sb) {
 		spin_lock(&inode->i_lock);
 		if ((inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW)) ||
 		    !atomic_read(&inode->i_writecount) ||
@@ -947,7 +947,7 @@ static void add_dquot_ref(struct super_block *sb, int type)
 		 */
 		old_inode = inode;
 		spin_lock(&inode_sb_list_lock);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 	iput(old_inode);
 
@@ -1030,7 +1030,7 @@ static void remove_dquot_ref(struct super_block *sb, int type,
 	int reserved = 0;
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, sb) {
 		/*
 		 *  We have to scan also I_NEW inodes because they can already
 		 *  have quota pointer initialized. Luckily, we need to touch
@@ -1042,7 +1042,7 @@ static void remove_dquot_ref(struct super_block *sb, int type,
 				reserved = 1;
 			remove_inode_dquot_ref(inode, type, tofree_head);
 		}
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 #ifdef CONFIG_QUOTA_DEBUG
 	if (reserved) {

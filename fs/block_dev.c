@@ -1670,7 +1670,7 @@ void iterate_bdevs(void (*func)(struct block_device *, void *), void *arg)
 	struct inode *inode, *old_inode = NULL;
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry(inode, &blockdev_superblock->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, blockdev_superblock) {
 		struct address_space *mapping = inode->i_mapping;
 
 		spin_lock(&inode->i_lock);
@@ -1696,7 +1696,7 @@ void iterate_bdevs(void (*func)(struct block_device *, void *), void *arg)
 		func(I_BDEV(inode), arg);
 
 		spin_lock(&inode_sb_list_lock);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 	iput(old_inode);
 }

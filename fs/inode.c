@@ -28,7 +28,7 @@
  * Inode LRU list locks protect:
  *   inode->i_sb->s_inode_lru, inode->i_lru
  * inode_sb_list_lock protects:
- *   sb->s_inodes, inode->i_sb_list
+ *   sb->s_inodes_cpu (for all CPUs), inode->i_sb_list
  * bdi->wb.list_lock protects:
  *   bdi->wb.b_{dirty,io,more_io}, inode->i_wb_list
  * inode_hash_lock protects:
@@ -431,7 +431,7 @@ static void inode_lru_list_del(struct inode *inode)
 void inode_sb_list_add(struct inode *inode)
 {
 	spin_lock(&inode_sb_list_lock);
-	list_add(&inode->i_sb_list, &inode->i_sb->s_inodes);
+	list_add(&inode->i_sb_list, __this_cpu_ptr(inode->i_sb->s_inodes_cpu));
 	spin_unlock(&inode_sb_list_lock);
 }
 EXPORT_SYMBOL_GPL(inode_sb_list_add);
@@ -595,11 +595,11 @@ static void dispose_list(struct list_head *head)
  */
 void evict_inodes(struct super_block *sb)
 {
-	struct inode *inode, *next;
+	struct inode *inode;
 	LIST_HEAD(dispose);
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry_safe(inode, next, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes(inode, sb) {
 		if (atomic_read(&inode->i_count))
 			continue;
 
@@ -613,7 +613,7 @@ void evict_inodes(struct super_block *sb)
 		inode_lru_list_del(inode);
 		spin_unlock(&inode->i_lock);
 		list_add(&inode->i_lru, &dispose);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 
 	dispose_list(&dispose);
@@ -632,11 +632,11 @@ void evict_inodes(struct super_block *sb)
 int invalidate_inodes(struct super_block *sb, bool kill_dirty)
 {
 	int busy = 0;
-	struct inode *inode, *next;
+	struct inode *inode;
 	LIST_HEAD(dispose);
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry_safe(inode, next, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, sb) {
 		spin_lock(&inode->i_lock);
 		if (inode->i_state & (I_NEW | I_FREEING | I_WILL_FREE)) {
 			spin_unlock(&inode->i_lock);
@@ -657,7 +657,7 @@ int invalidate_inodes(struct super_block *sb, bool kill_dirty)
 		inode_lru_list_del(inode);
 		spin_unlock(&inode->i_lock);
 		list_add(&inode->i_lru, &dispose);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 
 	dispose_list(&dispose);

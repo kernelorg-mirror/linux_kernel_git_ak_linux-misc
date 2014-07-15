@@ -18,7 +18,7 @@ static void drop_pagecache_sb(struct super_block *sb, void *unused)
 	struct inode *inode, *toput_inode = NULL;
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, sb) {
 		spin_lock(&inode->i_lock);
 		if ((inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW)) ||
 		    (inode->i_mapping->nrpages == 0)) {
@@ -32,7 +32,7 @@ static void drop_pagecache_sb(struct super_block *sb, void *unused)
 		iput(toput_inode);
 		toput_inode = inode;
 		spin_lock(&inode_sb_list_lock);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 	iput(toput_inode);
 }

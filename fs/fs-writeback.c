@@ -1243,7 +1243,7 @@ static void wait_sb_inodes(struct super_block *sb)
 	 * In which case, the inode may not be on the dirty list, but
 	 * we still have to wait for that writeout.
 	 */
-	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+	for_all_sb_inodes (inode, sb) {
 		struct address_space *mapping = inode->i_mapping;
 
 		spin_lock(&inode->i_lock);
@@ -1272,7 +1272,7 @@ static void wait_sb_inodes(struct super_block *sb)
 		cond_resched();
 
 		spin_lock(&inode_sb_list_lock);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 	iput(old_inode);
 }
