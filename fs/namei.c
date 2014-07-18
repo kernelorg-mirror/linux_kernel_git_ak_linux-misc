@@ -2938,10 +2938,11 @@ retry_lookup:
 		 * dropping this one anyway.
 		 */
 	}
+	disable_txn();
 	mutex_lock(&dir->d_inode->i_mutex);
 	error = lookup_open(nd, path, file, op, got_write, opened);
 	mutex_unlock(&dir->d_inode->i_mutex);
-
+	reenable_txn();
 	if (error <= 0) {
 		if (error)
 			goto out;
@@ -3663,7 +3664,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
 
 	if (!dir->i_op->unlink)
 		return -EPERM;
-
+	disable_txn();
 	mutex_lock(&target->i_mutex);
 	if (d_mountpoint(dentry))
 		error = -EBUSY;
@@ -3680,7 +3681,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
 	}
 out:
 	mutex_unlock(&target->i_mutex);
-
+	reenable_txn();
 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
 		fsnotify_link_count(target);
