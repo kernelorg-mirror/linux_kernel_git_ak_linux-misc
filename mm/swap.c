@@ -821,6 +821,7 @@ void release_pages(struct page **pages, int nr, int cold)
 	struct lruvec *lruvec;
 	unsigned long uninitialized_var(flags);
 
+	disable_txn();
 	for (i = 0; i < nr; i++) {
 		struct page *page = pages[i];
 
@@ -862,6 +863,7 @@ void release_pages(struct page **pages, int nr, int cold)
 		spin_unlock_irqrestore(&zone->lru_lock, flags);
 
 	free_hot_cold_page_list(&pages_to_free, cold);
+	reenable_txn();
 }
 EXPORT_SYMBOL(release_pages);
 
