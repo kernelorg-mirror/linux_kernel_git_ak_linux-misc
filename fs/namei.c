@@ -4463,7 +4463,23 @@ static char *page_getlink(struct dentry * dentry, struct page **ppage)
 	if (IS_ERR(page))
 		return (char*)page;
 	*ppage = page;
+#ifdef CONFIG_HIGHMEM
+	/*
+	 * With real HIGHMEM kmap may block. We cannot handle
+	 * this in RCU, and also cannot use an atomic kmap because
+	 * we may need to block later, but cannot refetch the
+	 * symlink string.
+	 *
+	 * So always fall back to non RCU walking with HIGHMEM.
+	 */
+	if (nd->flags & LOOKUP_RCU) {
+		page_cache_release(page);
+		return ERR_PTR(-ECHILD);
+	}
 	kaddr = kmap(page);
+#else
+	kaddr = kmap_nonblock(page);
+#endif
 	nd_terminate_link(kaddr, dentry->d_inode->i_size, PAGE_SIZE - 1);
 	return kaddr;
 }
