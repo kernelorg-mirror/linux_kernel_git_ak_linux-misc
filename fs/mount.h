@@ -24,6 +24,8 @@ struct mountpoint {
 	int m_count;
 };
 
+#define DEBUG_MNTCNT 1 /* slow */
+
 struct mount {
 	struct hlist_node mnt_hash;
 	struct mount *mnt_parent;
@@ -32,6 +34,11 @@ struct mount {
 	struct rcu_head mnt_rcu;
 #ifdef CONFIG_SMP
 	struct mnt_pcp __percpu *mnt_pcp;
+#ifdef DEBUG_MNTCNT
+	atomic_t mnt_refcnt;
+	void *lastput;
+	void *lastget;
+#endif
 #else
 	int mnt_count;
 	int mnt_writers;

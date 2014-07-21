@@ -160,15 +160,34 @@ void mnt_release_group_id(struct mount *mnt)
 /*
  * vfsmount lock must be held for read
  */
-static inline void mnt_add_count(struct mount *mnt, int n)
+static inline void __mnt_add_count(struct mount *mnt, int n, void *caller)
 {
 #ifdef CONFIG_SMP
 	this_cpu_add(mnt->mnt_pcp->mnt_count, n);
+#ifdef DEBUG_MNTCNT
+	if (n == -1) {
+		WARN(atomic_read(&mnt->mnt_refcnt) == 0,
+				"zero mntcnt on mntput: lastput %pS, lastget %pS",
+				mnt->lastput, mnt->lastget);
+		mnt->lastput = caller;
+	} else if (n == 1) {
+		mnt->lastget = caller;
+		WARN(atomic_read(&mnt->mnt_refcnt) == 100000,
+				"mnt count suspiciously high. lastput %pS, lastget %pS",
+				mnt->lastput, mnt->lastget);
+	}
+	atomic_add(n, &mnt->mnt_refcnt);
+#endif
 #else
 	preempt_disable();
 	mnt->mnt_count += n;
 	preempt_enable();
 #endif
+}
+
+static inline void mnt_add_count(struct mount *mnt, int n)
+{
+	return __mnt_add_count(mnt, n, (void*)_THIS_IP_);
 }
 
 /*
@@ -183,6 +202,9 @@ unsigned int mnt_get_count(struct mount *mnt)
 	for_each_possible_cpu(cpu) {
 		count += per_cpu_ptr(mnt->mnt_pcp, cpu)->mnt_count;
 	}
+#ifdef DEBUG_MNTCNT
+	WARN_ON(count != atomic_read(&mnt->mnt_refcnt));
+#endif
 
 	return count;
 #else
@@ -212,6 +234,11 @@ static struct mount *alloc_vfsmnt(const char *name)
 			goto out_free_devname;
 
 		this_cpu_add(mnt->mnt_pcp->mnt_count, 1);
+#ifdef DEBUG_MNTCNT
+		atomic_set(&mnt->mnt_refcnt, 1);
+		mnt->lastput = NULL;
+		mnt->lastget = NULL;
+#endif
 #else
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
@@ -936,11 +963,11 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	return ERR_PTR(err);
 }
 
-static void mntput_no_expire(struct mount *mnt)
+static void mntput_no_expire(struct mount *mnt, void *caller)
 {
 put_again:
 	rcu_read_lock();
-	mnt_add_count(mnt, -1);
+	__mnt_add_count(mnt, -1, caller);
 	if (likely(mnt->mnt_ns)) { /* shouldn't be the last one */
 		rcu_read_unlock();
 		return;
@@ -952,7 +979,7 @@ put_again:
 		return;
 	}
 	if (unlikely(mnt->mnt_pinned)) {
-		mnt_add_count(mnt, mnt->mnt_pinned + 1);
+		__mnt_add_count(mnt, mnt->mnt_pinned + 1, caller);
 		mnt->mnt_pinned = 0;
 		rcu_read_unlock();
 		unlock_mount_hash();
@@ -995,7 +1022,7 @@ void mntput(struct vfsmount *mnt)
 		/* avoid cacheline pingpong, hope gcc doesn't get "smart" */
 		if (unlikely(m->mnt_expiry_mark))
 			m->mnt_expiry_mark = 0;
-		mntput_no_expire(m);
+		mntput_no_expire(m, __builtin_return_address(0));
 	}
 }
 EXPORT_SYMBOL(mntput);
@@ -1003,7 +1030,7 @@ EXPORT_SYMBOL(mntput);
 struct vfsmount *mntget(struct vfsmount *mnt)
 {
 	if (mnt)
-		mnt_add_count(real_mount(mnt), 1);
+		__mnt_add_count(real_mount(mnt), 1, __builtin_return_address(0));
 	return mnt;
 }
 EXPORT_SYMBOL(mntget);
@@ -1421,7 +1448,7 @@ SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 dput_and_out:
 	/* we mustn't call path_put() as that would clear mnt_expiry_mark */
 	dput(path.dentry);
-	mntput_no_expire(mnt);
+	mntput_no_expire(mnt, NULL);
 out:
 	return retval;
 }
