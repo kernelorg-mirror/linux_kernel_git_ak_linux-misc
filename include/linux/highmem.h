@@ -59,6 +59,16 @@ static inline void *kmap(struct page *page)
 	return page_address(page);
 }
 
+/*
+ * kmap without blocking.
+ * This variant doesn't exist for CONFIG_HIGHMEM.
+ * Any caller needs to have some fallback for this case.
+ */
+static inline void *kmap_nonblock(struct page *page)
+{
+	return page_address(page);
+}
+
 static inline void kunmap(struct page *page)
 {
 }

@@ -135,6 +135,11 @@ static inline void *kmap(struct page *page)
 	return page_address(page);
 }
 
+static inline void *kmap_nonblock(struct page *page)
+{
+	return page_address(page);
+}
+
 static inline void kunmap(struct page *page)
 {
 	flush_kernel_dcache_page_addr(page_address(page));
