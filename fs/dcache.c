@@ -592,6 +592,10 @@ void dput(struct dentry *dentry)
 	if (unlikely(!dentry))
 		return;
 
+	WARN(dentry->d_lockref.count == 0, "dput lockref count %d: %s\n",
+			dentry->d_lockref.count,
+			dentry->d_name.name);
+
 repeat:
 	if (lockref_put_or_lock(&dentry->d_lockref))
 		return;
