@@ -704,9 +704,12 @@ void nd_jump_link(struct nameidata *nd, struct path *path)
 	nd->flags |= LOOKUP_JUMPED;
 }
 
-static inline void put_link(struct nameidata *nd, struct path *link, void *cookie)
+static inline void put_link(struct nameidata *nd, struct path *link, void *cookie,
+			    struct inode *inode)
 {
-	struct inode *inode = link->dentry->d_inode;
+	/* Don't get the inode from the dentry, as it may have gone
+	 * negative by now. We rely on the caller saving it.
+	 */
 	if (inode->i_op->put_link)
 		inode->i_op->put_link(link->dentry, nd, cookie);
 	if (!(nd->flags & LOOKUP_RCU))
@@ -840,6 +843,7 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 	struct dentry *dentry = link->dentry;
 	int error;
 	char *s;
+	struct inode *inode;
 	void *(*follow_link_vec)(struct dentry *, struct nameidata *);
 
 	if (link->mnt == nd->path.mnt /* && !(nd->flags & LOOKUP_RCU) */ )
@@ -882,9 +886,21 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 
 	nd->last_type = LAST_BIND;
 
-	follow_link_vec = dentry->d_inode->i_op->follow_link_rcu;
+	/* Get a stable inode so that we can always "put" the link. */
+	inode = dentry->d_inode;
+	if (!inode) {
+		if (unlazy_walk_maybe(nd, dentry))
+			goto out_put_nd_path;
+		inode = dentry->d_inode;
+		if (!inode) {
+			error = -ESTALE; /* better error? */
+			goto out_put_nd_path;
+		}
+	}
+
+	follow_link_vec = inode->i_op->follow_link_rcu;
 	if (!follow_link_vec)
-		follow_link_vec = dentry->d_inode->i_op->follow_link;
+		follow_link_vec = inode->i_op->follow_link;
 
 	*p = follow_link_vec(dentry, nd);
 	error = PTR_ERR(*p);
@@ -908,7 +924,7 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 		if (unlikely(IS_ERR(s))) {
 			if (!(nd->flags & LOOKUP_RCU))
 				path_put(&nd->path);
-			put_link(nd, link, *p);
+			put_link(nd, link, *p, inode);
 			return PTR_ERR(s);
 		}
 		if (*s == '/') {
@@ -939,7 +955,7 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 
 out_put_link:
 		if (unlikely(error))
-			put_link(nd, link, *p);
+			put_link(nd, link, *p, inode);
 	}
 
 	return error;
@@ -1656,13 +1672,14 @@ static inline int nested_symlink(struct path *path, struct nameidata *nd)
 
 	do {
 		struct path link = *path;
+		struct inode *inode = nd->inode;
 		void *cookie;
 
 		res = follow_link(&link, nd, &cookie);
 		if (res)
 			break;
 		res = walk_component(nd, path, LOOKUP_FOLLOW);
-		put_link(nd, &link, cookie);
+		put_link(nd, &link, cookie, inode);
 	} while (res > 0);
 
 	current->link_count--;
@@ -2011,6 +2028,7 @@ static int path_lookupat(int dfd, const char *name,
 		while (err > 0) {
 			void *cookie;
 			struct path link = path;
+			struct inode *inode = nd->inode;
 			err = may_follow_link(&link, nd);
 			if (unlikely(err))
 				break;
@@ -2019,7 +2037,7 @@ static int path_lookupat(int dfd, const char *name,
 			if (err)
 				break;
 			err = lookup_last(nd, &path);
-			put_link(nd, &link, cookie);
+			put_link(nd, &link, cookie, inode);
 		}
 	}
 
@@ -2362,6 +2380,7 @@ path_mountpoint(int dfd, const char *name, struct path *path, unsigned int flags
 	while (err > 0) {
 		void *cookie;
 		struct path link = *path;
+		struct inode *inode = nd.inode;
 		err = may_follow_link(&link, &nd);
 		if (unlikely(err))
 			break;
@@ -2370,7 +2389,7 @@ path_mountpoint(int dfd, const char *name, struct path *path, unsigned int flags
 		if (err)
 			break;
 		err = mountpoint_last(&nd, path);
-		put_link(&nd, &link, cookie);
+		put_link(&nd, &link, cookie, inode);
 	}
 out:
 	if (base)
@@ -3259,6 +3278,7 @@ static struct file *path_openat(int dfd, struct filename *pathname,
 	error = do_last(nd, &path, file, op, &opened, pathname);
 	while (unlikely(error > 0)) { /* trailing symlink */
 		struct path link = path;
+		struct inode *inode = nd->inode;
 		void *cookie;
 		if (!(nd->flags & LOOKUP_FOLLOW)) {
 			path_put_conditional(&path, nd);
@@ -3275,7 +3295,7 @@ static struct file *path_openat(int dfd, struct filename *pathname,
 		if (unlikely(error))
 			break;
 		error = do_last(nd, &path, file, op, &opened, pathname);
-		put_link(nd, &link, cookie);
+		put_link(nd, &link, cookie, inode);
 	}
 out:
 	if (nd->root.mnt && !(nd->flags & LOOKUP_ROOT))
