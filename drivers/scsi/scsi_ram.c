@@ -463,67 +463,33 @@ static void scsi_ram_execute_command(struct scsi_cmnd *cmnd)
 }
 
 struct scsi_ram_device {
-	struct list_head commands;
 	struct Scsi_Host *host;
-	struct task_struct *thread;
 };
 
 static struct scsi_ram_device *scsi_ram_devices[16];
 
-/* Overrides scsi_pointer */
-struct scsi_ram_cmnd {
-	struct list_head queue;
-};
-
-static int scsi_ram_device_thread(void *data)
+/* Execute in different context to have more realistic behavior */
+static void scsi_ram_delayed_command(struct work_struct *work)
 {
-	struct scsi_ram_device *ram_device = data;
-	struct Scsi_Host *host = ram_device->host;
-	unsigned long flags;
-
-	while (!kthread_should_stop()) {
-		struct scsi_cmnd *cmnd;
-		struct scsi_ram_cmnd *ram_cmnd;
-
-		spin_lock_irqsave(host->host_lock, flags);
-		if (list_empty(&ram_device->commands)) {
-			set_current_state(TASK_INTERRUPTIBLE);
-			spin_unlock_irqrestore(host->host_lock, flags);
-			schedule();
-			continue;
-		}
-
-		ram_cmnd = list_first_entry(&ram_device->commands,
-						struct scsi_ram_cmnd, queue);
-		list_del(&ram_cmnd->queue);
-		spin_unlock_irqrestore(host->host_lock, flags);
-
-		cmnd = container_of((struct scsi_pointer *)ram_cmnd,
-							struct scsi_cmnd, SCp);
-		scsi_ram_execute_command(cmnd);
-	}
-	__set_current_state(TASK_RUNNING);
-
-	return 0;
+	struct scsi_cmnd *cmnd = container_of((struct scsi_pointer *)work, struct scsi_cmnd, SCp);
+	scsi_ram_execute_command(cmnd);
 }
 
 static int scsi_ram_queuecommand(struct Scsi_Host *shost,
 		struct scsi_cmnd *cmnd)
 {
-	struct scsi_ram_cmnd *ram_cmnd = (void *)&cmnd->SCp;
 	struct scsi_ram_device *ram_device = scsi_ram_devices[cmnd->device->id];
-	unsigned long flags;
 
 	pr_debug("Queueing command\n");
 	if (!ram_device)
 		goto bad_device;
 
 	if (use_thread) {
-		spin_lock_irqsave(shost->host_lock, flags);
-		if (list_empty(&ram_device->commands))
-			wake_up_process(ram_device->thread);
-		list_add_tail(&ram_cmnd->queue, &ram_device->commands);
-		spin_unlock_irqrestore(shost->host_lock, flags);
+		struct work_struct *work = (struct work_struct *)&cmnd->SCp;
+
+		BUILD_BUG_ON(sizeof(struct work_struct) > sizeof(struct scsi_pointer));
+		INIT_WORK(work, scsi_ram_delayed_command);
+		schedule_work(work);
 	} else {
 		scsi_ram_execute_command(cmnd);
 	}
@@ -551,13 +517,8 @@ static int scsi_ram_slave_alloc(struct scsi_device *sdev)
 	ram_device = kmalloc(sizeof(*ram_device), GFP_KERNEL);
 	if (!ram_device)
 		goto nomem;
-	INIT_LIST_HEAD(&ram_device->commands);
 	ram_device->host = sdev->host;
 	if (scsi_ram_alloc_data())
-		goto nomem;
-	ram_device->thread = kthread_run(scsi_ram_device_thread, ram_device,
-					 "scsi_ram_%d", sdev->id);
-	if (IS_ERR(ram_device->thread))
 		goto nomem;
 
 	scsi_ram_devices[sdev->id] = ram_device;
@@ -579,7 +540,6 @@ static void scsi_ram_slave_destroy(struct scsi_device *sdev)
 	if (sdev->lun != 0)
 		return;
 
-	kthread_stop(ram_device->thread);
 	scsi_ram_free_data();
 	kfree(ram_device);
 	scsi_ram_devices[sdev->id] = NULL;
