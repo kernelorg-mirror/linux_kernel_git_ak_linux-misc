@@ -1496,7 +1496,8 @@ config SCSI_DEBUG
 
 config SCSI_RAM
 	tristate "SCSI RAM-based host"
-	depends on SCSI
+	# On s390 work_struct doesn't fit into scsi_pointer ?!?
+	depends on SCSI && !S390
 	help
 	  This driver simulates a host adapter with one disc attached.
 	  The primary purpose of this driver is for performance testing
