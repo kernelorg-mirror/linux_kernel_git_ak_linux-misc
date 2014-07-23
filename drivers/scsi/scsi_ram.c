@@ -573,6 +573,8 @@ static int __init scsi_ram_init(void)
 {
 	int error;
 
+	capacity += (capacity + sector_size - 1) & ~(unsigned long)(sector_size - 1);
+
 	scsi_ram_host = scsi_host_alloc(&scsi_ram_template, 0);
 	if (!scsi_ram_host)
 		return -ENOMEM;
