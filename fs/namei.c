@@ -868,10 +868,10 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 	}
 	current->total_link_count++;
 
-	if (touch_atime_nonblock(link) == -ECHILD) {
+	if (!(nd->flags & LOOKUP_RCU) ||
+	    touch_atime_nonblock(link) == -ECHILD) {
 		if (unlazy_walk_maybe(nd, dentry))
 			goto out_put_nd_path;
-		/* Retry */
 		touch_atime(link);
 	}
 	nd_set_link(nd, NULL);
