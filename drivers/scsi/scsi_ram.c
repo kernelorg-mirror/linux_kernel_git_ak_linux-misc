@@ -40,8 +40,8 @@ static unsigned int sector_size = 512;
 module_param(sector_size, uint, 0444);
 MODULE_PARM_DESC(sector_size, "Size of sectors");
 
-static unsigned int capacity = 1024 * 1024;
-module_param(capacity, uint, 0444);
+static unsigned long capacity = 1024 * 1024;
+module_param(capacity, ulong, 0444);
 MODULE_PARM_DESC(capacity, "Number of logical blocks in device");
 
 static int throw_away_writes;
@@ -257,7 +257,7 @@ static void scsi_ram_too_big(struct scsi_cmnd *cmnd, unsigned int start,
 	cmnd->result = SAM_STAT_CHECK_CONDITION;
 }
 
-static void *get_data_page(unsigned int pfn)
+static void *get_data_page(unsigned long pfn)
 {
 	return kmap_atomic(scsi_ram_data_array[pfn]);
 }
@@ -277,13 +277,13 @@ static void put_sg_page(void *addr)
 	kunmap_atomic(addr);
 }
 
-static void scsi_ram_read(struct scsi_cmnd *cmnd, unsigned int startB,
-							unsigned int lenB)
+static void scsi_ram_read(struct scsi_cmnd *cmnd, unsigned long startB,
+							unsigned long lenB)
 {
 	unsigned long start = startB * sector_size;
 	unsigned long len = lenB * sector_size;
 	struct scatterlist *sg;
-	unsigned i, from_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
+	unsigned long i, from_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
 
 	if (startB > capacity || (startB + lenB) > capacity)
 		return scsi_ram_too_big(cmnd, startB, lenB);
@@ -333,13 +333,13 @@ static void scsi_ram_read(struct scsi_cmnd *cmnd, unsigned int startB,
 	}
 }
 
-static void scsi_ram_write(struct scsi_cmnd *cmnd, unsigned int startB,
-							unsigned int lenB)
+static void scsi_ram_write(struct scsi_cmnd *cmnd, unsigned long startB,
+							unsigned long lenB)
 {
 	unsigned long start = startB * sector_size;
 	unsigned long len = lenB * sector_size;
 	struct scatterlist *sg;
-	unsigned i, to_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
+	unsigned long i, to_off = start % PAGE_SIZE, data_pfn = start / PAGE_SIZE;
 
 	if (startB > capacity || (startB + lenB) > capacity)
 		return scsi_ram_too_big(cmnd, startB, lenB);
