@@ -160,6 +160,7 @@ obj-$(CONFIG_SCSI_OSD_INITIATOR) += osd/
 
 # This goes last, so that "real" scsi devices probe earlier
 obj-$(CONFIG_SCSI_DEBUG)	+= scsi_debug.o
+obj-$(CONFIG_SCSI_RAM)		+= scsi_ram.o
 
 scsi_mod-y			+= scsi.o hosts.o scsi_ioctl.o constants.o \
 				   scsicam.o scsi_error.o scsi_lib.o

@@ -1494,6 +1494,16 @@ config SCSI_DEBUG
 	  information. This driver is primarily of use to those testing the
 	  SCSI and block subsystems. If unsure, say N.
 
+config SCSI_RAM
+	tristate "SCSI RAM-based host"
+	depends on SCSI
+	help
+	  This driver simulates a host adapter with one disc attached.
+	  The primary purpose of this driver is for performance testing
+	  of the fs/block/scsi stack; as such it attempts to simulate a
+	  disc which is as fast as RAM.  If you are unsure how to answer
+	  this question, say N.
+
 config SCSI_MESH
 	tristate "MESH (Power Mac internal SCSI) support"
 	depends on PPC32 && PPC_PMAC && SCSI
