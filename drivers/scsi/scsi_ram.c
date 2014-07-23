@@ -24,6 +24,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/spinlock.h>
+#include <linux/vmalloc.h>
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
