@@ -846,6 +846,10 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 	struct inode *inode;
 	void *(*follow_link_vec)(struct dentry *, struct nameidata *);
 
+	trace_printk("dentry refcount starting follow_link: %s %d\n",
+			nd->path.dentry->d_name.name, 
+			nd->path.dentry->d_lockref.count);
+
 	if (link->mnt == nd->path.mnt /* && !(nd->flags & LOOKUP_RCU) */ )
 		mntget(link->mnt);
 
@@ -952,6 +956,9 @@ follow_link(struct path *link, struct nameidata *nd, void **p)
 		}
 		nd->inode = nd->path.dentry->d_inode;
 		error = link_path_walk(s, nd);
+		trace_printk("dentry refcount after link walk %s %d\n",
+				nd->path.dentry->d_name.name,
+				nd->path.dentry->d_lockref.count);
 
 out_put_link:
 		if (unlikely(error))
