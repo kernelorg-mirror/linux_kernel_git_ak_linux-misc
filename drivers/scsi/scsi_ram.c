@@ -485,10 +485,10 @@ static int scsi_ram_queuecommand(struct Scsi_Host *shost,
 	if (!ram_device)
 		goto bad_device;
 
-	if (use_thread) {
+	if (use_thread &&
+		sizeof(struct work_struct) <= sizeof(struct scsi_pointer)) {
 		struct work_struct *work = (struct work_struct *)&cmnd->SCp;
 
-		BUILD_BUG_ON(sizeof(struct work_struct) > sizeof(struct scsi_pointer));
 		INIT_WORK(work, scsi_ram_delayed_command);
 		schedule_work(work);
 	} else {
