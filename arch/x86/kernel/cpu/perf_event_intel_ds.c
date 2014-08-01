@@ -1013,9 +1013,17 @@ static void intel_pmu_drain_pebs_nhm(struct pt_regs *iregs)
 	 * Should not happen, we program the threshold at 1 and do not
 	 * set a reset value.
 	 */
-	WARN_ONCE(top - at > x86_pmu.max_pebs_events * x86_pmu.pebs_record_size,
-		  "Unexpected number of pebs records %ld\n",
+	if (top - at > x86_pmu.max_pebs_events * x86_pmu.pebs_record_size) {
+		        static DEFINE_RATELIMIT_STATE(rl, 
+				       DEFAULT_RATELIMIT_INTERVAL,
+                                       DEFAULT_RATELIMIT_BURST);
+			if (__ratelimit(&rl)) {
+	WARN(top - at > x86_pmu.max_pebs_events * x86_pmu.pebs_record_size,
+		  "Unexpected number of pebs records %ld, event %llx\n",
 		  (long)(top - at) / x86_pmu.pebs_record_size);
+				perf_event_print_debug();
+			}
+	}
 
 	for (; at < top; at += x86_pmu.pebs_record_size) {
 		struct pebs_record_nhm *p = at;

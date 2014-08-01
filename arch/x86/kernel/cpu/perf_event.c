@@ -1127,6 +1127,7 @@ void perf_event_print_debug(void)
 		pr_info("CPU#%d: pebs:       %016llx\n", cpu, pebs);
 	}
 	pr_info("CPU#%d: active:     %016llx\n", cpu, *(u64 *)cpuc->active_mask);
+	pr_info("CPU#%d: pebsen:     %016llx\n", cpu, cpuc->pebs_enabled);
 
 	for (idx = 0; idx < x86_pmu.num_counters; idx++) {
 		rdmsrl(x86_pmu_config_addr(idx), pmc_ctrl);
