@@ -53,24 +53,6 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 
 #endif
 
-#ifndef ARCH_HAS_RWSEM_STATE
-
-static inline void down_read_state(struct rw_semaphore *sem, int *state)
-{
-	down_read(sem);
-}
-
-static inline int down_read_state(struct rw_semaphore *sem, int *state)
-{
-	return down_read_trylock(sem);
-}
-
-static inline void up_read_state(struct rw_semaphore *sem, int state)
-{
-	up_read(sem);
-}
-#endif
-
 /* Common initializer macros and functions */
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
@@ -119,20 +101,6 @@ extern void down_read(struct rw_semaphore *sem);
  */
 extern int down_read_trylock(struct rw_semaphore *sem);
 
-/* 
- * Stateful readers.
- *
- * The state is used to optimize lock elision (allow
- * independent reader speculation). When a lock is acquired
- * with state it has to be freed with the same state.
- * This is optional.
- */
-#ifdef ARCH_HAS_RWSEM_STATE
-extern void down_read_state(struct rw_semaphore *sem, int *state);
-extern int down_read_trylock_state(struct rw_semaphore *sem, int *state);
-extern void up_read_state(struct rw_semaphore *sem, int state);
-#endif
-
 /*
  * lock for writing
  */
@@ -157,6 +125,37 @@ extern void up_write(struct rw_semaphore *sem);
  * downgrade write lock to read lock
  */
 extern void downgrade_write(struct rw_semaphore *sem);
+
+/*
+ * Stateful readers.
+ *
+ * The state is used to optimize lock elision (allow
+ * independent reader speculation). When a lock is acquired
+ * with state it has to be freed with the same state.
+ * This is optional.
+ */
+#ifdef ARCH_HAS_RWSEM_STATE
+extern void down_read_state(struct rw_semaphore *sem, int *state);
+extern int down_read_trylock_state(struct rw_semaphore *sem, int *state);
+extern void up_read_state(struct rw_semaphore *sem, int state);
+#else
+
+static inline void down_read_state(struct rw_semaphore *sem, int *state)
+{
+	down_read(sem);
+}
+
+static inline int down_read_trylock_state(struct rw_semaphore *sem, int *state)
+{
+	return down_read_trylock(sem);
+}
+
+static inline void up_read_state(struct rw_semaphore *sem, int state)
+{
+	up_read(sem);
+}
+
+#endif
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 /*
