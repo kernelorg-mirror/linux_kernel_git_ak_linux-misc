@@ -24,6 +24,7 @@
 #include <linux/security.h>
 #include <linux/hugetlb.h>
 #include <linux/profile.h>
+#include <linux/moduleparam.h>
 #include <linux/export.h>
 #include <linux/mount.h>
 #include <linux/mempolicy.h>
@@ -112,6 +113,11 @@ unsigned long vm_memory_committed(void)
 }
 EXPORT_SYMBOL_GPL(vm_memory_committed);
 
+static DEFINE_PER_CPU(long, stat_vem_total);
+module_param_cb(vem_total, &param_ops_percpu_uint, &stat_vem_total, 0644);
+static DEFINE_PER_CPU(long, stat_vem_slow);
+module_param_cb(vem_slow, &param_ops_percpu_uint, &stat_vem_slow, 0644);
+
 /*
  * Check that a process has enough memory to allocate a new virtual
  * mapping. 0 means there is enough memory for the allocation to
@@ -143,6 +149,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 	if (sysctl_overcommit_memory == OVERCOMMIT_GUESS) {
 		long extra = totalreserve_pages;
 
+		__this_cpu_inc(stat_vem_total);
+
 		/*
 		 * Reserve some for root
 		 */
@@ -165,6 +173,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 			return 0;
 
 		/* Slow path. */
+
+		__this_cpu_inc(stat_vem_slow);
 
 		free = global_page_state(NR_FREE_PAGES);
 		free += global_page_state(NR_FILE_PAGES);
