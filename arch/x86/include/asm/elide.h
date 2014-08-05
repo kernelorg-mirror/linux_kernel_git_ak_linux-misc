@@ -30,7 +30,7 @@ struct elision_config {
 	.internal_abort_skip = 5,	\
 	.lock_busy_skip = 3,		\
 	.other_abort_skip = 5,		\
-	.conflict_abort_skip = 5,	\
+	.conflict_abort_skip = 10,	\
 	.conflict_retry = 3,		\
 	.retry_timeout = 500,		\
 	.lock_busy_retry = 3,		\
