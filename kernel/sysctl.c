@@ -250,7 +250,16 @@ static int min_wakeup_granularity_ns;			/* 0 usecs */
 static int max_wakeup_granularity_ns = NSEC_PER_SEC;	/* 1 second */
 #endif
 
+extern int rcu_delay;
+
 static struct ctl_table kern_table[] = {
+	{
+		.procname	= "rcu_delay",
+		.data		= &rcu_delay,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
 	{
 		.ctl_name	= CTL_UNNUMBERED,
 		.procname	= "sched_child_runs_first",

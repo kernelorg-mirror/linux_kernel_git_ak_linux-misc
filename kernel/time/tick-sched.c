@@ -26,6 +26,8 @@
 
 #include "tick-internal.h"
 
+int __read_mostly rcu_delay = 10;
+
 /*
  * Per cpu nohz control structure
  */
@@ -282,7 +284,7 @@ void tick_nohz_stop_sched_tick(int inidle)
 	delta_jiffies = next_jiffies - last_jiffies;
 
 	if (rcu_needs_cpu(cpu) || printk_needs_cpu(cpu))
-		delta_jiffies = 1;
+		delta_jiffies = rcu_delay;
 	/*
 	 * Do not stop the tick, if we are only one off
 	 * or if the cpu is required for rcu
