@@ -14,7 +14,7 @@
 
 #include <linux/perf_event.h>
 
-#if 0
+#if 1
 #undef wrmsrl
 #define wrmsrl(msr, val) 						\
 do {									\
@@ -24,6 +24,17 @@ do {									\
 			(unsigned long long)(_val));			\
 	native_write_msr((_msr), (u32)(_val), (u32)(_val >> 32));	\
 } while (0)
+#define wrmsrl(msr, val) 						\
+do {									\
+	unsigned int _msr = (msr);					\
+	u64 _val = (val);						\
+	trace_printk("wrmsrl(%x, %Lx)\n", (unsigned int)(_msr),		\
+			(unsigned long long)(_val));			\
+	native_write_msr((_msr), (u32)(_val), (u32)(_val >> 32));	\
+} while (0)
+#undef rdmsrl
+#define rdmsrl(msr, val) \
+	do { (val) = native_read_msr(msr); trace_printk("rdmsrl(%lx) = %Lx\n", (unsigned long)(msr), (val)); } while(0)
 #endif
 
 /*
