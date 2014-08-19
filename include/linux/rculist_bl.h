@@ -6,15 +6,18 @@
  */
 #include <linux/list_bl.h>
 #include <linux/rcupdate.h>
+#include <linux/rtm.h>
 
 static inline void hlist_bl_set_first_rcu(struct hlist_bl_head *h,
 					struct hlist_bl_node *n)
 {
-	LIST_BL_BUG_ON((unsigned long)n & LIST_BL_LOCKMASK);
-	LIST_BL_BUG_ON(((unsigned long)h->first & LIST_BL_LOCKMASK) !=
+	LIST_BL_BUG_ON(!_xtest() && (unsigned long)n & LIST_BL_LOCKMASK);
+	LIST_BL_BUG_ON(!_xtest() &&
+		       ((unsigned long)h->first & LIST_BL_LOCKMASK) !=
 							LIST_BL_LOCKMASK);
 	rcu_assign_pointer(h->first,
-		(struct hlist_bl_node *)((unsigned long)n | LIST_BL_LOCKMASK));
+		(struct hlist_bl_node *)((unsigned long)n |
+			 ((unsigned long)(h->first) & LIST_BL_LOCKMASK)));
 }
 
 static inline struct hlist_bl_node *hlist_bl_first_rcu(struct hlist_bl_head *h)

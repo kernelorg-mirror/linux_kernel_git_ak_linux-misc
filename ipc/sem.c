@@ -325,7 +325,7 @@ static inline int sem_lock(struct sem_array *sma, struct sembuf *sops,
 		spin_lock(&sem->lock);
 
 		/* Then check that the global lock is free */
-		if (!spin_is_locked(&sma->sem_perm.lock)) {
+		if (!spin_is_locked_other(&sma->sem_perm.lock)) {
 			/* spin_is_locked() is not a memory barrier */
 			smp_mb();
 

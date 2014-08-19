@@ -1191,7 +1191,7 @@ struct super_block {
 #endif
 	const struct xattr_handler **s_xattr;
 
-	struct list_head	s_inodes;	/* all inodes */
+	struct list_head __percpu *s_inodes_cpu;	/* all inodes */
 	struct hlist_bl_head	s_anon;		/* anonymous dentries for (nfs) exporting */
 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
 	struct block_device	*s_bdev;
@@ -1240,7 +1240,7 @@ struct super_block {
 	struct shrinker s_shrink;	/* per-sb shrinker handle */
 
 	/* Number of inodes with nlink == 0 but still referenced */
-	atomic_long_t s_remove_count;
+	struct percpu_counter s_remove_counters;
 
 	/* Being remounted read-only */
 	int s_readonly_remount;
@@ -1256,6 +1256,16 @@ struct super_block {
 	struct list_lru		s_inode_lru ____cacheline_aligned_in_smp;
 	struct rcu_head		rcu;
 };
+
+#define for_all_sb_inodes(inode, sb)	    \
+	{				    \
+	int cpu;			    \
+	struct inode *next_i;		    \
+	for_each_possible_cpu (cpu)	    \
+	list_for_each_entry_safe(inode, next_i, \
+				 per_cpu_ptr((sb)->s_inodes_cpu, cpu), i_sb_list)
+
+#define end_all_sb_inodes() }
 
 extern struct timespec current_fs_time(struct super_block *sb);
 

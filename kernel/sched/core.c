@@ -1479,7 +1479,7 @@ static void sched_ttwu_pending(void)
 	struct rq *rq = this_rq();
 	struct llist_node *llist = llist_del_all(&rq->wake_list);
 	struct task_struct *p;
-
+	disable_txn();
 	raw_spin_lock(&rq->lock);
 
 	while (llist) {
@@ -1489,6 +1489,7 @@ static void sched_ttwu_pending(void)
 	}
 
 	raw_spin_unlock(&rq->lock);
+	reenable_txn();
 }
 
 void scheduler_ipi(void)
@@ -1589,6 +1590,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 	 * set_current_state() the waiting thread does.
 	 */
 	smp_mb__before_spinlock();
+	disable_txn();
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	if (!(p->state & state))
 		goto out;
@@ -1629,6 +1631,7 @@ stat:
 	ttwu_stat(p, cpu, wake_flags);
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
+	reenable_txn();
 
 	return success;
 }
@@ -2423,12 +2426,13 @@ void scheduler_tick(void)
 	struct task_struct *curr = rq->curr;
 
 	sched_clock_tick();
-
+	disable_txn();
 	raw_spin_lock(&rq->lock);
 	update_rq_clock(rq);
 	curr->sched_class->task_tick(rq, curr, 0);
 	update_cpu_load_active(rq);
 	raw_spin_unlock(&rq->lock);
+	reenable_txn();
 
 	perf_event_task_tick();
 
@@ -2752,7 +2756,9 @@ asmlinkage __visible void __sched schedule(void)
 	struct task_struct *tsk = current;
 
 	sched_submit_work(tsk);
+	disable_txn();
 	__schedule();
+	reenable_txn();
 }
 EXPORT_SYMBOL(schedule);
 
@@ -2800,7 +2806,9 @@ asmlinkage __visible void __sched notrace preempt_schedule(void)
 
 	do {
 		__preempt_count_add(PREEMPT_ACTIVE);
+		disable_txn();
 		__schedule();
+		reenable_txn();
 		__preempt_count_sub(PREEMPT_ACTIVE);
 
 		/*
@@ -2831,7 +2839,9 @@ asmlinkage __visible void __sched preempt_schedule_irq(void)
 	do {
 		__preempt_count_add(PREEMPT_ACTIVE);
 		local_irq_enable();
+		disable_txn();
 		__schedule();
+		reenable_txn();
 		local_irq_disable();
 		__preempt_count_sub(PREEMPT_ACTIVE);
 
@@ -4078,7 +4088,9 @@ SYSCALL_DEFINE0(sched_yield)
 static void __cond_resched(void)
 {
 	__preempt_count_add(PREEMPT_ACTIVE);
+	disable_txn();
 	__schedule();
+	reenable_txn();
 	__preempt_count_sub(PREEMPT_ACTIVE);
 }
 

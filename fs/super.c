@@ -142,6 +142,7 @@ static void destroy_super(struct super_block *s)
 	list_lru_destroy(&s->s_inode_lru);
 	for (i = 0; i < SB_FREEZE_LEVELS; i++)
 		percpu_counter_destroy(&s->s_writers.counter[i]);
+	percpu_counter_destroy(&s->s_remove_counters);
 	security_sb_free(s);
 	WARN_ON(!list_empty(&s->s_mounts));
 	kfree(s->s_subtype);
@@ -171,6 +172,8 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
 	if (security_sb_alloc(s))
 		goto fail;
 
+	if (percpu_counter_init(&s->s_remove_counters, 0) < 0)
+		goto fail;
 	for (i = 0; i < SB_FREEZE_LEVELS; i++) {
 		if (percpu_counter_init(&s->s_writers.counter[i], 0) < 0)
 			goto fail;
@@ -183,7 +186,11 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags)
 	s->s_bdi = &default_backing_dev_info;
 	INIT_HLIST_NODE(&s->s_instances);
 	INIT_HLIST_BL_HEAD(&s->s_anon);
-	INIT_LIST_HEAD(&s->s_inodes);
+	s->s_inodes_cpu = alloc_percpu(struct list_head);
+	if (!s->s_inodes_cpu)
+		goto fail;
+	for_each_possible_cpu (i)
+		INIT_LIST_HEAD(per_cpu_ptr(s->s_inodes_cpu, i));
 
 	if (list_lru_init(&s->s_dentry_lru))
 		goto fail;
@@ -385,13 +392,14 @@ bool grab_super_passive(struct super_block *sb)
 void generic_shutdown_super(struct super_block *sb)
 {
 	const struct super_operations *sop = sb->s_op;
+	int cpu;
 
 	if (sb->s_root) {
 		shrink_dcache_for_umount(sb);
 		sync_filesystem(sb);
 		sb->s_flags &= ~MS_ACTIVE;
 
-		fsnotify_unmount_inodes(&sb->s_inodes);
+		fsnotify_unmount_inodes(sb);
 
 		evict_inodes(sb);
 
@@ -403,10 +411,12 @@ void generic_shutdown_super(struct super_block *sb)
 		if (sop->put_super)
 			sop->put_super(sb);
 
-		if (!list_empty(&sb->s_inodes)) {
-			printk("VFS: Busy inodes after unmount of %s. "
-			   "Self-destruct in 5 seconds.  Have a nice day...\n",
-			   sb->s_id);
+		for_each_possible_cpu(cpu) {
+			if (!list_empty(per_cpu_ptr(sb->s_inodes_cpu, cpu))) {
+				printk("VFS: Busy inodes after unmount of %s. "
+				"Self-destruct in 5 seconds.  Have a nice day...\n",
+				sb->s_id);
+			}
 		}
 	}
 	spin_lock(&sb_lock);

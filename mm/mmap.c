@@ -24,6 +24,7 @@
 #include <linux/security.h>
 #include <linux/hugetlb.h>
 #include <linux/profile.h>
+#include <linux/moduleparam.h>
 #include <linux/export.h>
 #include <linux/mount.h>
 #include <linux/mempolicy.h>
@@ -37,6 +38,7 @@
 #include <linux/sched/sysctl.h>
 #include <linux/notifier.h>
 #include <linux/memory.h>
+#include <linux/rtm.h>
 
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
@@ -111,6 +113,11 @@ unsigned long vm_memory_committed(void)
 }
 EXPORT_SYMBOL_GPL(vm_memory_committed);
 
+static DEFINE_PER_CPU(long, stat_vem_total);
+module_param_cb(vem_total, &param_ops_percpu_uint, &stat_vem_total, 0644);
+static DEFINE_PER_CPU(long, stat_vem_slow);
+module_param_cb(vem_slow, &param_ops_percpu_uint, &stat_vem_slow, 0644);
+
 /*
  * Check that a process has enough memory to allocate a new virtual
  * mapping. 0 means there is enough memory for the allocation to
@@ -140,6 +147,35 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 		return 0;
 
 	if (sysctl_overcommit_memory == OVERCOMMIT_GUESS) {
+		long extra = totalreserve_pages;
+
+		__this_cpu_inc(stat_vem_total);
+
+		/*
+		 * Reserve some for root
+		 */
+		if (!cap_sys_admin)
+			extra += sysctl_admin_reserve_kbytes >> (PAGE_SHIFT - 10);
+
+		/*
+		 * Somewhat inaccurate fast path. Should only err on the side
+		 * of failing early.
+		 */
+		if (get_nr_swap_pages() >= pages + extra)
+			return 0;
+		if (global_page_state_compare(NR_FREE_PAGES, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_FILE_PAGES, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_SHMEM, pages + extra) >= 0)
+			return 0;
+		if (global_page_state_compare(NR_SLAB_RECLAIMABLE, pages + extra) >= 0)
+			return 0;
+
+		/* Slow path. */
+
+		__this_cpu_inc(stat_vem_slow);
+
 		free = global_page_state(NR_FREE_PAGES);
 		free += global_page_state(NR_FILE_PAGES);
 
@@ -161,6 +197,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 		 */
 		free += global_page_state(NR_SLAB_RECLAIMABLE);
 
+		free -= extra;
+
 		/*
 		 * Leave reserved pages. The pages are not for anonymous pages.
 		 */
@@ -168,12 +206,6 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 			goto error;
 		else
 			free -= totalreserve_pages;
-
-		/*
-		 * Reserve some for root
-		 */
-		if (!cap_sys_admin)
-			free -= sysctl_admin_reserve_kbytes >> (PAGE_SHIFT - 10);
 
 		if (free > pages)
 			return 0;
@@ -265,7 +297,17 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 	struct mm_struct *mm = current->mm;
 	unsigned long min_brk;
 	bool populate;
+	bool shrinking = false;
 
+	/*
+	 * Disable speculation if we're shrinking the mapping.
+	 * This would invetiably lead to an abort because of the
+	 * TLB flush.
+	 */
+	if (brk <= mm->brk) {
+		shrinking = true;
+		disable_txn();
+	}
 	down_write(&mm->mmap_sem);
 
 #ifdef CONFIG_COMPAT_BRK
@@ -319,6 +361,8 @@ set_brk:
 	mm->brk = brk;
 	populate = newbrk > oldbrk && (mm->def_flags & VM_LOCKED) != 0;
 	up_write(&mm->mmap_sem);
+	if (shrinking)
+		reenable_txn();
 	if (populate)
 		mm_populate(oldbrk, newbrk - oldbrk);
 	return brk;
@@ -326,6 +370,8 @@ set_brk:
 out:
 	retval = mm->brk;
 	up_write(&mm->mmap_sem);
+	if (shrinking)
+		reenable_txn();
 	return retval;
 }
 
@@ -782,6 +828,11 @@ again:			remove_next = 1 + (end > next->vm_end);
 	if (anon_vma) {
 		VM_BUG_ON(adjust_next && next->anon_vma &&
 			  anon_vma != next->anon_vma);
+		/*
+		 * For now to avoid too many transactions.
+		 * TBD batch this lock.
+		 */
+		disable_txn();
 		anon_vma_lock_write(anon_vma);
 		anon_vma_interval_tree_pre_update_vma(vma);
 		if (adjust_next)
@@ -847,6 +898,7 @@ again:			remove_next = 1 + (end > next->vm_end);
 		if (adjust_next)
 			anon_vma_interval_tree_post_update_vma(next);
 		anon_vma_unlock_write(anon_vma);
+		reenable_txn();
 	}
 	if (mapping)
 		mutex_unlock(&mapping->i_mmap_mutex);
@@ -2566,9 +2618,12 @@ int vm_munmap(unsigned long start, size_t len)
 	int ret;
 	struct mm_struct *mm = current->mm;
 
+	/* Usually flushes TLBs, so don't elide */
+	disable_txn();
 	down_write(&mm->mmap_sem);
 	ret = do_munmap(mm, start, len);
 	up_write(&mm->mmap_sem);
+	reenable_txn();
 	return ret;
 }
 EXPORT_SYMBOL(vm_munmap);
@@ -2582,7 +2637,7 @@ SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
 static inline void verify_mm_writelocked(struct mm_struct *mm)
 {
 #ifdef CONFIG_DEBUG_VM
-	if (unlikely(down_read_trylock(&mm->mmap_sem))) {
+	if (!_xtest() && unlikely(down_read_trylock(&mm->mmap_sem))) {
 		WARN_ON(1);
 		up_read(&mm->mmap_sem);
 	}
@@ -3141,9 +3196,14 @@ void mm_drop_all_locks(struct mm_struct *mm)
 void __init mmap_init(void)
 {
 	int ret;
+	int i;
 
 	ret = percpu_counter_init(&vm_committed_as, 0);
 	VM_BUG_ON(ret);
+	for(i = 0; i < NR_VM_ZONE_STAT_ITEMS; i++) {
+		ret = percpu_counter_init_reuse(&vm_stat[i], 0);
+		VM_BUG_ON(ret);
+	}
 }
 
 /*

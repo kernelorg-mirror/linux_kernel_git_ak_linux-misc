@@ -7,6 +7,7 @@
 #include <linux/mmzone.h>
 #include <linux/vm_event_item.h>
 #include <linux/atomic.h>
+#include <linux/percpu_counter.h>
 
 extern int sysctl_stat_interval;
 
@@ -102,23 +103,28 @@ static inline void vm_events_fold_cpu(int cpu)
 /*
  * Zone based page accounting with per cpu differentials.
  */
-extern atomic_long_t vm_stat[NR_VM_ZONE_STAT_ITEMS];
+extern struct percpu_counter vm_stat[NR_VM_ZONE_STAT_ITEMS];
 
 static inline void zone_page_state_add(long x, struct zone *zone,
 				 enum zone_stat_item item)
 {
 	atomic_long_add(x, &zone->vm_stat[item]);
-	atomic_long_add(x, &vm_stat[item]);
+	percpu_counter_add(&vm_stat[item], x);
 }
 
 static inline unsigned long global_page_state(enum zone_stat_item item)
 {
-	long x = atomic_long_read(&vm_stat[item]);
+	long x = percpu_counter_sum(&vm_stat[item]);
 #ifdef CONFIG_SMP
 	if (x < 0)
 		x = 0;
 #endif
 	return x;
+}
+
+static inline int global_page_state_compare(enum zone_stat_item item, s64 rhs)
+{
+	return percpu_counter_compare(&vm_stat[item], rhs);
 }
 
 static inline unsigned long zone_page_state(struct zone *zone,
@@ -229,13 +235,13 @@ static inline void __mod_zone_page_state(struct zone *zone,
 static inline void __inc_zone_state(struct zone *zone, enum zone_stat_item item)
 {
 	atomic_long_inc(&zone->vm_stat[item]);
-	atomic_long_inc(&vm_stat[item]);
+	percpu_counter_inc(&vm_stat[item]);
 }
 
 static inline void __dec_zone_state(struct zone *zone, enum zone_stat_item item)
 {
 	atomic_long_dec(&zone->vm_stat[item]);
-	atomic_long_dec(&vm_stat[item]);
+	percpu_counter_dec(&vm_stat[item]);
 }
 
 static inline void __inc_zone_page_state(struct page *page,

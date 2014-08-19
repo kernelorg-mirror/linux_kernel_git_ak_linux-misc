@@ -242,17 +242,17 @@ out:
 
 /**
  * fsnotify_unmount_inodes - an sb is unmounting.  handle any watched inodes.
- * @list: list of inodes being unmounted (sb->s_inodes)
+ * @sb: Super block.
  *
  * Called during unmount with no locks held, so needs to be safe against
  * concurrent modifiers. We temporarily drop inode_sb_list_lock and CAN block.
  */
-void fsnotify_unmount_inodes(struct list_head *list)
+void fsnotify_unmount_inodes(struct super_block *sb)
 {
-	struct inode *inode, *next_i, *need_iput = NULL;
+	struct inode *inode, *need_iput = NULL;
 
 	spin_lock(&inode_sb_list_lock);
-	list_for_each_entry_safe(inode, next_i, list, i_sb_list) {
+	for_all_sb_inodes(inode, sb) {
 		struct inode *need_iput_tmp;
 
 		/*
@@ -288,7 +288,8 @@ void fsnotify_unmount_inodes(struct list_head *list)
 		spin_unlock(&inode->i_lock);
 
 		/* In case the dropping of a reference would nuke next_i. */
-		if ((&next_i->i_sb_list != list) &&
+		/* XXX References private variables in for_all_sb_inodes for now. */
+		if ((&next_i->i_sb_list != per_cpu_ptr(sb->s_inodes_cpu, cpu)) &&
 		    atomic_read(&next_i->i_count)) {
 			spin_lock(&next_i->i_lock);
 			if (!(next_i->i_state & (I_FREEING | I_WILL_FREE))) {
@@ -316,6 +317,6 @@ void fsnotify_unmount_inodes(struct list_head *list)
 		iput(inode);
 
 		spin_lock(&inode_sb_list_lock);
-	}
+	} end_all_sb_inodes()
 	spin_unlock(&inode_sb_list_lock);
 }

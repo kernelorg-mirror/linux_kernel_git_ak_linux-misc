@@ -1516,7 +1516,7 @@ static void rcu_gp_cleanup(struct rcu_state *rsp)
 	int nocb = 0;
 	struct rcu_data *rdp;
 	struct rcu_node *rnp = rcu_get_root(rsp);
-
+	disable_txn();
 	raw_spin_lock_irq(&rnp->lock);
 	smp_mb__after_unlock_lock();
 	gp_duration = jiffies - rsp->gp_start;
@@ -1572,6 +1572,7 @@ static void rcu_gp_cleanup(struct rcu_state *rsp)
 				       TPS("newreq"));
 	}
 	raw_spin_unlock_irq(&rnp->lock);
+	reenable_txn();
 }
 
 /*

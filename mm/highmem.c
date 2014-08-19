@@ -27,6 +27,7 @@
 #include <linux/hash.h>
 #include <linux/highmem.h>
 #include <linux/kgdb.h>
+#include <linux/mempolicy.h>
 #include <asm/tlbflush.h>
 
 
@@ -422,3 +423,50 @@ void __init page_address_init(void)
 }
 
 #endif	/* defined(CONFIG_HIGHMEM) && !defined(WANT_PAGE_VIRTUAL) */
+
+/**
+ * alloc_zeroed_user_highpage_movable - Allocate a zeroed HIGHMEM page for a VMA that the caller knows can move
+ * @vma: The VMA the page is to be allocated for
+ * @vaddr: The virtual address the page will be inserted into
+ *
+ * This function will allocate a page for a VMA that the caller knows will
+ * be able to migrate in the future using move_pages() or reclaimed
+ */
+struct page *
+alloc_zeroed_user_highpage_movable(struct vm_area_struct *vma,
+					unsigned long vaddr)
+{
+	struct task_struct *me = current;
+	struct page *page = me->clear_page;
+
+	/*
+	 * Did we predict the page clearing? If yes,
+	 * use the pre-cleared page.
+	 */
+	if (page && (mpol_misplaced(page, vma, vaddr) < 0)) {
+		/* overflows are harmless */
+		me->clear_count++;
+		me->clear_page = NULL;
+		return page;
+	}
+	me->clear_count++;
+
+	return __alloc_zeroed_user_highpage(__GFP_MOVABLE, vma, vaddr);
+}
+
+int __read_mostly sysctl_clear_threshold = 4;
+
+/*
+ * Predictive page clearing before the mmap_sem is taken
+ */
+void predictive_page_clear(void)
+{
+	struct task_struct *me = current;
+
+	if (me->clear_page)
+		return;
+	if (me->clear_count < sysctl_clear_threshold)
+		return;
+	/* We don't know the vma here, so just try current node. */
+	me->clear_page = alloc_zeroed_user_highpage_movable(NULL, 0);
+}

@@ -79,7 +79,7 @@ void vm_events_fold_cpu(int cpu)
  *
  * vm_stat contains the global counters
  */
-atomic_long_t vm_stat[NR_VM_ZONE_STAT_ITEMS] __cacheline_aligned_in_smp;
+struct percpu_counter vm_stat[NR_VM_ZONE_STAT_ITEMS] __cacheline_aligned_in_smp;
 EXPORT_SYMBOL(vm_stat);
 
 #ifdef CONFIG_SMP
@@ -423,7 +423,7 @@ static inline void fold_diff(int *diff)
 
 	for (i = 0; i < NR_VM_ZONE_STAT_ITEMS; i++)
 		if (diff[i])
-			atomic_long_add(diff[i], &vm_stat[i]);
+			percpu_counter_add(&vm_stat[i], diff[i]);
 }
 
 /*
@@ -538,7 +538,7 @@ void drain_zonestat(struct zone *zone, struct per_cpu_pageset *pset)
 			int v = pset->vm_stat_diff[i];
 			pset->vm_stat_diff[i] = 0;
 			atomic_long_add(v, &zone->vm_stat[i]);
-			atomic_long_add(v, &vm_stat[i]);
+			percpu_counter_add(&vm_stat[i], v);
 		}
 }
 #endif

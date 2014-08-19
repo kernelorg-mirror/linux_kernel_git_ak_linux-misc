@@ -62,6 +62,10 @@ void percpu_counter_set(struct percpu_counter *fbc, s64 amount)
 	int cpu;
 	unsigned long flags;
 
+	if (!fbc->initialized) {
+		fbc->count = amount;
+		return;
+	}
 	raw_spin_lock_irqsave(&fbc->lock, flags);
 	for_each_possible_cpu(cpu) {
 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
@@ -75,6 +79,12 @@ EXPORT_SYMBOL(percpu_counter_set);
 void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch)
 {
 	s64 count;
+
+	if (unlikely(!fbc->initialized)) {
+		/* When uninitialized you must be single threaded. */
+		fbc->count += amount;
+		return;
+	}
 
 	preempt_disable();
 	count = __this_cpu_read(*fbc->counters) + amount;
@@ -101,6 +111,8 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
 	int cpu;
 	unsigned long flags;
 
+	if (unlikely(!fbc->initialized))
+		return fbc->count;
 	raw_spin_lock_irqsave(&fbc->lock, flags);
 	ret = fbc->count;
 	for_each_online_cpu(cpu) {
@@ -113,11 +125,16 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
 EXPORT_SYMBOL(__percpu_counter_sum);
 
 int __percpu_counter_init(struct percpu_counter *fbc, s64 amount,
-			  struct lock_class_key *key)
+			  struct lock_class_key *key, int reused)
 {
+
+	WARN_ON_ONCE(fbc->initialized);
 	raw_spin_lock_init(&fbc->lock);
 	lockdep_set_class(&fbc->lock, key);
-	fbc->count = amount;
+	if (reused)
+		fbc->count += amount;
+	else
+		fbc->count = amount;
 	fbc->counters = alloc_percpu(s32);
 	if (!fbc->counters)
 		return -ENOMEM;
@@ -130,6 +147,7 @@ int __percpu_counter_init(struct percpu_counter *fbc, s64 amount,
 	list_add(&fbc->list, &percpu_counters);
 	spin_unlock(&percpu_counters_lock);
 #endif
+	fbc->initialized = 1;
 	return 0;
 }
 EXPORT_SYMBOL(__percpu_counter_init);

@@ -53,10 +53,11 @@ void lockref_get(struct lockref *lockref)
 	,
 		return;
 	);
-
+	disable_txn();
 	spin_lock(&lockref->lock);
 	lockref->count++;
 	spin_unlock(&lockref->lock);
+	reenable_txn();
 }
 EXPORT_SYMBOL(lockref_get);
 
@@ -76,7 +77,7 @@ int lockref_get_not_zero(struct lockref *lockref)
 	,
 		return 1;
 	);
-
+	disable_txn();
 	spin_lock(&lockref->lock);
 	retval = 0;
 	if (lockref->count) {
@@ -84,6 +85,7 @@ int lockref_get_not_zero(struct lockref *lockref)
 		retval = 1;
 	}
 	spin_unlock(&lockref->lock);
+	reenable_txn();
 	return retval;
 }
 EXPORT_SYMBOL(lockref_get_not_zero);
@@ -103,12 +105,16 @@ int lockref_get_or_lock(struct lockref *lockref)
 	,
 		return 1;
 	);
-
+	disable_txn();
 	spin_lock(&lockref->lock);
 	if (!lockref->count)
+	{
+		reenable_txn();
 		return 0;
+	}
 	lockref->count++;
 	spin_unlock(&lockref->lock);
+	reenable_txn();
 	return 1;
 }
 EXPORT_SYMBOL(lockref_get_or_lock);
@@ -127,12 +133,16 @@ int lockref_put_or_lock(struct lockref *lockref)
 	,
 		return 1;
 	);
-
+	disable_txn();
 	spin_lock(&lockref->lock);
 	if (lockref->count <= 1)
+	{
+		reenable_txn();
 		return 0;
+	}
 	lockref->count--;
 	spin_unlock(&lockref->lock);
+	reenable_txn();
 	return 1;
 }
 EXPORT_SYMBOL(lockref_put_or_lock);
@@ -164,7 +174,7 @@ int lockref_get_not_dead(struct lockref *lockref)
 	,
 		return 1;
 	);
-
+	disable_txn();
 	spin_lock(&lockref->lock);
 	retval = 0;
 	if ((int) lockref->count >= 0) {
@@ -172,6 +182,7 @@ int lockref_get_not_dead(struct lockref *lockref)
 		retval = 1;
 	}
 	spin_unlock(&lockref->lock);
+	reenable_txn();
 	return retval;
 }
 EXPORT_SYMBOL(lockref_get_not_dead);
