@@ -1,6 +1,8 @@
 #include <linux/module.h>
 #include <linux/preempt.h>
 #include <asm/msr.h>
+#define CREATE_TRACE_POINTS
+#include <trace/events/msr.h>
 
 struct msr *msrs_alloc(void)
 {
@@ -111,16 +113,20 @@ int msr_clear_bit(u32 msr, u8 bit)
 
 inline unsigned long long native_read_msr(unsigned int msr)
 {
+	unsigned long long lval;
 	DECLARE_ARGS(val, low, high);
 
 	asm volatile("rdmsr" : EAX_EDX_RET(val, low, high) : "c" (msr));
-	return EAX_EDX_VAL(val, low, high);
+	lval = EAX_EDX_VAL(val, low, high);
+	trace_read_msr(msr, lval, 0);
+	return lval;
 }
 EXPORT_SYMBOL(native_read_msr);
 
 inline unsigned long long native_read_msr_safe(unsigned int msr,
 						      int *err)
 {
+	unsigned long long lval;
 	DECLARE_ARGS(val, low, high);
 
 	asm volatile("2: rdmsr ; xor %[err],%[err]\n"
@@ -131,7 +137,9 @@ inline unsigned long long native_read_msr_safe(unsigned int msr,
 		     _ASM_EXTABLE(2b, 3b)
 		     : [err] "=r" (*err), EAX_EDX_RET(val, low, high)
 		     : "c" (msr), [fault] "i" (-EIO));
-	return EAX_EDX_VAL(val, low, high);
+	lval = EAX_EDX_VAL(val, low, high);
+	trace_read_msr(msr, lval, *err);
+	return lval;
 }
 EXPORT_SYMBOL(native_read_msr_safe);
 
@@ -139,6 +147,7 @@ inline void native_write_msr(unsigned int msr,
 				    unsigned low, unsigned high)
 {
 	asm volatile("wrmsr" : : "c" (msr), "a"(low), "d" (high) : "memory");
+	trace_write_msr(msr, ((u64)high << 32 | low), 0);
 }
 EXPORT_SYMBOL(native_write_msr);
 
@@ -158,6 +167,7 @@ notrace inline int native_write_msr_safe(unsigned int msr,
 		     : "c" (msr), "0" (low), "d" (high),
 		       [fault] "i" (-EIO)
 		     : "memory");
+	trace_write_msr(msr, ((u64)high << 32 | low), err);
 	return err;
 }
 EXPORT_SYMBOL(native_write_msr_safe);
