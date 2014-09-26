@@ -108,3 +108,56 @@ int msr_clear_bit(u32 msr, u8 bit)
 {
 	return __flip_bit(msr, bit, false);
 }
+
+inline unsigned long long native_read_msr(unsigned int msr)
+{
+	DECLARE_ARGS(val, low, high);
+
+	asm volatile("rdmsr" : EAX_EDX_RET(val, low, high) : "c" (msr));
+	return EAX_EDX_VAL(val, low, high);
+}
+EXPORT_SYMBOL(native_read_msr);
+
+inline unsigned long long native_read_msr_safe(unsigned int msr,
+						      int *err)
+{
+	DECLARE_ARGS(val, low, high);
+
+	asm volatile("2: rdmsr ; xor %[err],%[err]\n"
+		     "1:\n\t"
+		     ".section .fixup,\"ax\"\n\t"
+		     "3:  mov %[fault],%[err] ; jmp 1b\n\t"
+		     ".previous\n\t"
+		     _ASM_EXTABLE(2b, 3b)
+		     : [err] "=r" (*err), EAX_EDX_RET(val, low, high)
+		     : "c" (msr), [fault] "i" (-EIO));
+	return EAX_EDX_VAL(val, low, high);
+}
+EXPORT_SYMBOL(native_read_msr_safe);
+
+inline void native_write_msr(unsigned int msr,
+				    unsigned low, unsigned high)
+{
+	asm volatile("wrmsr" : : "c" (msr), "a"(low), "d" (high) : "memory");
+}
+EXPORT_SYMBOL(native_write_msr);
+
+/* Can be uninlined because referenced by paravirt */
+notrace inline int native_write_msr_safe(unsigned int msr,
+					unsigned low, unsigned high)
+{
+	int err;
+
+	asm volatile("2: wrmsr ; xor %[err],%[err]\n"
+		     "1:\n\t"
+		     ".section .fixup,\"ax\"\n\t"
+		     "3:  mov %[fault],%[err] ; jmp 1b\n\t"
+		     ".previous\n\t"
+		     _ASM_EXTABLE(2b, 3b)
+		     : [err] "=a" (err)
+		     : "c" (msr), "0" (low), "d" (high),
+		       [fault] "i" (-EIO)
+		     : "memory");
+	return err;
+}
+EXPORT_SYMBOL(native_write_msr_safe);
