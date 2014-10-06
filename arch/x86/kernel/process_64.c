@@ -265,15 +265,16 @@ void start_thread_ia32(struct pt_regs *regs, u32 new_ip, u32 new_sp)
 /* Out of line to be protected from kprobes. */
 
 /* Interrupts are disabled here. */
-static noinline __kprobes void switch_gs(unsigned long gs)
+static noinline void switch_gs_base(unsigned long gs)
 {
 	swapgs();
 	wrgsbase(gs);
 	swapgs();
 }
+NOKPROBE_SYMBOL(switch_gs_base);
 
 /* Interrupts are disabled here. */
-static noinline __kprobes unsigned long read_user_gs(void)
+static noinline unsigned long read_user_gsbase(void)
 {
 	unsigned long gs;
 
@@ -282,6 +283,7 @@ static noinline __kprobes unsigned long read_user_gs(void)
 	swapgs();
 	return gs;
 }
+NOKPROBE_SYMBOL(read_user_gsbase);
 
 /*
  *	switch_to(x,y) should switch tasks from x to y.
@@ -317,7 +319,7 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	savesegment(gs, gsindex);
 	if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
 		prev->fs = rdfsbase();
-		prev->gs = read_user_gs();
+		prev->gs = read_user_gsbase();
 	}
 
 	/*
@@ -359,6 +361,10 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 
 	/*
 	 * Switch FS and GS.
+	 *
+	 * Note that this description is generally obsolete on systems with
+	 * X86_FEATURE_FSGSBASE. We save/restore the full bases, as long
+	 * as the indexes are 0.
 	 *
 	 * These are even more complicated than FS and GS: they have
 	 * 64-bit bases are that controlled by arch_prctl.  Those bases
@@ -424,7 +430,7 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	}
 	if (next->gs) {
 		if (static_cpu_has(X86_FEATURE_FSGSBASE))
-			switch_gs(next->gs);
+			switch_gs_base(next->gs);
 		else
 			wrmsrl(MSR_KERNEL_GS_BASE, next->gs);
 	}
@@ -534,20 +540,38 @@ unsigned long get_wchan(struct task_struct *p)
 	return 0;
 }
 
+static noinline __kprobes void reload_user_gs(unsigned long addr)
+{
+	local_irq_disable();
+	swapgs();
+	loadsegment(gs, 0);
+	wrgsbase(addr);
+	swapgs();
+	local_irq_enable();
+}
+
 long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 {
 	int ret = 0;
 	int doit = task == current;
 	int cpu;
+	int fast_seg = boot_cpu_has(X86_FEATURE_FSGSBASE);
 
 	switch (code) {
 	case ARCH_SET_GS:
+		/*
+		 * With fast_seg we don't need that check anymore,
+		 * but keep it so that programs do not suddenly
+		 * start failing when run on older CPUs.
+		 * If you really want to set a address in kernel space
+		 * use WRGSBASE directly.
+		 */
 		if (addr >= TASK_SIZE_OF(task))
 			return -EPERM;
 		cpu = get_cpu();
 		/* handle small bases via the GDT because that's faster to
 		   switch. */
-		if (addr <= 0xffffffff) {
+		if (addr <= 0xffffffff && !fast_seg) {
 			set_32bit_tls(task, GS_TLS, addr);
 			if (doit) {
 				load_TLS(&task->thread, cpu);
@@ -559,8 +583,12 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 			task->thread.gsindex = 0;
 			task->thread.gs = addr;
 			if (doit) {
-				load_gs_index(0);
-				ret = wrmsrl_safe(MSR_KERNEL_GS_BASE, addr);
+				if (fast_seg) {
+					reload_user_gs(addr);
+				} else {
+					load_gs_index(0);
+					ret = wrmsrl_safe(MSR_KERNEL_GS_BASE, addr);
+				}
 			}
 		}
 		put_cpu();
@@ -573,7 +601,7 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 		cpu = get_cpu();
 		/* handle small bases via the GDT because that's faster to
 		   switch. */
-		if (addr <= 0xffffffff) {
+		if (addr <= 0xffffffff && !fast_seg) {
 			set_32bit_tls(task, FS_TLS, addr);
 			if (doit) {
 				load_TLS(&task->thread, cpu);
@@ -588,7 +616,10 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 				/* set the selector to 0 to not confuse
 				   __switch_to */
 				loadsegment(fs, 0);
-				ret = wrmsrl_safe(MSR_FS_BASE, addr);
+				if (fast_seg)
+					wrfsbase(addr);
+				else
+					ret = wrmsrl_safe(MSR_FS_BASE, addr);
 			}
 		}
 		put_cpu();
@@ -597,6 +628,8 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 		unsigned long base;
 		if (task->thread.fsindex == FS_TLS_SEL)
 			base = read_32bit_tls(task, FS_TLS);
+		else if (doit && fast_seg)
+			base = rdfsbase();
 		else if (doit)
 			rdmsrl(MSR_FS_BASE, base);
 		else
@@ -611,9 +644,14 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 			base = read_32bit_tls(task, GS_TLS);
 		else if (doit) {
 			savesegment(gs, gsindex);
-			if (gsindex)
-				rdmsrl(MSR_KERNEL_GS_BASE, base);
-			else
+			if (gsindex) {
+				if (fast_seg) {
+					local_irq_disable();
+					base = read_user_gsbase();
+					local_irq_enable();
+				} else
+					rdmsrl(MSR_KERNEL_GS_BASE, base);
+			} else
 				base = task->thread.gs;
 		} else
 			base = task->thread.gs;
