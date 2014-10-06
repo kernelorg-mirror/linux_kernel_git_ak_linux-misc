@@ -530,20 +530,38 @@ void set_personality_ia32(bool x32)
 }
 EXPORT_SYMBOL_GPL(set_personality_ia32);
 
+static noinline __kprobes void reload_user_gs(unsigned long addr)
+{
+	local_irq_disable();
+	swapgs();
+	loadsegment(gs, 0);
+	wrgsbase(addr);
+	swapgs();
+	local_irq_enable();
+}
+
 long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 {
 	int ret = 0;
 	int doit = task == current;
 	int cpu;
+	int fast_seg = boot_cpu_has(X86_FEATURE_FSGSBASE);
 
 	switch (code) {
 	case ARCH_SET_GS:
+		/*
+		 * With fast_seg we don't need that check anymore,
+		 * but keep it so that programs do not suddenly
+		 * start failing when run on older CPUs.
+		 * If you really want to set a address in kernel space
+		 * use WRGSBASE directly.
+		 */
 		if (addr >= TASK_SIZE_OF(task))
 			return -EPERM;
 		cpu = get_cpu();
 		/* handle small bases via the GDT because that's faster to
 		   switch. */
-		if (addr <= 0xffffffff) {
+		if (addr <= 0xffffffff && !fast_seg) {
 			set_32bit_tls(task, GS_TLS, addr);
 			if (doit) {
 				load_TLS(&task->thread, cpu);
@@ -555,8 +573,12 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 			task->thread.gsindex = 0;
 			task->thread.gs = addr;
 			if (doit) {
-				load_gs_index(0);
-				ret = wrmsrl_safe(MSR_KERNEL_GS_BASE, addr);
+				if (fast_seg) {
+					reload_user_gs(addr);
+				} else {
+					load_gs_index(0);
+					ret = wrmsrl_safe(MSR_KERNEL_GS_BASE, addr);
+				}
 			}
 		}
 		put_cpu();
@@ -569,7 +591,7 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 		cpu = get_cpu();
 		/* handle small bases via the GDT because that's faster to
 		   switch. */
-		if (addr <= 0xffffffff) {
+		if (addr <= 0xffffffff && !fast_seg) {
 			set_32bit_tls(task, FS_TLS, addr);
 			if (doit) {
 				load_TLS(&task->thread, cpu);
@@ -584,7 +606,10 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 				/* set the selector to 0 to not confuse
 				   __switch_to */
 				loadsegment(fs, 0);
-				ret = wrmsrl_safe(MSR_FS_BASE, addr);
+				if (fast_seg)
+					wrfsbase(addr);
+				else
+					ret = wrmsrl_safe(MSR_FS_BASE, addr);
 			}
 		}
 		put_cpu();
@@ -593,6 +618,8 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 		unsigned long base;
 		if (task->thread.fsindex == FS_TLS_SEL)
 			base = read_32bit_tls(task, FS_TLS);
+		else if (doit && fast_seg)
+			base = rdfsbase();
 		else if (doit)
 			rdmsrl(MSR_FS_BASE, base);
 		else
@@ -607,9 +634,14 @@ long do_arch_prctl(struct task_struct *task, int code, unsigned long addr)
 			base = read_32bit_tls(task, GS_TLS);
 		else if (doit) {
 			savesegment(gs, gsindex);
-			if (gsindex)
-				rdmsrl(MSR_KERNEL_GS_BASE, base);
-			else
+			if (gsindex) {
+				if (fast_seg) {
+					local_irq_disable();
+					base = read_user_gsbase();
+					local_irq_enable();
+				} else
+					rdmsrl(MSR_KERNEL_GS_BASE, base);
+			} else
 				base = task->thread.gs;
 		} else
 			base = task->thread.gs;
