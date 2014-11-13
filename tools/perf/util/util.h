@@ -341,7 +341,7 @@ struct dso;
 struct symbol;
 
 char *get_srcline(struct dso *dso, unsigned long addr, struct symbol *sym,
-		  bool show_sym);
+		  bool show_sym, unsigned long abs_addr);
 void free_srcline(char *srcline);
 
 int filename__read_int(const char *filename, int *value);

@@ -252,7 +252,7 @@ void dso__free_a2l(struct dso *dso __maybe_unused)
 #define A2L_FAIL_LIMIT 123
 
 char *get_srcline(struct dso *dso, unsigned long addr, struct symbol *sym,
-		  bool show_sym)
+		  bool show_sym, unsigned long abs_addr)
 {
 	char *file = NULL;
 	unsigned line = 0;
@@ -293,9 +293,9 @@ out:
 	}
 	if (sym) {
 		if (asprintf(&srcline, "%s+%ld", show_sym ? sym->name : "",
-					addr - sym->start) < 0)
+					abs_addr - sym->start) < 0)
 			return SRCLINE_UNKNOWN;
-	} else if (asprintf(&srcline, "%s[%lx]", dso->short_name, addr) < 0)
+	} else if (asprintf(&srcline, "%s[%lx]", dso->short_name, abs_addr) < 0)
 		return SRCLINE_UNKNOWN;
 	return srcline;
 }

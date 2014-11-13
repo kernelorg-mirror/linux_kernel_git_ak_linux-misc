@@ -824,7 +824,7 @@ char *callchain_list__sym_name(struct callchain_list *cl,
 			cl->srcline = get_srcline(cl->ms.map->dso,
 						  map__rip_2objdump(cl->ms.map,
 								    cl->ip),
-						  cl->ms.sym, false);
+						  cl->ms.sym, false, cl->ip);
 		if (cl->srcline)
 			printed = scnprintf(bf, bfsize, "%s %s",
 					cl->ms.sym->name, cl->srcline);
