@@ -424,12 +424,22 @@ static __initconst const u64 snb_hw_cache_event_ids
 
 };
 
-/* Bits in the offcore MSR */
-
+#define HSW_DEMAND_DATA_RD		BIT(0)
 #define HSW_DEMAND_RFO			BIT(1)
+#define HSW_DEMAND_CODE_RD		BIT(2)
+#define HSW_PF_L2_DATA_RD		BIT(4)
 #define HSW_PF_L2_RFO			BIT(5)
+#define HSW_PF_L2_CODE_RD		BIT(6)
+#define HSW_PF_L3_DATA_RD		BIT(7)
 #define HSW_PF_L3_RFO			BIT(8)
-#define HSW_ALL_RFO			(HSW_DEMAND_RFO|HSW_PF_L2_RFO|HSW_PF_L3_RFO)
+#define HSW_PF_L3_CODE_RD		BIT(9)
+#define HSW_ALL_RFO			(HSW_DEMAND_RFO| \
+					 HSW_PF_L2_RFO|HSW_PF_L3_RFO)
+#define HSW_ALL_READS			(HSW_DEMAND_DATA_RD| \
+					 HSW_DEMAND_RFO|HSW_DEMAND_CODE_RD| \
+					 HSW_PF_L2_DATA_RD|HSW_PF_L2_RFO| \
+					 HSW_PF_L2_CODE_RD|HSW_PF_L3_DATA_RD| \
+					 HSW_PF_L3_RFO|HSW_PF_L3_CODE_RD)
 #define HSW_SUPPLIER_NONE		BIT(17)
 #define HSW_L3_HIT_M			BIT(18)
 #define HSW_L3_HIT_E			BIT(19)
@@ -440,7 +450,7 @@ static __initconst const u64 snb_hw_cache_event_ids
 #define HSW_L3_MISS_LOCAL		BIT(22)
 #define HSW_L3_MISS_REMOTE_HOP0		BIT(27)
 #define HSW_L3_MISS_REMOTE_HOP1		BIT(28)
-#define HSW_L3_MISS_REMOTE_HOP2P	BIT(29)
+#define HSW_L3_MISS_REMOTE_HOP2P		BIT(29)
 #define HSW_SNOOP_NONE			BIT(31)
 #define HSW_SNOOP_NOT_NEEDED		BIT(32)
 #define HSW_SNOOP_MISS			BIT(33)
@@ -448,20 +458,19 @@ static __initconst const u64 snb_hw_cache_event_ids
 #define HSW_SNOOP_HIT_WITH_FWD		BIT(35)
 #define HSW_SNOOP_HITM			BIT(36)
 #define HSW_SNOOP_NON_DRAM		BIT(37)
-#define HSW_ANY_SNOOP			(HSW_SNOOP_NONE|HSW_SNOOP_NOT_NEEDED| \
-					 HSW_SNOOP_MISS|HSW_SNOOP_HIT_NO_FWD| \
-					 HSW_SNOOP_HIT_WITH_FWD|	\
-					 HSW_SNOOP_HITM|		\
-					 HSW_SNOOP_NON_DRAM)
+#define HSW_ANY_SNOOP			(HSW_SNOOP_NONE| \
+					 HSW_SNOOP_NOT_NEEDED|HSW_SNOOP_MISS| \
+					 HSW_SNOOP_HIT_NO_FWD|HSW_SNOOP_HIT_WITH_FWD| \
+					 HSW_SNOOP_HITM|HSW_SNOOP_NON_DRAM)
 
-static __initconst const u64 hsw_hw_cache_ids
+static __initconst const u64 hsw_hw_cache_event_ids
 				[PERF_COUNT_HW_CACHE_MAX]
 				[PERF_COUNT_HW_CACHE_OP_MAX]
 				[PERF_COUNT_HW_CACHE_RESULT_MAX] =
 {
  [ C(L1D ) ] = {
 	[ C(OP_READ) ] = {
-		[ C(RESULT_ACCESS) ] = 0x1d1, 	/* MEM_LOAD_UOPS_RETIRED.L1_HIT, HSM30 */
+		[ C(RESULT_ACCESS) ] = 0x81d0, 	/* MEM_UOPS_RETIRED.ALL_LOADS, HSM30 */
 		[ C(RESULT_MISS)   ] = 0x151, 	/* L1D.REPLACEMENT */
 	},
 	[ C(OP_WRITE) ] = {
@@ -489,8 +498,7 @@ static __initconst const u64 hsw_hw_cache_ids
  },
  [ C(LL  ) ] = {
 	[ C(OP_READ) ] = {
-		/* MEM_LOAD_UOPS_RETIRED.L3_HIT, HSM26, HSM30 */
-		[ C(RESULT_ACCESS) ] = 0x4d1,
+		[ C(RESULT_ACCESS) ] = 0x1b7, 	/* OFFCORE_RESPONSE */
 		/* MEM_LOAD_UOPS_RETIRED.L3_MISS, HSM26, HSM30 */
 		[ C(RESULT_MISS)   ] = 0x20d1,
 	},
@@ -570,7 +578,8 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 {
  [ C(LL  ) ] = {
 	[ C(OP_READ) ] = {
-		[ C(RESULT_ACCESS) ] = 0x0,
+		[ C(RESULT_ACCESS) ] = HSW_ALL_READS|HSW_L3_HIT|
+				       HSW_ANY_SNOOP|HSW_SUPPLIER_NONE,
 		[ C(RESULT_MISS)   ] = 0x0,
 	},
 	[ C(OP_WRITE) ] = {
@@ -578,7 +587,8 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 				       HSW_ANY_SNOOP|HSW_SUPPLIER_NONE,
 		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|
 				       HSW_SUPPLIER_NONE|HSW_L3_MISS_LOCAL|
-				       HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1|
+				       HSW_L3_MISS_REMOTE_HOP0|
+				       HSW_L3_MISS_REMOTE_HOP1|
 				       HSW_L3_MISS_REMOTE_HOP2P|HSW_ANY_SNOOP,
 	},
 	[ C(OP_PREFETCH) ] = {
@@ -595,8 +605,10 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|HSW_ANY_SNOOP|
 				       HSW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE,
 		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|
-				       HSW_SUPPLIER_NONE|HSW_L3_MISS_REMOTE_HOP0|
-				       HSW_L3_MISS_REMOTE_HOP1|HSW_L3_MISS_REMOTE_HOP2P|
+				       HSW_SUPPLIER_NONE|
+				       HSW_L3_MISS_REMOTE_HOP0|
+				       HSW_L3_MISS_REMOTE_HOP1|
+				       HSW_L3_MISS_REMOTE_HOP2P|
 				       HSW_ANY_SNOOP,
 	},
 	[ C(OP_PREFETCH) ] = {
@@ -2754,7 +2766,7 @@ __init int intel_pmu_init(void)
 	case 69: /* 22nm Haswell ULT */
 	case 70: /* 22nm Haswell + GT3e (Intel Iris Pro graphics) */
 		x86_pmu.late_ack = true;
-		memcpy(hw_cache_event_ids, hsw_hw_cache_event_ids, sizeof(hw_cache_event_ids));
+		memcpy(hw_cache_event_ids, hsw_hw_cache_event_ids, sizeof(hsw_hw_cache_event_ids));
 		memcpy(hw_cache_extra_regs, hsw_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
 
 		intel_pmu_lbr_init_snb();
