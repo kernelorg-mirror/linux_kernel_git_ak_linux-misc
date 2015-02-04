@@ -426,31 +426,19 @@ static __initconst const u64 snb_hw_cache_event_ids
 
 #define HSW_DEMAND_DATA_RD		BIT(0)
 #define HSW_DEMAND_RFO			BIT(1)
-#define HSW_DEMAND_CODE_RD		BIT(2)
-#define HSW_PF_L2_DATA_RD		BIT(4)
 #define HSW_PF_L2_RFO			BIT(5)
-#define HSW_PF_L2_CODE_RD		BIT(6)
-#define HSW_PF_L3_DATA_RD		BIT(7)
 #define HSW_PF_L3_RFO			BIT(8)
-#define HSW_PF_L3_CODE_RD		BIT(9)
 #define HSW_ALL_RFO			(HSW_DEMAND_RFO| \
 					 HSW_PF_L2_RFO|HSW_PF_L3_RFO)
-#define HSW_ALL_READS			(HSW_DEMAND_DATA_RD| \
-					 HSW_DEMAND_RFO|HSW_DEMAND_CODE_RD| \
-					 HSW_PF_L2_DATA_RD|HSW_PF_L2_RFO| \
-					 HSW_PF_L2_CODE_RD|HSW_PF_L3_DATA_RD| \
-					 HSW_PF_L3_RFO|HSW_PF_L3_CODE_RD)
+#define HSW_ANY_RESPONSE		BIT(16)
 #define HSW_SUPPLIER_NONE		BIT(17)
-#define HSW_L3_HIT_M			BIT(18)
-#define HSW_L3_HIT_E			BIT(19)
-#define HSW_L3_HIT_S			BIT(20)
-#define HSW_L3_HIT_F			BIT(21)
-#define HSW_L3_HIT			(HSW_L3_HIT_M|HSW_L3_HIT_E| \
-					 HSW_L3_HIT_S|HSW_L3_HIT_F)
 #define HSW_L3_MISS_LOCAL		BIT(22)
 #define HSW_L3_MISS_REMOTE_HOP0		BIT(27)
 #define HSW_L3_MISS_REMOTE_HOP1		BIT(28)
-#define HSW_L3_MISS_REMOTE_HOP2P		BIT(29)
+#define HSW_L3_MISS_REMOTE_HOP2P	BIT(29)
+#define HSW_L3_MISS			(HSW_L3_MISS_LOCAL| \
+					 HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1| \
+					 HSW_L3_MISS_REMOTE_HOP2P)
 #define HSW_SNOOP_NONE			BIT(31)
 #define HSW_SNOOP_NOT_NEEDED		BIT(32)
 #define HSW_SNOOP_MISS			BIT(33)
@@ -499,8 +487,7 @@ static __initconst const u64 hsw_hw_cache_event_ids
  [ C(LL  ) ] = {
 	[ C(OP_READ) ] = {
 		[ C(RESULT_ACCESS) ] = 0x1b7, 	/* OFFCORE_RESPONSE */
-		/* MEM_LOAD_UOPS_RETIRED.L3_MISS, HSM26, HSM30 */
-		[ C(RESULT_MISS)   ] = 0x20d1,
+		[ C(RESULT_MISS)   ] = 0x1b7, 	/* OFFCORE_RESPONSE */
 	},
 	[ C(OP_WRITE) ] = {
 		[ C(RESULT_ACCESS) ] = 0x1b7, 	/* OFFCORE_RESPONSE */
@@ -555,10 +542,8 @@ static __initconst const u64 hsw_hw_cache_event_ids
  },
  [ C(NODE) ] = {
 	[ C(OP_READ) ] = {
-		/* MEM_LOAD_UOPS_L3_MISS_RETIRED.LOCAL_DRAM, HSM30 */
-		[ C(RESULT_ACCESS) ] = 0x1d3,
-		/* MEM_LOAD_UOPS_L3_MISS_RETIRED.REMOTE_DRAM, HSM30 */
-		[ C(RESULT_MISS)   ] = 0x4d3,
+		[ C(RESULT_ACCESS) ] = 0x1b7, 	/* OFFCORE_RESPONSE */
+		[ C(RESULT_MISS)   ] = 0x1b7, 	/* OFFCORE_RESPONSE */
 	},
 	[ C(OP_WRITE) ] = {
 		[ C(RESULT_ACCESS) ] = 0x1b7, 	/* OFFCORE_RESPONSE */
@@ -578,18 +563,19 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 {
  [ C(LL  ) ] = {
 	[ C(OP_READ) ] = {
-		[ C(RESULT_ACCESS) ] = HSW_ALL_READS|HSW_L3_HIT|
-				       HSW_ANY_SNOOP|HSW_SUPPLIER_NONE,
-		[ C(RESULT_MISS)   ] = 0x0,
+		[ C(RESULT_ACCESS) ] = HSW_DEMAND_DATA_RD|
+				       HSW_ANY_RESPONSE|HSW_ANY_SNOOP|
+				       HSW_SUPPLIER_NONE,
+		[ C(RESULT_MISS)   ] = HSW_DEMAND_DATA_RD|
+				       HSW_L3_MISS|HSW_ANY_SNOOP|
+				       HSW_SUPPLIER_NONE,
 	},
 	[ C(OP_WRITE) ] = {
-		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|HSW_L3_HIT|
+		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|
+				       HSW_ANY_RESPONSE|HSW_ANY_SNOOP|
+				       HSW_SUPPLIER_NONE,
+		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|HSW_L3_MISS|
 				       HSW_ANY_SNOOP|HSW_SUPPLIER_NONE,
-		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|
-				       HSW_SUPPLIER_NONE|HSW_L3_MISS_LOCAL|
-				       HSW_L3_MISS_REMOTE_HOP0|
-				       HSW_L3_MISS_REMOTE_HOP1|
-				       HSW_L3_MISS_REMOTE_HOP2P|HSW_ANY_SNOOP,
 	},
 	[ C(OP_PREFETCH) ] = {
 		[ C(RESULT_ACCESS) ] = 0x0,
@@ -598,17 +584,21 @@ static __initconst const u64 hsw_hw_cache_extra_regs
  },
  [ C(NODE) ] = {
 	[ C(OP_READ) ] = {
-		[ C(RESULT_ACCESS) ] = 0x0,
-		[ C(RESULT_MISS)   ] = 0x0,
+		[ C(RESULT_ACCESS) ] = HSW_DEMAND_DATA_RD|
+				       HSW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE|
+				       HSW_ANY_SNOOP,
+		[ C(RESULT_MISS)   ] = HSW_DEMAND_DATA_RD|
+				       HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1|
+				       HSW_L3_MISS_REMOTE_HOP2P|HSW_SUPPLIER_NONE|
+				       HSW_ANY_SNOOP,
 	},
 	[ C(OP_WRITE) ] = {
-		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|HSW_ANY_SNOOP|
-				       HSW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE,
+		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|
+				       HSW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE|
+				       HSW_ANY_SNOOP,
 		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|
-				       HSW_SUPPLIER_NONE|
-				       HSW_L3_MISS_REMOTE_HOP0|
-				       HSW_L3_MISS_REMOTE_HOP1|
-				       HSW_L3_MISS_REMOTE_HOP2P|
+				       HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1|
+				       HSW_L3_MISS_REMOTE_HOP2P|HSW_SUPPLIER_NONE|
 				       HSW_ANY_SNOOP,
 	},
 	[ C(OP_PREFETCH) ] = {
