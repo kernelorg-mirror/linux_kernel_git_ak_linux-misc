@@ -424,6 +424,15 @@ static __initconst const u64 snb_hw_cache_event_ids
 
 };
 
+/*
+ * Notes on the events:
+ * - data reads do not include code reads (comparable to earlier tables)
+ * - data counts include speculative execution (except L1 write, dtlb, bpu)
+ * - remote node access includes both remote memory, remote cache, remote mmio.
+ * - prefetches are not included in the counts.
+ * The events with additional caveats have references to the specification update.
+ */
+
 #define HSW_DEMAND_DATA_RD		BIT(0)
 #define HSW_DEMAND_RFO			BIT(1)
 #define HSW_PF_L2_RFO			BIT(5)
@@ -571,7 +580,7 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 				       HSW_SUPPLIER_NONE,
 	},
 	[ C(OP_WRITE) ] = {
-		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|
+		[ C(RESULT_ACCESS) ] = HSW_DEMAND_RFO|
 				       HSW_ANY_RESPONSE|HSW_ANY_SNOOP|
 				       HSW_SUPPLIER_NONE,
 		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|HSW_L3_MISS|
@@ -593,10 +602,10 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 				       HSW_ANY_SNOOP,
 	},
 	[ C(OP_WRITE) ] = {
-		[ C(RESULT_ACCESS) ] = HSW_ALL_RFO|
+		[ C(RESULT_ACCESS) ] = HSW_DEMAND_RFO|
 				       HSW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE|
 				       HSW_ANY_SNOOP,
-		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|
+		[ C(RESULT_MISS)   ] = HSW_DEMAND_RFO|
 				       HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1|
 				       HSW_L3_MISS_REMOTE_HOP2P|HSW_SUPPLIER_NONE|
 				       HSW_ANY_SNOOP,
