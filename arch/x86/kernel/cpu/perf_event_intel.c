@@ -442,10 +442,14 @@ static __initconst const u64 snb_hw_cache_event_ids
 #define HSW_ANY_RESPONSE		BIT(16)
 #define HSW_SUPPLIER_NONE		BIT(17)
 #define HSW_L3_MISS_LOCAL		BIT(22)
+#define BDW_L3_MISS_LOCAL		BIT(26)
 #define HSW_L3_MISS_REMOTE_HOP0		BIT(27)
 #define HSW_L3_MISS_REMOTE_HOP1		BIT(28)
 #define HSW_L3_MISS_REMOTE_HOP2P	BIT(29)
 #define HSW_L3_MISS			(HSW_L3_MISS_LOCAL| \
+					 HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1| \
+					 HSW_L3_MISS_REMOTE_HOP2P)
+#define BDW_L3_MISS			(BDW_L3_MISS_LOCAL| \
 					 HSW_L3_MISS_REMOTE_HOP0|HSW_L3_MISS_REMOTE_HOP1| \
 					 HSW_L3_MISS_REMOTE_HOP2P)
 #define HSW_SNOOP_NONE			BIT(31)
@@ -583,7 +587,7 @@ static __initconst const u64 hsw_hw_cache_extra_regs
 		[ C(RESULT_ACCESS) ] = HSW_DEMAND_RFO|
 				       HSW_ANY_RESPONSE|HSW_ANY_SNOOP|
 				       HSW_SUPPLIER_NONE,
-		[ C(RESULT_MISS)   ] = HSW_ALL_RFO|HSW_L3_MISS|
+		[ C(RESULT_MISS)   ] = HSW_DEMAND_RFO|HSW_L3_MISS|
 				       HSW_ANY_SNOOP|HSW_SUPPLIER_NONE,
 	},
 	[ C(OP_PREFETCH) ] = {
@@ -2790,6 +2794,19 @@ __init int intel_pmu_init(void)
 		x86_pmu.late_ack = true;
 		memcpy(hw_cache_event_ids, hsw_hw_cache_event_ids, sizeof(hw_cache_event_ids));
 		memcpy(hw_cache_extra_regs, hsw_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
+
+		/* L3_MISS_LOCAL_DRAM is BIT(26) in Broadwell */
+		hw_cache_extra_regs[C(LL)][C(OP_READ)][C(RESULT_MISS)] = HSW_DEMAND_DATA_RD |
+									 BDW_L3_MISS|HSW_ANY_SNOOP|
+									 HSW_SUPPLIER_NONE;
+		hw_cache_extra_regs[C(LL)][C(OP_WRITE)][C(RESULT_MISS)] = HSW_ALL_RFO|BDW_L3_MISS|
+									  HSW_ANY_SNOOP|HSW_SUPPLIER_NONE;
+		hw_cache_extra_regs[C(NODE)][C(OP_READ)][C(RESULT_ACCESS)] = HSW_DEMAND_DATA_RD|
+									     BDW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE|
+									     HSW_ANY_SNOOP;
+		hw_cache_extra_regs[C(NODE)][C(OP_WRITE)][C(RESULT_ACCESS)] = HSW_DEMAND_RFO|
+									      BDW_L3_MISS_LOCAL|HSW_SUPPLIER_NONE|
+									      HSW_ANY_SNOOP;
 
 		intel_pmu_lbr_init_snb();
 
