@@ -40,6 +40,12 @@ DEFINE_EVENT(msr_trace_class, write_msr,
 	     TP_ARGS(msr, val, failed)
 );
 
+DEFINE_EVENT(msr_trace_class, rdpmc,
+	     TP_PROTO(unsigned msr, u64 val, int failed),
+	     TP_ARGS(msr, val, failed)
+);
+
+
 #endif /* _TRACE_MSR_H */
 
 /* This part must be outside protection */

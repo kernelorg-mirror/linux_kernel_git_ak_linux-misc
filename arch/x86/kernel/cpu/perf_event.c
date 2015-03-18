@@ -26,6 +26,8 @@
 #include <linux/bitops.h>
 #include <linux/device.h>
 
+#include <trace/events/msr.h>
+
 #include <asm/apic.h>
 #include <asm/stacktrace.h>
 #include <asm/nmi.h>
@@ -82,6 +84,7 @@ u64 x86_perf_event_update(struct perf_event *event)
 again:
 	prev_raw_count = local64_read(&hwc->prev_count);
 	rdpmcl(hwc->event_base_rdpmc, new_raw_count);
+	trace_rdpmc(hwc->event_base_rdpmc, new_raw_count, 0);
 
 	if (local64_cmpxchg(&hwc->prev_count, prev_raw_count,
 					new_raw_count) != prev_raw_count)
