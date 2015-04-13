@@ -237,34 +237,25 @@ ENDPROC(native_usergs_sysret64)
 #define DO_SWAPGS	 1 /* Use SWAPGS at end */
 #define DO_NOTHING	 0 /* Back to ring 0 with same gs */
 
-/*
- * Stack layout:
- * +16 pt_regs
- * +8  stack mask for ist or 0
- * +0  return address.
- */
-#define OFF 16
-#define STKMSK 8
-
 ENTRY(save_paranoid)
-	XCPT_FRAME 1 RDI+OFF
+	XCPT_FRAME 1 RDI
 	cld
-	movq %rdi, RDI+OFF(%rsp)
-	movq %rsi, RSI+OFF(%rsp)
-	movq_cfi rdx, RDX+OFF
-	movq_cfi rcx, RCX+OFF
-	movq_cfi rax, RAX+OFF
-	movq %r8, R8+OFF(%rsp)
-	movq %r9, R9+OFF(%rsp)
-	movq %r10, R10+OFF(%rsp)
-	movq %r11, R11+OFF(%rsp)
-	movq_cfi rbx, RBX+OFF
-	movq %rbp, RBP+OFF(%rsp)
-	movq %r12, R12+OFF(%rsp)
-	movq %r13, R13+OFF(%rsp)
-	movq %r14, R14+OFF(%rsp)
-	movq %r15, R15+OFF(%rsp)
-	movq $-1,ORIG_RAX+OFF(%rsp)	/* no syscall to restart */
+	movq %rdi, RDI(%rsp)
+	movq %rsi, RSI(%rsp)
+	movq_cfi rdx, RDX
+	movq_cfi rcx, RCX
+	movq_cfi rax, RAX
+	movq %r8, R8(%rsp)
+	movq %r9, R9(%rsp)
+	movq %r10, R10(%rsp)
+	movq %r11, R11(%rsp)
+	movq_cfi rbx, RBX
+	movq %rbp, RBP(%rsp)
+	movq %r12, R12(%rsp)
+	movq %r13, R13(%rsp)
+	movq %r14, R14(%rsp)
+	movq %r15, R15(%rsp)
+	movq $-1,ORIG_RAX(%rsp)	/* no syscall to restart */
 	ALTERNATIVE_MAYBE_JUMP paranoid_save_gs,X86_FEATURE_FSGSBASE
 	movl $DO_NOTHING,%ebx
 	movl $MSR_GS_BASE,%ecx
@@ -282,7 +273,7 @@ ENTRY(save_paranoid)
 	 */
 paranoid_save_gs:
 	RDGSBASE_R15			# read previous gs
-	movq STKMSK(%rsp),%rax		# get ist stack mask
+	movl $EXCEPTION_STKSZ,%eax	# get ist stack mask
 	andq %rsp,%rax			# get bottom of stack
 	movq (%rax),%rdi		# get expected GS
 	WRGSBASE_RDI			# set gs for kernel
@@ -1070,8 +1061,7 @@ apicinterrupt IRQ_WORK_VECTOR \
  */
 #define INIT_TSS_IST(x) PER_CPU_VAR(init_tss) + (TSS_ist + ((x) - 1) * 8)
 
-.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1 \
-		stack_mask=-EXCEPTION_STKSZ
+.macro idtentry sym do_sym has_error_code:req paranoid=0 shift_ist=-1
 ENTRY(\sym)
 	/* Sanity check */
 	.if \shift_ist != -1 && \paranoid == 0
@@ -1100,10 +1090,8 @@ ENTRY(\sym)
 	testl $3, CS(%rsp)		/* If coming from userspace, switch */
 	jnz 1f				/* stacks. */
 	.endif
-	pushq_cfi $\stack_mask		/* ist stack size */
 	call save_paranoid
 	/* r15: previous gs */
-	popq_cfi %rax			/* Drop ist stack size */
 	.else
 	call error_entry
 	.endif
@@ -1367,10 +1355,8 @@ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
 	hyperv_callback_vector hyperv_vector_handler
 #endif /* CONFIG_HYPERV */
 
-idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
-	 stack_mask=-DEBUG_STKSZ
-idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK \
-	 stack_mask=-DEBUG_STKSZ
+idtentry debug do_debug has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
+idtentry int3 do_int3 has_error_code=0 paranoid=1 shift_ist=DEBUG_STACK
 idtentry stack_segment do_stack_segment has_error_code=1
 
 #ifdef CONFIG_XEN
@@ -1711,7 +1697,6 @@ end_repeat_nmi:
 	pushq_cfi $-1		/* ORIG_RAX: no syscall to restart */
 	subq $ORIG_RAX-R15, %rsp
 	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
-	pushq_cfi $-EXCEPTION_STKSZ	/* ist stack size */
 	/*
 	 * Use save_paranoid to handle SWAPGS, but no need to use paranoid_exit
 	 * as we should not be calling schedule in NMI context.
@@ -1721,7 +1706,6 @@ end_repeat_nmi:
 	 */
 	call save_paranoid
 	/* r15: previous gs */
-	popq_cfi %rax		/* pop ist size */
 	DEFAULT_FRAME 0
 
 	/*
