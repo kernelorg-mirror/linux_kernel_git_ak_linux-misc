@@ -103,6 +103,9 @@ static int hist_iter__report_callback(struct hist_entry_iter *iter,
 	if (!ui__has_annotation())
 		return 0;
 
+	hist__account_cycles(iter->sample->branch_stack, al, iter->sample,
+			     rep->nonany_branch_mode);
+
 	if (sort__mode == SORT_MODE__BRANCH) {
 		bi = he->branch_info;
 		err = addr_map_symbol__inc_samples(&bi->from, evsel->idx);
@@ -110,7 +113,6 @@ static int hist_iter__report_callback(struct hist_entry_iter *iter,
 			goto out;
 
 		err = addr_map_symbol__inc_samples(&bi->to, evsel->idx);
-
 	} else if (rep->mem_mode) {
 		mi = he->mem_info;
 		err = addr_map_symbol__inc_samples(&mi->daddr, evsel->idx);
