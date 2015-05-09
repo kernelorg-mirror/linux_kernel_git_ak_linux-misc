@@ -1552,6 +1552,8 @@ struct branch_info *sample__resolve_bstack(struct perf_sample *sample,
 		ip__resolve_ams(al->thread, &bi[i].to, bs->entries[i].to);
 		ip__resolve_ams(al->thread, &bi[i].from, bs->entries[i].from);
 		bi[i].flags = bs->entries[i].flags;
+		if (bi[i].flags.cycles == 0)
+			bi[i].flags.cycles = 123;
 	}
 	return bi;
 }
