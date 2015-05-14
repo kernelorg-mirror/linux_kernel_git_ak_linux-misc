@@ -8,7 +8,6 @@
 #include <linux/types.h>
 #include "event.h"
 
-
 enum {
 	HEADER_RESERVED		= 0,	/* always cleared */
 	HEADER_FIRST_FEATURE	= 1,
@@ -155,5 +154,7 @@ int write_padded(int fd, const void *bf, size_t count, size_t count_aligned);
  * arch specific callback
  */
 int get_cpuid(char *buffer, size_t sz);
+
+char *get_cpuid_str(void);
 
 #endif /* __PERF_HEADER_H */
