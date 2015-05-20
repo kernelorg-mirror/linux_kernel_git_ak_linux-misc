@@ -1,0 +1,67 @@
+The contents of this directory allows users to specify PMU events
+in their CPUs by their symbolic names rather than raw event codes
+(see example below).
+
+
+The main program in this directory, is the 'jevents', which is built
+and executed _before_ the perf binary itself is built.
+
+The 'jevents' program tries to locate and process JSON files in the directory
+tree tools/perf/pmu-events/arch/xxx. 
+
+	- Regular files with .json extension in the name are assumed to be
+	  JSON files.
+
+	- Regular files with base name starting with 'mapfile' are assumed to
+	  be a CSV file that - maps a specific CPU to its set of PMU events.
+
+Directories are traversed but all other files are ignored.
+
+Using the JSON files and the mapfile, 'jevents' generates a C source file,
+'pmu-events.c', which encodes the two sets of tables:
+
+	- Set of 'PMU events tables' for all known CPUs in the architecture
+
+	- A 'mapping table' that maps a CPU ot its 'PMU events table'
+
+The 'pmu-events.h' has an extern declaration for the mapping table and the
+generated 'pmu-events.c' defines this table.
+
+After the 'pmu-events.c' is generated, it is compiled and the resulting
+'pmu-events.o' is added to 'libperf.a' which is then used by perf to process
+PMU event aliases. eg:
+
+	$ perf stat -e pm_1plus_ppc_cmpl sleep 1
+
+where pm_1plus_ppc_cmpl is a Power8 PMU event.
+
+In case of errors when processing files in the tools/perf/pmu-events/arch
+directory, 'jevents' tries to create an empty mapping file to allow perf
+build to succeed even if the PMU event aliases cannot be used.
+
+However some errors in processing may cause the perf build to fail.
+
+The mapfile format is expected to be:
+
+	VFM,Version,JSON_file_path_name,Type
+
+where:
+	Comma:
+		is the required field delimiter.
+
+	VFM:
+		represents vendor, family, model of the CPU. Architectures
+		can use a delimiter other than comma to further separate the
+		fields if they so choose. Architectures should implement the
+		function arch_pmu_events_match_cpu() and can use the
+		VFM, Version and Type fields to uniquely identify a CPU.
+
+	Version:
+		is the CPU version (PVR in case of Powerpc)
+
+	JSON_file_path_name:
+		is the pathname for the JSON file, relative to the directory
+		containing the mapfile.
+
+	Type:
+		indicates whether the events or "core" or "uncore" events.

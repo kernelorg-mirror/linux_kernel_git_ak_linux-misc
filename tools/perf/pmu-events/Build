@@ -1,0 +1,38 @@
+.SUFFIXES:
+
+libperf-y += pmu-events.o
+
+JEVENTS =	$(OUTPUT)pmu-events/jevents
+JEVENTS_OBJS =	$(OUTPUT)pmu-events/json.o $(OUTPUT)pmu-events/jsmn.o \
+		$(OUTPUT)pmu-events/jevents.o
+
+PMU_EVENTS =	$(srctree)/tools/perf/pmu-events/
+
+all: $(OUTPUT)pmu-events.o
+
+$(OUTPUT)pmu-events/jevents: $(JEVENTS_OBJS)
+	$(call rule_mkdir)
+	$(CC) -o $@ $(JEVENTS_OBJS)
+
+#
+# Look for JSON files in $(PMU_EVENTS)/arch directory,
+# process them and create tables in $(PMU_EVENTS)/pmu-events.c
+#
+pmu-events/pmu-events.c: $(JEVENTS) FORCE
+	$(JEVENTS) $(PMU_EVENTS)/arch $(PMU_EVENTS)/pmu-events.c
+ 
+
+#
+# If we fail to build pmu-events.o, it could very well be due to
+# inconsistencies between the architecture's mapfile.csv and the
+# directory tree. If the compilation of the pmu-events.c generated
+# by jevents fails, create an "empty" mapping table in pmu-events.c
+# so the build of perf can succeed even if we are not able to use
+# the PMU event aliases.
+#
+
+clean:
+	rm -f $(JEVENTS_OBJS) $(JEVENTS) $(OUTPUT)pmu-events.o \
+		$(PMU_EVENTS)pmu-events.c
+
+FORCE:
