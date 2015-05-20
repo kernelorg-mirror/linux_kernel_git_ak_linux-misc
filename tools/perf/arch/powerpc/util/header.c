@@ -32,3 +32,36 @@ get_cpuid(char *buffer, size_t sz)
 	}
 	return -1;
 }
+
+static char *
+get_cpu_str(void)
+{
+        char *bufp;
+
+        if (asprintf(&bufp, "%.8lx", mfspr(SPRN_PVR)) < 0)
+                bufp = NULL;
+
+        return bufp;
+}
+
+/*
+ * Return TRUE if the CPU identified by @vfm, @version, and @type
+ * matches the current CPU.  vfm refers to [Vendor, Family, Model],
+ *
+ * Return FALSE otherwise.
+ *
+ * For Powerpc, we only compare @version to the processor PVR.
+ */
+bool arch_pmu_events_match_cpu(const char *vfm __maybe_unused,
+				const char *version,
+				const char *type __maybe_unused)
+{
+	char *cpustr;
+	bool rc;
+
+	cpustr = get_cpu_str();
+	rc = !strcmp(version, cpustr);
+	free(cpustr);
+
+	return rc;
+}

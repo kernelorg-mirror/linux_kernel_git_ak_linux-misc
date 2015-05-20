@@ -10,7 +10,9 @@
 #include "util.h"
 #include "pmu.h"
 #include "parse-events.h"
+#include "pmu-events/pmu-events.h"	// Move to global file???
 #include "cpumap.h"
+#include "header.h"
 
 struct perf_pmu_format {
 	char *name;
@@ -198,16 +200,10 @@ static int perf_pmu__parse_snapshot(struct perf_pmu_alias *alias,
 	return 0;
 }
 
-static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FILE *file)
+static int __perf_pmu__new_alias(struct list_head *list, char *name, char *dir, char *desc __maybe_unused, char *val)
 {
 	struct perf_pmu_alias *alias;
-	char buf[256];
 	int ret;
-
-	ret = fread(buf, 1, sizeof(buf), file);
-	if (ret == 0)
-		return -EINVAL;
-	buf[ret] = 0;
 
 	alias = malloc(sizeof(*alias));
 	if (!alias)
@@ -218,24 +214,45 @@ static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FI
 	alias->unit[0] = '\0';
 	alias->per_pkg = false;
 
-	ret = parse_events_terms(&alias->terms, buf);
+	ret = parse_events_terms(&alias->terms, val);
 	if (ret) {
+		pr_err("Cannot parse alias %s: %d\n", val, ret);
 		free(alias);
 		return ret;
 	}
 
 	alias->name = strdup(name);
+	if (dir) {
+		/*
+		 * load unit name and scale if available
+		 */
+		perf_pmu__parse_unit(alias, dir, name);
+		perf_pmu__parse_scale(alias, dir, name);
+		perf_pmu__parse_per_pkg(alias, dir, name);
+		perf_pmu__parse_snapshot(alias, dir, name);
+	}
+
 	/*
-	 * load unit name and scale if available
+	 * TODO: pickup description from Andi's patchset
 	 */
-	perf_pmu__parse_unit(alias, dir, name);
-	perf_pmu__parse_scale(alias, dir, name);
-	perf_pmu__parse_per_pkg(alias, dir, name);
-	perf_pmu__parse_snapshot(alias, dir, name);
+	//alias->desc = desc ? strdpu(desc) : NULL;
 
 	list_add_tail(&alias->list, list);
 
 	return 0;
+}
+
+static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FILE *file)
+{
+	char buf[256];
+	int ret;
+
+	ret = fread(buf, 1, sizeof(buf), file);
+	if (ret == 0)
+		return -EINVAL;
+	buf[ret] = 0;
+	
+	return __perf_pmu__new_alias(list, name, dir, NULL, buf);
 }
 
 static inline bool pmu_alias_info_file(char *name)
@@ -435,6 +452,65 @@ perf_pmu__get_default_config(struct perf_pmu *pmu __maybe_unused)
 	return NULL;
 }
 
+/*
+ * Return TRUE if the CPU identified by @vfm, @version, and @type
+ * matches the current CPU.  vfm refers to [Vendor, Family, Model],
+ *
+ * Return FALSE otherwise.
+ *
+ * Each architecture can choose what subset of these attributes they
+ * need to compare/identify a CPU.
+ */
+bool __attribute__((weak))
+arch_pmu_events_match_cpu(const char *vfm __maybe_unused, 
+			const char *version __maybe_unused,
+			const char *type  __maybe_unused)
+{
+	return 0;
+}
+
+/*
+ * From the pmu_events_map, find the table of PMU events that corresponds
+ * to the current running CPU. Then, add all PMU events from that table
+ * as aliases.
+ */
+static int pmu_add_cpu_aliases(void *data)
+{
+	struct list_head *head = (struct list_head *)data;
+	int i;
+	struct pmu_events_map *map;
+	struct pmu_event *pe;
+
+	i = 0;
+	while(1) {
+		map = &pmu_events_map[i++];
+
+		if (!map->table)
+			return 0;
+
+		if (arch_pmu_events_match_cpu(map->vfm, map->version,
+						map->type))
+			break;
+	}
+
+	/*
+	 * Found a matching PMU events table. Create aliases
+	 */
+	i = 0;
+	while(1) {
+		pe = &map->table[i++];
+		if (!pe->name)
+			break;
+
+		/* need type casts to override 'const' */
+		__perf_pmu__new_alias(head, (char *)pe->name, NULL, 
+				(char *)pe->desc, (char *)pe->event);
+	}
+
+	return 0;
+}
+
+
 static struct perf_pmu *pmu_lookup(const char *name)
 {
 	struct perf_pmu *pmu;
@@ -453,6 +529,8 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	if (pmu_aliases(name, &aliases))
 		return NULL;
 
+	if (!strcmp(name, "cpu"))
+		(void)pmu_add_cpu_aliases(&aliases);
 	if (pmu_type(name, &type))
 		return NULL;
 

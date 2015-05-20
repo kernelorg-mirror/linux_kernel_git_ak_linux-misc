@@ -8,7 +8,6 @@
 #include <linux/types.h>
 #include "event.h"
 
-
 enum {
 	HEADER_RESERVED		= 0,	/* always cleared */
 	HEADER_FIRST_FEATURE	= 1,
@@ -156,5 +155,8 @@ int write_padded(int fd, const void *bf, size_t count, size_t count_aligned);
  * arch specific callback
  */
 int get_cpuid(char *buffer, size_t sz);
+
+bool arch_pmu_events_match_cpu(const char *vfm, const char *version, 
+				const char *type);
 
 #endif /* __PERF_HEADER_H */
