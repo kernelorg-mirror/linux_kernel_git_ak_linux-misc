@@ -19,8 +19,8 @@ cpuid(unsigned int op, unsigned int *a, unsigned int *b, unsigned int *c,
 			: "a" (op));
 }
 
-int
-get_cpuid(char *buffer, size_t sz)
+static int
+__get_cpuid(char *buffer, size_t sz, const char *fmt)
 {
 	unsigned int a, b, c, d, lvl;
 	int family = -1, model = -1, step = -1;
@@ -48,7 +48,7 @@ get_cpuid(char *buffer, size_t sz)
 		if (family >= 0x6)
 			model += ((a >> 16) & 0xf) << 4;
 	}
-	nb = scnprintf(buffer, sz, "%s,%u,%u,%u$", vendor, family, model, step);
+	nb = scnprintf(buffer, sz, fmt, vendor, family, model, step);
 
 	/* look for end marker to ensure the entire data fit */
 	if (strchr(buffer, '$')) {
@@ -56,4 +56,21 @@ get_cpuid(char *buffer, size_t sz)
 		return 0;
 	}
 	return -1;
+}
+
+int
+get_cpuid(char *buffer, size_t sz)
+{
+	return __get_cpuid(buffer, sz, "%s,%u,%u,%u$");
+}
+
+bool arch_pmu_events_match_cpu(const char *vfm,
+			       const char *version __maybe_unused,
+			       const char *type __maybe_unused)
+{
+	char buf[128];
+
+	if (__get_cpuid(buf, sizeof buf, "%s-%u-%X$") < 0)
+		return false;
+	return !strcmp(vfm, buf);
 }
