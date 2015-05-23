@@ -21,3 +21,4 @@ GenuineIntel-6-27,V1,Bonnell_core.json,fp_arith_inst
 GenuineIntel-6-36,V1,Bonnell_core.json,fp_arith_inst
 GenuineIntel-6-35,V1,Bonnell_core.json,fp_arith_inst
 GenuineIntel-6-3F,V12,HaswellX_core.json,fp_arith_inst
+GenuineIntel-6-3D,V9,Broadwell_core.json,fp_arith_inst
