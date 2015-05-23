@@ -452,6 +452,8 @@ static int process_mapfile(FILE *outfp, char *fpath)
 
 		if (line[0] == '#' || line[0] == '\n')
 			continue;
+		if (!strncmp(line, "Family", 6))
+			continue;
 
 		if (line[strlen(line)-1] != '\n') {
 			/* TODO Deal with lines longer than 16K */
