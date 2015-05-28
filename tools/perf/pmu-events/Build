@@ -1,10 +1,12 @@
 jevents-y	+= json.o jsmn.o jevents.o
 pmu-events-y	+= pmu-events.o
-JSON		=  $(shell find pmu-events/arch/$(ARCH) -name '*.json')
 
 #
 # Locate/process JSON files in pmu-events/arch/
 # directory and create tables in pmu-events.c.
 #
-$(OUTPUT)pmu-events/pmu-events.c: $(JSON)
+$(OUTPUT)pmu-events/pmu-events.c: $(wildcard pmu-events/arch/$(ARCH)/*.json) \
+				  $(wildcard pmu-events/arch/$(ARCH)/*/*.json) \
+				  pmu-events/arch/$(ARCH)/mapfile.csv \
+				  $(JEVENTS)
 	$(Q)$(call echo-cmd,gen)$(JEVENTS) $(ARCH) pmu-events/arch $(OUTPUT)pmu-events/pmu-events.c
