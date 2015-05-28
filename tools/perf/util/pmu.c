@@ -982,6 +982,8 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag)
 	struct pair *aliases;
 	int numdesc = 0;
 	int columns = pager_get_columns();
+	const char *last_section;
+	int last_section_len;
 
 	pmu = NULL;
 	len = 0;
@@ -1029,6 +1031,8 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag)
 		}
 	}
 	len = j;
+	last_section = NULL;
+	last_section_len = 0;
 	qsort(aliases, len, sizeof(struct pair), cmp_pair);
 	for (j = 0; j < len; j++) {
 		if (name_only) {
@@ -1036,8 +1040,21 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag)
 			continue;
 		}
 		if (aliases[j].desc && !quiet_flag) {
+			char *dot;
+			char *name = aliases[j].name;
+
 			if (numdesc++ == 0)
 				printf("\n");
+			dot = strchr(name, '.');
+			if (dot &&
+				(!last_section ||
+				 strncmp(last_section, name, last_section_len))) {
+				last_section_len = dot - name;
+				printf("%s%.*s:\n",
+						last_section ? "\n" : "",
+						last_section_len, name);
+				last_section = name;
+			}
 			printf("  %-50s\n", aliases[j].name);
 			printf("%*s", 8, "[");
 			wordwrap(aliases[j].desc, 8, columns, 0);
