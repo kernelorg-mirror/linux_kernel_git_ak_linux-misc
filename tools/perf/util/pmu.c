@@ -201,7 +201,8 @@ static int perf_pmu__parse_snapshot(struct perf_pmu_alias *alias,
 	return 0;
 }
 
-static int __perf_pmu__new_alias(struct list_head *list, char *name, char *dir, char *desc __maybe_unused, char *val)
+static int __perf_pmu__new_alias(struct list_head *list, char *name, char *dir, char *desc __maybe_unused, char *val,
+				 char *long_desc)
 {
 	struct perf_pmu_alias *alias;
 	int ret;
@@ -234,6 +235,9 @@ static int __perf_pmu__new_alias(struct list_head *list, char *name, char *dir, 
 	}
 
 	alias->desc = desc ? strdup(desc) : NULL;
+	alias->long_desc = long_desc ?
+			strdup(long_desc) :
+			desc ? strdup(desc) : NULL;
 
 	list_add_tail(&alias->list, list);
 
@@ -250,7 +254,7 @@ static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FI
 		return -EINVAL;
 	buf[ret] = 0;
 
-	return __perf_pmu__new_alias(list, name, dir, NULL, buf);
+	return __perf_pmu__new_alias(list, name, dir, NULL, buf, NULL);
 }
 
 static inline bool pmu_alias_info_file(char *name)
@@ -503,7 +507,8 @@ static int pmu_add_cpu_aliases(void *data)
 
 		/* need type casts to override 'const' */
 		__perf_pmu__new_alias(head, (char *)pe->name, NULL,
-				(char *)pe->desc, (char *)pe->event);
+				(char *)pe->desc, (char *)pe->event,
+				(char *)pe->long_desc);
 	}
 
 	free(cpuid);
@@ -976,7 +981,8 @@ static void wordwrap(char *s, int start, int max, int corr)
 	}
 }
 
-void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag)
+void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag,
+		      bool long_desc)
 {
 	struct perf_pmu *pmu;
 	struct perf_pmu_alias *alias;
@@ -1021,7 +1027,8 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag)
 								  pmu, alias);
 			aliases[j].name = strdup(aliases[j].name);
 			/* failure harmless */
-			aliases[j].desc = alias->desc;
+			aliases[j].desc = long_desc ? alias->long_desc :
+						      alias->desc;
 			j++;
 		}
 		if (pmu->selectable) {
