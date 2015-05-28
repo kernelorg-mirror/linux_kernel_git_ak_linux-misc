@@ -474,7 +474,9 @@ static int pmu_add_cpu_aliases(void *data)
 	struct pmu_event *pe;
 	char *cpuid;
 
-	cpuid = get_cpuid_str();
+	cpuid = getenv("PERF_CPUID");
+	if (!cpuid)
+		cpuid = get_cpuid_str();
 	if (!cpuid)
 		return 0;
 
