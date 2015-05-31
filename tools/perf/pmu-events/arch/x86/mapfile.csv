@@ -13,3 +13,5 @@ GenuineIntel-6-3A,V14,IvyBridge_core.json,fp_arith_inst
 GenuineIntel-6-3C,V18,Haswell_core.json,fp_arith_inst
 GenuineIntel-6-45,V18,Haswell_core.json,fp_arith_inst
 GenuineIntel-6-46,V18,Haswell_core.json,fp_arith_inst
+GenuineIntel-6-37,V8,Silvermont_core.json,fp_arith_inst
+GenuineIntel-6-4D,V8,Silvermont_core.json,fp_arith_inst
