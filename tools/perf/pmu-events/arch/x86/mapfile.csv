@@ -8,3 +8,4 @@ GenuineIntel-6-25,V1,WestmereEP-SP_core.json,fp_arith_inst
 GenuineIntel-6-2C,V1,WestmereEP-DP_core.json,fp_arith_inst
 GenuineIntel-6-2A,V11,SandyBridge_core.json,fp_arith_inst
 GenuineIntel-6-2D,V17,Jaketown_core.json,fp_arith_inst
+GenuineIntel-6-3E,V16,IvyTown_core.json,fp_arith_inst
