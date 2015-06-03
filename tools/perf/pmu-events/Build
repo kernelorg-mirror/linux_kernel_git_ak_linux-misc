@@ -1,6 +1,6 @@
 jevents-y	+= json.o jsmn.o jevents.o
 pmu-events-y	+= pmu-events.o
-JSON		=  $(shell find pmu-events/arch/$(ARCH) -name '*.json')
+JSON		=  $(shell find pmu-events/arch/$(ARCH) -name '*.json' -or -name 'mapfile.csv')
 
 #
 # Locate/process JSON files in pmu-events/arch/
