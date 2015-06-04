@@ -12,6 +12,7 @@
 #include <linux/types.h>
 #include "util.h"
 #include "pmu.h"
+#include "debug.h"
 #include "parse-events.h"
 #include "parse-events-bison.h"
 
@@ -248,6 +249,8 @@ PE_KERNEL_PMU_EVENT sep_dc
 				if (!parse_events_add_pmu(list, &data->idx,
 						  pmu->name, head)) {
 					ok++;
+					pr_debug("%s -> %s/%s/\n", $1,
+						 pmu->name, alias->str);
 				}
 			}
 		}
