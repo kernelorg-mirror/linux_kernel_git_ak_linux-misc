@@ -246,11 +246,11 @@ PE_KERNEL_PMU_EVENT sep_dc
 
 		list_for_each_entry(alias, &pmu->aliases, list) {
 			if (!strcasecmp(alias->name, $1)) {
+				pr_debug("%s -> %s/%s/\n", $1,
+					 pmu->name, alias->str);
 				if (!parse_events_add_pmu(list, &data->idx,
 						  pmu->name, head)) {
 					ok++;
-					pr_debug("%s -> %s/%s/\n", $1,
-						 pmu->name, alias->str);
 				}
 			}
 		}
