@@ -133,7 +133,6 @@ static struct field {
 	const char *field;
 	const char *kernel;
 } fields[] = {
-	{ "EventCode",	"event=" },
 	{ "UMask",	"umask=" },
 	{ "CounterMask", "cmask=" },
 	{ "Invert",	"inv=" },
@@ -162,6 +161,9 @@ static int match_field(char *map, jsmntok_t *field, int nz,
 
 	for (f = fields; f->field; f++)
 		if (json_streq(map, field, f->field) && nz) {
+			if (json_streq(map, val, "0x00") ||
+			     json_streq(map, val, "0x0"))
+				return 1;
 			cut_comma(map, &newval);
 			addfield(map, event, ",", f->kernel, &newval);
 			return 1;
@@ -187,6 +189,62 @@ static struct msrmap *lookup_msr(char *map, jsmntok_t *val)
 	return NULL;
 }
 
+static struct map {
+	const char *json;
+	const char *perf;
+} unit_to_perf[] = {
+	{ "CBO", "cbox" },
+	{ "QPI LL", "qpi" },
+	{ "SBO", "sbox" },
+	{}
+};
+
+static struct map filter_to_perf[] = {
+#if 0
+	{ "QPIMatch0[17:0]", "match0"},
+	{ "QPIMask0[17:0]", "mask0"},
+	{ "QPIMatch0[12:0]", "match0"},
+	{ "QPIMask0[12:0]", "mask_mc, match_opc, match_vnw"},
+	{ "QPIMatch0[12:0]", "match_mc, match_opc, match_vnw"},
+#endif
+	{ "CBoFilter0[22:18]", "filter_state"},
+	{ "CBoFilter1[17:10]", "filter_nid"},
+	{ "CBoFilter[17:10]", "filter_nid"},
+	{ "PCUFilter[7:0]", "filter_band0"},
+	{ "PCUFilter[15:8]", "filter_band1"},
+	{ "PCUFilter[23:16]", "filter_band2"},
+	{ "PCUFilter[31:24]", "filter_band3"},
+	{ "QPIMask0[17:0]", "mask0"},
+	{ "QPIMask1[19:16]", "mask_rds"},
+	{ "QPIMatch0[17:0]", "match_mc, match_opc, match_vnw, match_dnid"},
+	{ "QPIMatch1[19:16]", "match_rds"},
+	{ "CBoFilter[31:23]", "filter_opc"},
+	{ "CBoFilter0[23:17]", "filter_state" },
+#if 0
+	/* Missing in uncore driver currently? */
+	CBoFilter1[15:0]
+	CBoFilter1[28:20]
+	HA_AddrMatch0[31:6]
+	HA_AddrMatch1[13:0]
+	HA_Opcod
+	HA_OpcodeMatch[5:0]
+	IRPFilter[4:0]
+	UBoxFilter[3:0]
+#endif
+	{}
+};
+
+static const char *field_to_perf(struct map *table, char *map, jsmntok_t *val)
+{
+	int i;
+
+	for (i = 0; table[i].json; i++) {
+		if (json_streq(map, val, table[i].json))
+			return table[i].perf;
+	}
+	return NULL;
+}
+
 #define EXPECT(e, t, m) do { if (!(e)) {			\
 	jsmntok_t *loc = (t);					\
 	if (!(t)->start && (t) > tokens)			\
@@ -203,7 +261,8 @@ static void print_events_table_prefix(FILE *fp, const char *tblname)
 }
 
 static int print_events_table_entry(void *data, char *name, char *event,
-				    char *desc, char *long_desc, char *topic)
+				    char *desc, char *long_desc, char *topic,
+				    char *unit)
 {
 	FILE *outfp = data;
 	/*
@@ -219,7 +278,8 @@ static int print_events_table_entry(void *data, char *name, char *event,
 		fprintf(outfp, "\t.long_desc = \"%s\",\n", long_desc);
 	if (topic)
 		fprintf(outfp, "\t.topic = \"%s\",\n", topic);
-
+	if (unit)
+		fprintf(outfp, "\t.unit = \"%s\",\n", unit);
 	fprintf(outfp, "},\n");
 
 	return 0;
@@ -240,7 +300,7 @@ static void print_events_table_suffix(FILE *outfp)
 /* Call func with each event in the json file */
 int json_events(const char *fn,
 	  int (*func)(void *data, char *name, char *event, char *desc,
-		      char *long_desc, char *topic),
+		      char *long_desc, char *topic, char *unit),
 	  void *data)
 {
 	int err = -EIO;
@@ -248,6 +308,7 @@ int json_events(const char *fn,
 	jsmntok_t *tokens, *tok;
 	int i, j, len;
 	char *map;
+	char buf[128];
 
 	if (!fn)
 		return -ENOENT;
@@ -262,6 +323,9 @@ int json_events(const char *fn,
 		char *long_desc = NULL;
 		char *extra_desc = NULL;
 		char *topic = NULL;
+		char *unit = NULL;
+		char *filter = NULL;
+		unsigned long long eventcode = 0;
 		struct msrmap *msr = NULL;
 		jsmntok_t *msrval = NULL;
 		jsmntok_t *precise = NULL;
@@ -282,6 +346,16 @@ int json_events(const char *fn,
 			nz = !json_streq(map, val, "0");
 			if (match_field(map, field, nz, &event, val)) {
 				/* ok */
+			} else if (json_streq(map, field, "EventCode")) {
+				char *code = NULL;
+				addfield(map, &code, "", "", val);
+				eventcode |= strtoul(code, NULL, 0);
+				free(code);
+			} else if (json_streq(map, field, "ExtSel")) {
+				char *code = NULL;
+				addfield(map, &code, "", "", val);
+				eventcode |= strtoul(code, NULL, 0) << 21;
+				free(code);
 			} else if (json_streq(map, field, "EventName")) {
 				addfield(map, &name, "", "", val);
 			} else if (json_streq(map, field, "BriefDescription")) {
@@ -306,9 +380,46 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, ". ",
 					" Supports address when precise",
 					NULL);
+			} else if (json_streq(map, field, "Unit")) {
+				const char *punit;
+				char *s;
+
+				addfield(map, &topic, " ", "Uncore ", val);
+
+				punit = field_to_perf(unit_to_perf, map, val);
+				if (punit) {
+					unit = strdup(punit);
+				} else {
+					addfield(map, &unit, "", "", val);
+					for (s = unit; *s; s++)
+						*s = tolower(*s);
+				}
+				addfield(map, &desc, ". ", "Unit: ", NULL);
+				addfield(map, &desc, "", unit, NULL);
+			} else if (json_streq(map, field, "Filter")) {
+				jsmntok_t nt = *val;
+				const char *nf;
+
+				do {
+					cut_comma(map, &nt);
+					while (nt.start < val->end && isspace(map[nt.start]))
+						nt.start++;
+					nf = field_to_perf(filter_to_perf, map, &nt);
+					if (!nf) {
+						if (verbose > 1)
+							printf("no filter match %.*s\n",
+							  json_len(&nt), map + nt.start);
+						addfield(map, &filter, " ", "", &nt);
+					} else
+						addfield(map, &filter, " ", nf, NULL);
+					nt.start = nt.end + 1;
+					nt.end = val->end;
+				} while (nt.start < val->end);
 			}
 			/* ignore unknown fields */
 		}
+		if (verbose > 1 && filter && strchr(filter, '['))
+			printf("%s\n", name);
 		if (precise && !strstr(desc, "(Precise Event)")) {
 			if (json_streq(map, precise, "2"))
 				addfield(map, &extra_desc, " ",
@@ -317,21 +428,28 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, " ",
 						"(Precise event)", NULL);
 		}
+		snprintf(buf, sizeof buf, "event=%#llx", eventcode);
+		addfield(map, &event, ",", buf, NULL);
 		if (desc && extra_desc)
 			addfield(map, &desc, " ", extra_desc, NULL);
 		if (long_desc && extra_desc)
 			addfield(map, &long_desc, " ", extra_desc, NULL);
+		if (filter) {
+			addfield(map, &desc, ". ", "Filter: ", NULL);
+			addfield(map, &desc, "", filter, NULL);
+		}
 		if (msr != NULL)
 			addfield(map, &event, ",", msr->pname, msrval);
 		fixname(name);
-
-		err = func(data, name, event, desc, long_desc, topic);
+		err = func(data, name, event, desc, long_desc, topic, unit);
 		free(event);
 		free(desc);
 		free(name);
 		free(long_desc);
 		free(extra_desc);
 		free(topic);
+		free(unit);
+		free(filter);
 		if (err)
 			break;
 		tok += j;
