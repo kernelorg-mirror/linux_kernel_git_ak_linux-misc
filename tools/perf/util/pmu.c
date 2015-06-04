@@ -471,7 +471,8 @@ char *__attribute__((weak))get_cpuid_str(void)
  * to the current running CPU. Then, add all PMU events from that table
  * as aliases.
  */
-static int pmu_add_cpu_aliases(void *data)
+static int pmu_add_extra_aliases(void *data, const char *name,
+				 const char *type)
 {
 	struct list_head *head = (struct list_head *)data;
 	int i;
@@ -493,6 +494,9 @@ static int pmu_add_cpu_aliases(void *data)
 		if (!map->table)
 			return 0;
 
+		if (strcmp(map->type, type))
+			continue;
+
 		if (!strcmp(map->cpuid, cpuid))
 			break;
 	}
@@ -505,6 +509,9 @@ static int pmu_add_cpu_aliases(void *data)
 		pe = &map->table[i++];
 		if (!pe->name)
 			break;
+
+		if (pe->unit && strncmp(pe->unit, name, strlen(pe->unit)))
+			continue;
 
 		/* need type casts to override 'const' */
 		__perf_pmu__new_alias(head, (char *)pe->name, NULL,
@@ -525,6 +532,8 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	LIST_HEAD(format);
 	LIST_HEAD(aliases);
 	__u32 type;
+	const char *typename;
+	int noff = 0;
 
 	/*
 	 * The pmu data we store & need consists of the pmu
@@ -534,14 +543,22 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	if (pmu_format(name, &format))
 		return NULL;
 
+	if (pmu_type(name, &type))
+		return NULL;
+
 	if (pmu_aliases(name, &aliases))
 		return NULL;
 
 	if (!strcmp(name, "cpu"))
-		(void)pmu_add_cpu_aliases(&aliases);
-	if (pmu_type(name, &type))
-		return NULL;
+		typename = "core";
+	else if (!strncmp(name, "uncore_", 7)) {
+		typename = "uncore";
+		noff = 7;
+	} else
+		typename = NULL;
 
+	if (typename)
+		(void)pmu_add_extra_aliases(&aliases, name + noff, typename);
 	pmu = zalloc(sizeof(*pmu));
 	if (!pmu)
 		return NULL;
@@ -1052,6 +1069,9 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag,
 	len = j;
 	qsort(aliases, len, sizeof(struct sevent), cmp_sevent);
 	for (j = 0; j < len; j++) {
+		/* Skip duplicates */
+		if (j > 0 && !strcmp(aliases[j].name, aliases[j - 1].name))
+			continue;
 		if (name_only) {
 			printf("%s ", aliases[j].name);
 			continue;
