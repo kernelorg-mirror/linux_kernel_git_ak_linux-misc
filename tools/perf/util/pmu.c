@@ -496,7 +496,8 @@ char * __weak get_cpuid_str(void)
  * to the current running CPU. Then, add all PMU events from that table
  * as aliases.
  */
-static int pmu_add_cpu_aliases(struct list_head *head)
+static int pmu_add_cpu_aliases(struct list_head *head, const char *name,
+				const char *type)
 {
 	int i;
 	struct pmu_events_map *map;
@@ -518,6 +519,9 @@ static int pmu_add_cpu_aliases(struct list_head *head)
 		map = &pmu_events_map[i++];
 		if (!map->table)
 			goto out;
+
+		if (strcmp(map->type, type))
+			continue;
 
 		if (!strcmp(map->cpuid, cpuid))
 			break;
@@ -559,6 +563,8 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	LIST_HEAD(format);
 	LIST_HEAD(aliases);
 	__u32 type;
+	const char *typename;
+	int noff = 0;
 
 	/*
 	 * The pmu data we store & need consists of the pmu
@@ -568,15 +574,22 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	if (pmu_format(name, &format))
 		return NULL;
 
+	if (pmu_type(name, &type))
+		return NULL;
+
 	if (pmu_aliases(name, &aliases))
 		return NULL;
 
 	if (!strcmp(name, "cpu"))
-		(void)pmu_add_cpu_aliases(&aliases);
+		typename = "core";
+	else if (!strncmp(name, "uncore_", 7)) {
+		typename = "uncore";
+		noff = 7;
+	} else
+		typename = NULL;
 
-	if (pmu_type(name, &type))
-		return NULL;
-
+	if (typename)
+		pmu_add_cpu_aliases(&aliases, name + noff, typename);
 	pmu = zalloc(sizeof(*pmu));
 	if (!pmu)
 		return NULL;
@@ -1172,6 +1185,9 @@ void print_pmu_events(const char *event_glob, bool name_only, bool quiet_flag,
 	len = j;
 	qsort(aliases, len, sizeof(struct sevent), cmp_sevent);
 	for (j = 0; j < len; j++) {
+		/* Skip duplicates */
+		if (j > 0 && !strcmp(aliases[j].name, aliases[j - 1].name))
+			continue;
 		if (name_only) {
 			printf("%s ", aliases[j].name);
 			continue;
