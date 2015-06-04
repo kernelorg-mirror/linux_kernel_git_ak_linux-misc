@@ -15,6 +15,7 @@
 #include "util/cache.h"
 #include "util/pmu.h"
 #include "util/parse-options.h"
+#include "util/debug.h"
 
 static bool desc_flag = true;
 
@@ -29,10 +30,12 @@ int cmd_list(int argc, const char **argv, const char *prefix __maybe_unused)
 			    "Print extra event descriptions. --no-desc to not print."),
 		OPT_BOOLEAN('d', "long-desc", &long_desc_flag,
 			    "Print longer event descriptions."),
+		OPT_INCR(0, "debug", &verbose,
+			     "Enable debugging output"),
 		OPT_END()
 	};
 	const char * const list_usage[] = {
-		"perf list [--no-desc] [hw|sw|cache|tracepoint|pmu|event_glob]",
+		"perf list [--no-desc] [-v] [hw|sw|cache|tracepoint|pmu|event_glob]",
 		NULL
 	};
 
