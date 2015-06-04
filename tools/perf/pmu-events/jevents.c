@@ -161,6 +161,10 @@ static int match_field(char *map, jsmntok_t *field, int nz,
 
 	for (f = fields; f->field; f++)
 		if (json_streq(map, field, f->field) && nz) {
+			if ((json_streq(map, val, "0x00") ||
+			     json_streq(map, val, "0x0")) &&
+			     strcmp(f->field, "EventCode"))
+				return 1;
 			cut_comma(map, &newval);
 			addfield(map, event, ",", f->kernel, &newval);
 			return 1;
@@ -186,6 +190,27 @@ static struct msrmap *lookup_msr(char *map, jsmntok_t *val)
 	return NULL;
 }
 
+static struct {
+	const char *unit;
+	const char *perf;
+} perf_unit[] = {
+	{ "CBO", "cbox" },
+	{ "QPI LL", "qpi" },
+	{ "SBO", "sbox" },
+	{}
+};
+
+static const char *unit_to_perf(char *map, jsmntok_t *val)
+{
+	int i;
+
+	for (i = 0; perf_unit[i].unit; i++) {
+		if (json_streq(map, val, perf_unit[i].unit))
+			return perf_unit[i].perf;
+	}
+	return NULL;
+}
+
 #define EXPECT(e, t, m) do { if (!(e)) {			\
 	jsmntok_t *loc = (t);					\
 	if (!(t)->start && (t) > tokens)			\
@@ -202,7 +227,8 @@ static void print_events_table_prefix(FILE *fp, const char *tblname)
 }
 
 static int print_events_table_entry(void *data, char *name, char *event,
-				    char *desc, char *long_desc, char *topic)
+				    char *desc, char *long_desc, char *topic,
+				    char *unit)
 {
 	FILE *outfp = data;
 	/*
@@ -218,6 +244,8 @@ static int print_events_table_entry(void *data, char *name, char *event,
 		fprintf(outfp, "\t.long_desc = \"%s\",\n", long_desc);
 	if (topic)
 		fprintf(outfp, "\t.topic = \"%s\",\n", topic);
+	if (unit)
+		fprintf(outfp, "\t.unit = \"%s\",\n", unit);
 	fprintf(outfp, "},\n");
 
 	return 0;
@@ -238,7 +266,7 @@ static void print_events_table_suffix(FILE *outfp)
 /* Call func with each event in the json file */
 int json_events(const char *fn,
 	  int (*func)(void *data, char *name, char *event, char *desc,
-		      char *long_desc, char *topic),
+		      char *long_desc, char *topic, char *unit),
 	  void *data)
 {
 	int err = -EIO;
@@ -257,7 +285,7 @@ int json_events(const char *fn,
 	tok = tokens + 1;
 	for (i = 0; i < tokens->size; i++) {
 		char *event = NULL, *desc = NULL, *name = NULL, *long_desc = NULL;
-		char *extra_desc = NULL, *topic = NULL;
+		char *extra_desc = NULL, *topic = NULL, *unit = NULL;
 		struct msrmap *msr = NULL;
 		jsmntok_t *msrval = NULL;
 		jsmntok_t *precise = NULL;
@@ -302,6 +330,22 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, ". ",
 					" Supports address when precise",
 					NULL);
+			} else if (json_streq(map, field, "Unit")) {
+				const char *punit;
+				char *s;
+
+				if (topic == NULL)
+					topic = strdup("Uncore ");
+				addfield(map, &topic, "", "", val);
+
+				punit = unit_to_perf(map, val);
+				if (punit) {
+					unit = strdup(punit);
+				} else {
+					addfield(map, &unit, "", "", val);
+					for (s = unit; *s; s++)
+						*s = tolower(*s);
+				}
 			}
 			/* ignore unknown fields */
 		}
@@ -320,13 +364,14 @@ int json_events(const char *fn,
 		if (msr != NULL)
 			addfield(map, &event, ",", msr->pname, msrval);
 		fixname(name);
-		err = func(data, name, event, desc, long_desc, topic);
+		err = func(data, name, event, desc, long_desc, topic, unit);
 		free(event);
 		free(desc);
 		free(name);
 		free(extra_desc);
 		free(long_desc);
 		free(topic);
+		free(unit);
 		if (err)
 			break;
 		tok += j;
