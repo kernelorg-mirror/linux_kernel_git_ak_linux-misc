@@ -133,7 +133,6 @@ static struct field {
 	const char *field;
 	const char *kernel;
 } fields[] = {
-	{ "EventCode",	"event=" },
 	{ "UMask",	"umask=" },
 	{ "CounterMask", "cmask=" },
 	{ "Invert",	"inv=" },
@@ -162,6 +161,9 @@ static int match_field(char *map, jsmntok_t *field, int nz,
 
 	for (f = fields; f->field; f++)
 		if (json_streq(map, field, f->field) && nz) {
+			if (json_streq(map, val, "0x00") ||
+			     json_streq(map, val, "0x0"))
+				return 1;
 			cut_comma(map, &newval);
 			addfield(map, event, ",", f->kernel, &newval);
 			return 1;
@@ -187,6 +189,27 @@ static struct msrmap *lookup_msr(char *map, jsmntok_t *val)
 	return NULL;
 }
 
+static struct map {
+	const char *json;
+	const char *perf;
+} unit_to_pmu[] = {
+	{ "CBO", "cbox" },
+	{ "QPI LL", "qpi" },
+	{ "SBO", "sbox" },
+	{}
+};
+
+static const char *field_to_perf(struct map *table, char *map, jsmntok_t *val)
+{
+	int i;
+
+	for (i = 0; table[i].json; i++) {
+		if (json_streq(map, val, table[i].json))
+			return table[i].perf;
+	}
+	return NULL;
+}
+
 #define EXPECT(e, t, m) do { if (!(e)) {			\
 	jsmntok_t *loc = (t);					\
 	if (!(t)->start && (t) > tokens)			\
@@ -203,7 +226,8 @@ static void print_events_table_prefix(FILE *fp, const char *tblname)
 }
 
 static int print_events_table_entry(void *data, char *name, char *event,
-				    char *desc, char *long_desc, char *topic)
+				    char *desc, char *long_desc, char *topic,
+				    char *pmu, char *unit, char *perpkg)
 {
 	FILE *outfp = data;
 	/*
@@ -219,7 +243,12 @@ static int print_events_table_entry(void *data, char *name, char *event,
 		fprintf(outfp, "\t.long_desc = \"%s\",\n", long_desc);
 	if (topic)
 		fprintf(outfp, "\t.topic = \"%s\",\n", topic);
-
+	if (pmu)
+		fprintf(outfp, "\t.pmu = \"%s\",\n", pmu);
+	if (unit)
+		fprintf(outfp, "\t.unit = \"%s\",\n", unit);
+	if (perpkg)
+		fprintf(outfp, "\t.perpkg = \"%s\",\n", perpkg);
 	fprintf(outfp, "},\n");
 
 	return 0;
@@ -240,7 +269,8 @@ static void print_events_table_suffix(FILE *outfp)
 /* Call func with each event in the json file */
 int json_events(const char *fn,
 	  int (*func)(void *data, char *name, char *event, char *desc,
-		      char *long_desc, char *topic),
+		      char *long_desc, char *topic, char *pmu,
+		      char *unit, char *perpkg),
 	  void *data)
 {
 	int err = -EIO;
@@ -248,6 +278,7 @@ int json_events(const char *fn,
 	jsmntok_t *tokens, *tok;
 	int i, j, len;
 	char *map;
+	char buf[128];
 
 	if (!fn)
 		return -ENOENT;
@@ -262,6 +293,11 @@ int json_events(const char *fn,
 		char *long_desc = NULL;
 		char *extra_desc = NULL;
 		char *topic = NULL;
+		char *pmu = NULL;
+		char *filter = NULL;
+		char *perpkg = NULL;
+		char *unit = NULL;
+		unsigned long long eventcode = 0;
 		struct msrmap *msr = NULL;
 		jsmntok_t *msrval = NULL;
 		jsmntok_t *precise = NULL;
@@ -282,6 +318,16 @@ int json_events(const char *fn,
 			nz = !json_streq(map, val, "0");
 			if (match_field(map, field, nz, &event, val)) {
 				/* ok */
+			} else if (json_streq(map, field, "EventCode")) {
+				char *code = NULL;
+				addfield(map, &code, "", "", val);
+				eventcode |= strtoul(code, NULL, 0);
+				free(code);
+			} else if (json_streq(map, field, "ExtSel")) {
+				char *code = NULL;
+				addfield(map, &code, "", "", val);
+				eventcode |= strtoul(code, NULL, 0) << 21;
+				free(code);
 			} else if (json_streq(map, field, "EventName")) {
 				addfield(map, &name, "", "", val);
 			} else if (json_streq(map, field, "BriefDescription")) {
@@ -306,6 +352,28 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, ". ",
 					" Supports address when precise",
 					NULL);
+			} else if (json_streq(map, field, "Unit")) {
+				const char *ppmu;
+				char *s;
+
+				addfield(map, &topic, " ", "Uncore ", val);
+
+				ppmu = field_to_perf(unit_to_pmu, map, val);
+				if (ppmu) {
+					pmu = strdup(ppmu);
+				} else {
+					addfield(map, &pmu, "", "", val);
+					for (s = pmu; *s; s++)
+						*s = tolower(*s);
+				}
+				addfield(map, &desc, ". ", "Unit: ", NULL);
+				addfield(map, &desc, "", pmu, NULL);
+			} else if (json_streq(map, field, "Filter")) {
+				addfield(map, &filter, "", "", val);
+			} else if (json_streq(map, field, "ScaleUnit")) {
+				addfield(map, &unit, "", "", val);
+			} else if (json_streq(map, field, "PerPkg")) {
+				addfield(map, &perpkg, "", "", val);
 			}
 			/* ignore unknown fields */
 		}
@@ -317,21 +385,29 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, " ",
 						"(Precise event)", NULL);
 		}
+		snprintf(buf, sizeof buf, "event=%#llx", eventcode);
+		addfield(map, &event, ",", buf, NULL);
 		if (desc && extra_desc)
 			addfield(map, &desc, " ", extra_desc, NULL);
 		if (long_desc && extra_desc)
 			addfield(map, &long_desc, " ", extra_desc, NULL);
+		if (filter)
+			addfield(map, &event, ",", filter, NULL);
 		if (msr != NULL)
 			addfield(map, &event, ",", msr->pname, msrval);
 		fixname(name);
-
-		err = func(data, name, event, desc, long_desc, topic);
+		err = func(data, name, event, desc, long_desc, topic, pmu,
+			   unit, perpkg);
 		free(event);
 		free(desc);
 		free(name);
 		free(long_desc);
 		free(extra_desc);
 		free(topic);
+		free(pmu);
+		free(filter);
+		free(perpkg);
+		free(unit);
 		if (err)
 			break;
 		tok += j;

@@ -10,6 +10,9 @@ struct pmu_event {
 	const char *desc;
 	const char *long_desc;
 	const char *topic;
+	const char *pmu;
+	const char *unit;
+	const char *perpkg;
 };
 
 /*

@@ -210,11 +210,13 @@ static int perf_pmu__parse_snapshot(struct perf_pmu_alias *alias,
 }
 
 static int __perf_pmu__new_alias(struct list_head *list, char *dir, char *name,
-				 char *desc, char *val, char *long_desc,
-				 char *topic)
+				 char *desc __maybe_unused, char *val,
+				 char *long_desc, char *topic,
+				 char *unit, char *perpkg)
 {
 	struct perf_pmu_alias *alias;
 	int ret;
+	int num;
 
 	alias = malloc(sizeof(*alias));
 	if (!alias)
@@ -247,7 +249,11 @@ static int __perf_pmu__new_alias(struct list_head *list, char *dir, char *name,
 	alias->long_desc = long_desc ? strdup(long_desc) :
 				desc ? strdup(desc) : NULL;
 	alias->topic = topic ? strdup(topic) : NULL;
-
+	if (unit) {
+		alias->scale = convert_scale(unit, &unit);
+		snprintf(alias->unit, sizeof(alias->unit), "%s", unit);
+	}
+	alias->per_pkg = perpkg && sscanf(perpkg, "%d", &num) == 1 && num == 1;
 	list_add_tail(&alias->list, list);
 
 	return 0;
@@ -264,7 +270,8 @@ static int perf_pmu__new_alias(struct list_head *list, char *dir, char *name, FI
 
 	buf[ret] = 0;
 
-	return __perf_pmu__new_alias(list, dir, name, NULL, buf, NULL, NULL);
+	return __perf_pmu__new_alias(list, dir, name, NULL, buf, NULL, NULL, NULL,
+				     NULL);
 }
 
 static inline bool pmu_alias_info_file(char *name)
@@ -510,10 +517,14 @@ static int pmu_add_cpu_aliases(struct list_head *head)
 		if (!pe->name)
 			break;
 
+		if (pe->pmu && strncmp(pe->pmu, name, strlen(pe->pmu)))
+			continue;
+
 		/* need type casts to override 'const' */
 		__perf_pmu__new_alias(head, NULL, (char *)pe->name,
 				(char *)pe->desc, (char *)pe->event,
-				(char *)pe->long_desc, (char *)pe->topic);
+				(char *)pe->long_desc, (char *)pe->topic,
+				(char *)pe->unit, (char *)pe->perpkg);
 	}
 
 out:

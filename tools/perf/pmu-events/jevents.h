@@ -3,7 +3,8 @@
 
 int json_events(const char *fn,
 		int (*func)(void *data, char *name, char *event, char *desc,
-				char *long_desc, char *topic),
+				char *long_desc, char *topic, char *pmu,
+				char *unit, char *perpkg),
 		void *data);
 char *get_cpu_str(void);
 
