@@ -1257,6 +1257,52 @@ int parse_events_add_pmu(struct parse_events_evlist *data,
 	return evsel ? 0 : -ENOMEM;
 }
 
+int parse_events_multi_pmu_add(struct parse_events_evlist *data,
+			       char *str, struct list_head **listp)
+{
+	struct list_head *head;
+	struct parse_events_term *term;
+	struct list_head *list;
+	struct perf_pmu *pmu = NULL;
+	int ok = 0;
+
+	*listp = NULL;
+	/* Add it for all PMUs that support the alias */
+	list = malloc(sizeof(struct list_head));
+	if (!list)
+		return -1;
+	INIT_LIST_HEAD(list);
+	while ((pmu = perf_pmu__scan(pmu)) != NULL) {
+		struct perf_pmu_alias *alias;
+
+		list_for_each_entry(alias, &pmu->aliases, list) {
+			if (!strcasecmp(alias->name, str)) {
+				head = malloc(sizeof(struct list_head));
+				if (!head)
+					return -1;
+				INIT_LIST_HEAD(head);
+				if (parse_events_term__num(&term, PARSE_EVENTS__TERM_TYPE_USER,
+							   str, 1, &str, NULL) < 0)
+					return -1;
+				list_add_tail(&term->list, head);
+
+				if (!parse_events_add_pmu(data, list,
+						  pmu->name, head)) {
+					pr_debug("%s -> %s/%s/\n", str,
+						 pmu->name, alias->str);
+					ok++;
+				}
+
+				parse_events_terms__delete(head);
+			}
+		}
+	}
+	if (!ok)
+		return -1;
+	*listp = list;
+	return 0;
+}
+
 int parse_events__modifier_group(struct list_head *list,
 				 char *event_mod)
 {
@@ -2404,6 +2450,31 @@ int parse_events_term__clone(struct parse_events_term **new,
 	return new_term(new, term->type_val, term->type_term, term->config,
 			term->val.str, term->val.num,
 			term->err_term, term->err_val);
+}
+
+int parse_events_copy_term_list(struct list_head *old,
+				 struct list_head **new)
+{
+	struct parse_events_term *term, *n;
+	int ret;
+
+	if (!old) {
+		*new = NULL;
+		return 0;
+	}
+
+	*new = malloc(sizeof(struct list_head));
+	if (!*new)
+		return -ENOMEM;
+	INIT_LIST_HEAD(*new);
+
+	list_for_each_entry (term, old, list) {
+		ret = parse_events_term__clone(&n, term);
+		if (ret)
+			return ret;
+		list_add_tail(&n->list, *new);
+	}
+	return 0;
 }
 
 void parse_events_terms__purge(struct list_head *terms)
