@@ -209,7 +209,23 @@ PE_NAME '/' event_config '/'
 	struct list_head *list;
 
 	ALLOC_LIST(list);
-	ABORT_ON(parse_events_add_pmu(data, list, $1, $3));
+	if (parse_events_add_pmu(data, list, $1, $3)) {
+		struct perf_pmu *pmu = NULL;
+		int ok = 0;
+
+		while ((pmu = perf_pmu__scan(pmu)) != NULL) {
+			char *name = pmu->name;
+
+			if (!strncmp(name, "uncore_", 7))
+				name += 7;
+			if (!strncmp($1, name, strlen($1))) {
+				if (!parse_events_add_pmu(data, list, pmu->name, $3))
+					ok++;
+			}
+		}
+		if (!ok)
+			YYABORT;
+	}
 	parse_events__free_terms($3);
 	$$ = list;
 }
