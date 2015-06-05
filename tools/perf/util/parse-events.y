@@ -224,11 +224,34 @@ event_pmu:
 PE_NAME opt_event_config
 {
 	struct parse_events_evlist *data = _data;
-	struct list_head *list;
+	struct list_head *list, *orig_terms, *terms;
+
+	if (parse_events_copy_term_list($2, &orig_terms))
+		YYABORT;
 
 	ALLOC_LIST(list);
-	ABORT_ON(parse_events_add_pmu(data, list, $1, $2));
+	if (parse_events_add_pmu(data, list, $1, $2)) {
+		struct perf_pmu *pmu = NULL;
+		int ok = 0;
+
+		while ((pmu = perf_pmu__scan(pmu)) != NULL) {
+			char *name = pmu->name;
+
+			if (!strncmp(name, "uncore_", 7))
+				name += 7;
+			if (!strncmp($1, name, strlen($1))) {
+				if (parse_events_copy_term_list(orig_terms, &terms))
+					YYABORT;
+				if (!parse_events_add_pmu(data, list, pmu->name, terms))
+					ok++;
+				parse_events_terms__delete(terms);
+			}
+		}
+		if (!ok)
+			YYABORT;
+	}
 	parse_events_terms__delete($2);
+	parse_events_terms__delete(orig_terms);
 	$$ = list;
 }
 |
