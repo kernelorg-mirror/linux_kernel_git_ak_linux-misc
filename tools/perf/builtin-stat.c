@@ -140,6 +140,7 @@ static unsigned int		unit_width			= 4; /* strlen("unit") */
 static bool			forever				= false;
 static bool			metric_only			= false;
 static bool			force_metric_only		= false;
+static bool			no_merge			= false;
 static struct timespec		ref_time;
 static struct cpu_map		*aggr_map;
 static aggr_get_id_t		aggr_get_id;
@@ -1178,12 +1179,34 @@ static void aggr_update_shadow(void)
 	}
 }
 
+static void collect_all_aliases(struct perf_evsel *counter,
+			    void (*cb)(struct perf_evsel *counter, void *data,
+				       bool first),
+			    void *data)
+{
+	struct perf_evsel *alias;
+
+	alias = list_prepare_entry(counter, &(evsel_list->entries), node);
+	list_for_each_entry_continue (alias, &evsel_list->entries, node) {
+		if (strcmp(perf_evsel__name(alias), perf_evsel__name(counter)) ||
+		    alias->scale != counter->scale ||
+		    alias->cgrp != counter->cgrp ||
+		    strcmp(alias->unit, counter->unit) ||
+		    nsec_counter(alias) != nsec_counter(counter))
+			break;
+		alias->merged_stat = true;
+		cb(alias, data, false);
+	}
+}
+
 static void collect_data(struct perf_evsel *counter,
 			    void (*cb)(struct perf_evsel *counter, void *data,
 				       bool first),
 			    void *data)
 {
 	cb(counter, data, true);
+	if (!no_merge)
+		collect_all_aliases(counter, cb, data);
 }
 
 struct aggr_data {
@@ -1208,6 +1231,16 @@ static void aggr_cb(struct perf_evsel *counter, void *data, bool first)
 		if (first)
 			ad->nr++;
 		counts = perf_counts(counter->counts, cpu, 0);
+		/*
+		 * When any result is bad, make them all to give
+		 * consistent output in interval mode.
+		 */
+		if (counts->ena == 0 || counts->run == 0 ||
+		    counter->counts->scaled == -1) {
+			ad->ena = 0;
+			ad->run = 0;
+			break;
+		}
 		ad->val += counts->val;
 		ad->ena += counts->ena;
 		ad->run += counts->run;
@@ -1240,6 +1273,8 @@ static void print_aggr(char *prefix)
 		ad.id = id = aggr_map->map[s];
 		first = true;
 		evlist__for_each_entry(evsel_list, counter) {
+			if (counter->merged_stat)
+				continue;
 			ad.val = ad.ena = ad.run = 0;
 			ad.nr = 0;
 			collect_data(counter, aggr_cb, &ad);
@@ -1315,6 +1350,8 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 	double uval;
 	struct caggr_data cd = { .avg = 0.0 };
 
+	if (counter->merged_stat)
+		return;
 	collect_data(counter, counter_aggr_cb, &cd);
 
 	if (prefix && !metric_only)
@@ -1346,6 +1383,9 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 	u64 ena, run, val;
 	double uval;
 	int cpu;
+
+	if (counter->merged_stat)
+		return;
 
 	for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
 		struct aggr_data ad = { .cpu = cpu };
@@ -1691,6 +1731,7 @@ static const struct option stat_options[] = {
 		    "list of cpus to monitor in system-wide"),
 	OPT_SET_UINT('A', "no-aggr", &stat_config.aggr_mode,
 		    "disable CPU count aggregation", AGGR_NONE),
+	OPT_BOOLEAN(0, "no-merge", &no_merge, "Do not merge identical named events"),
 	OPT_STRING('x', "field-separator", &csv_sep, "separator",
 		   "print counts with custom separator"),
 	OPT_CALLBACK('G', "cgroup", &evsel_list, "name",
