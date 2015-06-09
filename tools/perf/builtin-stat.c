@@ -120,6 +120,7 @@ static bool			forever				= false;
 static struct timespec		ref_time;
 static struct cpu_map		*aggr_map;
 static int			(*aggr_get_id)(struct cpu_map *m, int cpu);
+static bool			no_merge			= false;
 
 static volatile int done = 0;
 
@@ -561,11 +562,59 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 				      stat_config.aggr_mode);
 }
 
+static void collect_aliases(struct perf_evsel *counter,
+			    void (*cb)(struct perf_evsel *counter, void *data,
+				       bool first),
+			    void *data)
+{
+	struct perf_evsel *alias;
+
+	alias = list_prepare_entry(counter, &(evsel_list->entries), node);
+	cb(counter, data, true);
+	if (no_merge)
+		return;
+	list_for_each_entry_continue (alias, &evsel_list->entries, node) {
+		if (strcmp(perf_evsel__name(alias), perf_evsel__name(counter)) ||
+		    alias->scale != counter->scale ||
+		    alias->cgrp != counter->cgrp ||
+		    strcmp(alias->unit, counter->unit) ||
+		    nsec_counter(alias) != nsec_counter(counter))
+			break;
+		alias->alias = true;
+		cb(alias, data, false);
+	}
+}
+
+struct aggr_data {
+	u64 ena, run, val;
+	int id;
+	int nr;
+	int cpu;
+};
+
+static void aggr_cb(struct perf_evsel *counter, void *data, bool first)
+{
+	struct aggr_data *ad = data;
+	int cpu, cpu2, s2;
+
+	for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
+		cpu2 = perf_evsel__cpus(counter)->map[cpu];
+		s2 = aggr_get_id(evsel_list->cpus, cpu2);
+		if (s2 != ad->id)
+			continue;
+		ad->val += perf_counts(counter->counts, cpu, 0)->val;
+		ad->ena += perf_counts(counter->counts, cpu, 0)->ena;
+		ad->run += perf_counts(counter->counts, cpu, 0)->run;
+		if (first)
+			ad->nr++;
+	}
+}
+
 static void print_aggr(char *prefix)
 {
 	FILE *output = stat_config.output;
 	struct perf_evsel *counter;
-	int cpu, cpu2, s, s2, id, nr;
+	int s, nr, id;
 	double uval;
 	u64 ena, run, val;
 
@@ -573,20 +622,19 @@ static void print_aggr(char *prefix)
 		return;
 
 	for (s = 0; s < aggr_map->nr; s++) {
-		id = aggr_map->map[s];
+		struct aggr_data ad;
+
+		ad.id = id = aggr_map->map[s];
 		evlist__for_each(evsel_list, counter) {
-			val = ena = run = 0;
-			nr = 0;
-			for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
-				cpu2 = perf_evsel__cpus(counter)->map[cpu];
-				s2 = aggr_get_id(evsel_list->cpus, cpu2);
-				if (s2 != id)
-					continue;
-				val += perf_counts(counter->counts, cpu, 0)->val;
-				ena += perf_counts(counter->counts, cpu, 0)->ena;
-				run += perf_counts(counter->counts, cpu, 0)->run;
-				nr++;
-			}
+			if (counter->alias)
+				continue;
+			ad.val = ad.ena = ad.run = 0;
+			ad.nr = 0;
+			collect_aliases(counter, aggr_cb, &ad);
+			nr = ad.nr;
+			ena = ad.ena;
+			run = ad.run;
+			val = ad.val;
 			if (prefix)
 				fprintf(output, "%s", prefix);
 
@@ -610,7 +658,7 @@ static void print_aggr(char *prefix)
 					fprintf(output, "%s%s",
 						csv_sep, counter->cgrp->name);
 
-				print_running(run, ena);
+				print_running(ad.run, ad.ena);
 				fputc('\n', output);
 				continue;
 			}
@@ -665,6 +713,21 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 	}
 }
 
+struct caggr_data {
+	double avg, avg_enabled, avg_running;
+};
+
+static void counter_aggr_cb(struct perf_evsel *counter, void *data,
+			    bool first __maybe_unused)
+{
+	struct caggr_data *cd = data;
+	struct perf_stat *ps = counter->priv;
+
+	cd->avg += avg_stats(&ps->res_stats[0]);
+	cd->avg_enabled += avg_stats(&ps->res_stats[1]);
+	cd->avg_running += avg_stats(&ps->res_stats[2]);
+}
+
 /*
  * Print out the results of a single counter:
  * aggregated counts in system-wide mode
@@ -672,14 +735,13 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 {
 	FILE *output = stat_config.output;
-	struct perf_stat *ps = counter->priv;
-	double avg = avg_stats(&ps->res_stats[0]);
 	int scaled = counter->counts->scaled;
 	double uval;
-	double avg_enabled, avg_running;
+	struct caggr_data cd = { .avg = 0.0 };
 
-	avg_enabled = avg_stats(&ps->res_stats[1]);
-	avg_running = avg_stats(&ps->res_stats[2]);
+	if (counter->alias)
+		return;
+	collect_aliases(counter, counter_aggr_cb, &cd);
 
 	if (prefix)
 		fprintf(output, "%s", prefix);
@@ -699,22 +761,32 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 		if (counter->cgrp)
 			fprintf(output, "%s%s", csv_sep, counter->cgrp->name);
 
-		print_running(avg_running, avg_enabled);
+		print_running(cd.avg_running, cd.avg_enabled);
 		fputc('\n', output);
 		return;
 	}
 
-	uval = avg * counter->scale;
+	uval = cd.avg * counter->scale;
 
 	if (nsec_counter(counter))
 		nsec_printout(-1, 0, counter, uval);
 	else
 		abs_printout(-1, 0, counter, uval);
 
-	print_noise(counter, avg);
+	print_noise(counter, cd.avg);
 
-	print_running(avg_running, avg_enabled);
+	print_running(cd.avg_running, cd.avg_enabled);
 	fprintf(output, "\n");
+}
+
+static void counter_cb(struct perf_evsel *counter, void *data,
+		       bool first __maybe_unused)
+{
+	struct aggr_data *ad = data;
+
+	ad->val += perf_counts(counter->counts, ad->cpu, 0)->val;
+	ad->ena += perf_counts(counter->counts, ad->cpu, 0)->ena;
+	ad->run += perf_counts(counter->counts, ad->cpu, 0)->run;
 }
 
 /*
@@ -728,10 +800,16 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 	double uval;
 	int cpu;
 
+	if (counter->alias)
+		return;
+
 	for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
-		val = perf_counts(counter->counts, cpu, 0)->val;
-		ena = perf_counts(counter->counts, cpu, 0)->ena;
-		run = perf_counts(counter->counts, cpu, 0)->run;
+		struct aggr_data ad = { .cpu = cpu };
+
+		collect_aliases(counter, counter_cb, &ad);
+		val = ad.val;
+		ena = ad.ena;
+		run = ad.run;
 
 		if (prefix)
 			fprintf(output, "%s", prefix);
@@ -1189,6 +1267,7 @@ int cmd_stat(int argc, const char **argv, const char *prefix __maybe_unused)
 		     "aggregate counts per thread", AGGR_THREAD),
 	OPT_UINTEGER('D', "delay", &initial_delay,
 		     "ms to wait before starting measurement after program start"),
+	OPT_BOOLEAN(0, "no-merge", &no_merge, "Do not merge identical named events"),
 	OPT_END()
 	};
 	const char * const stat_usage[] = {

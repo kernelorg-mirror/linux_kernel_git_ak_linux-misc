@@ -158,6 +158,9 @@ filter out the startup phase of the program, which is often very different.
 
 Print statistics of transactional execution if supported.
 
+--no-merge::
+Do not merge results from same PMUs.
+
 EXAMPLES
 --------
 
