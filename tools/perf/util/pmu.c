@@ -94,6 +94,30 @@ static int pmu_format(const char *name, struct list_head *format)
 	return 0;
 }
 
+static double convert_scale(const char *scale, char **end)
+{
+	const char *lc;
+	double sval;
+
+	/*
+	 * save current locale
+	 */
+	lc = setlocale(LC_NUMERIC, NULL);
+
+	/*
+	 * force to C locale to ensure kernel
+	 * scale string is converted correctly.
+	 * kernel uses default C locale.
+	 */
+	setlocale(LC_NUMERIC, "C");
+
+	sval = strtod(scale, end);
+
+	/* restore locale */
+	setlocale(LC_NUMERIC, lc);
+	return sval;
+}
+
 static int perf_pmu__parse_scale(struct perf_pmu_alias *alias, char *dir, char *name)
 {
 	struct stat st;
@@ -101,7 +125,6 @@ static int perf_pmu__parse_scale(struct perf_pmu_alias *alias, char *dir, char *
 	char scale[128];
 	int fd, ret = -1;
 	char path[PATH_MAX];
-	const char *lc;
 
 	snprintf(path, PATH_MAX, "%s/%s.scale", dir, name);
 
@@ -121,22 +144,7 @@ static int perf_pmu__parse_scale(struct perf_pmu_alias *alias, char *dir, char *
 	else
 		scale[sret] = '\0';
 
-	/*
-	 * save current locale
-	 */
-	lc = setlocale(LC_NUMERIC, NULL);
-
-	/*
-	 * force to C locale to ensure kernel
-	 * scale string is converted correctly.
-	 * kernel uses default C locale.
-	 */
-	setlocale(LC_NUMERIC, "C");
-
-	alias->scale = strtod(scale, NULL);
-
-	/* restore locale */
-	setlocale(LC_NUMERIC, lc);
+	alias->scale = convert_scale(scale, NULL);
 
 	ret = 0;
 error:
