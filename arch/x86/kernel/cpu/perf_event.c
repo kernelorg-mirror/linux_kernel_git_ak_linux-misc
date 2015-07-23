@@ -1590,6 +1590,40 @@ ssize_t events_sysfs_show(struct device *dev, struct device_attribute *attr,
 	return x86_pmu.events_sysfs_show(page, config);
 }
 
+ssize_t events_ht_sysfs_show(struct device *dev, struct device_attribute *attr,
+			  char *page)
+{
+	struct perf_pmu_events_ht_attr *pmu_attr =
+		container_of(attr, struct perf_pmu_events_ht_attr, attr);
+	bool ht_on = false;
+	int cpu;
+
+	/*
+	 * Report conditional events depending on Hyper-Threading.
+	 *
+	 * Check all online CPUs if any have a thread sibling,
+	 * as perf may measure any of them.
+	 *
+	 * This is overly conservative as usually the HT special
+	 * handling is not needed if the other CPU thread is idle.
+	 *
+	 * Note this does not (cannot) handle the case when thread
+	 * siblings are invisible, for example with virtualization
+	 * if they are owned by some other guest.  The user tool
+	 * has to re-read when a thread sibling gets onlined later.
+	 */
+	for_each_online_cpu (cpu) {
+		ht_on = cpumask_weight(topology_sibling_cpumask(cpu)) > 1;
+		if (ht_on)
+			break;
+	}
+
+	return sprintf(page, "%s",
+			ht_on ?
+			pmu_attr->event_str_ht :
+			pmu_attr->event_str_noht);
+}
+
 EVENT_ATTR(cpu-cycles,			CPU_CYCLES		);
 EVENT_ATTR(instructions,		INSTRUCTIONS		);
 EVENT_ATTR(cache-references,		CACHE_REFERENCES	);
