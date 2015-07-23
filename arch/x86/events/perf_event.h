@@ -617,6 +617,11 @@ struct x86_pmu {
 	 * Intel host/guest support (KVM)
 	 */
 	struct perf_guest_switch_msr *(*guest_get_msrs)(int *nr);
+
+	/*
+	 * Hyper Threading on?
+	 */
+	bool ht_on;
 };
 
 struct x86_perf_task_context {
@@ -661,6 +666,14 @@ static struct perf_pmu_events_attr event_attr_##v = {			\
 	.id		= 0,						\
 	.event_str	= str,						\
 };
+
+#define EVENT_ATTR_STR_HT(_name, v, noht, ht)				\
+static struct perf_pmu_events_ht_attr event_attr_##v = {		\
+	.attr		= __ATTR(_name, 0444, events_ht_sysfs_show, NULL),\
+	.id		= 0,						\
+	.event_str_noht	= noht,						\
+	.event_str_ht	= ht,						\
+}
 
 extern struct x86_pmu x86_pmu __read_mostly;
 
@@ -927,6 +940,12 @@ int p4_pmu_init(void);
 int p6_pmu_init(void);
 
 int knc_pmu_init(void);
+
+ssize_t events_sysfs_show(struct device *dev, struct device_attribute *attr,
+			  char *page);
+
+ssize_t events_ht_sysfs_show(struct device *dev, struct device_attribute *attr,
+			  char *page);
 
 static inline int is_ht_workaround_enabled(void)
 {

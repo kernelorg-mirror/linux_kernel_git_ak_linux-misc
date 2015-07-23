@@ -1477,6 +1477,7 @@ x86_pmu_notifier(struct notifier_block *self, unsigned long action, void *hcpu)
 	unsigned int cpu = (long)hcpu;
 	struct cpu_hw_events *cpuc = &per_cpu(cpu_hw_events, cpu);
 	int i, ret = NOTIFY_OK;
+	bool ht_on;
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_UP_PREPARE:
@@ -1496,6 +1497,7 @@ x86_pmu_notifier(struct notifier_block *self, unsigned long action, void *hcpu)
 			kfree(cpuc->kfree_on_online[i]);
 			cpuc->kfree_on_online[i] = NULL;
 		}
+		x86_pmu.ht_on = cpumask_weight(topology_sibling_cpumask(cpu)) > 1;
 		break;
 
 	case CPU_DYING:
@@ -1507,6 +1509,15 @@ x86_pmu_notifier(struct notifier_block *self, unsigned long action, void *hcpu)
 	case CPU_DEAD:
 		if (x86_pmu.cpu_dead)
 			x86_pmu.cpu_dead(cpu);
+		/* Recompute HT state for all CPUs on offline */
+		ht_on = false;
+		for_each_online_cpu (cpu) {
+			if (cpumask_weight(topology_sibling_cpumask(cpu)) > 1) {
+				ht_on = true;
+				break;
+			}
+		}
+		x86_pmu.ht_on = ht_on;
 		break;
 
 	default:
@@ -1615,6 +1626,30 @@ ssize_t events_sysfs_show(struct device *dev, struct device_attribute *attr, cha
 	return x86_pmu.events_sysfs_show(page, config);
 }
 EXPORT_SYMBOL_GPL(events_sysfs_show);
+
+ssize_t events_ht_sysfs_show(struct device *dev, struct device_attribute *attr,
+			  char *page)
+{
+	struct perf_pmu_events_ht_attr *pmu_attr =
+		container_of(attr, struct perf_pmu_events_ht_attr, attr);
+
+	/*
+	 * Report conditional events depending on Hyper-Threading.
+	 *
+	 * This is overly conservative as usually the HT special
+	 * handling is not needed if the other CPU thread is idle.
+	 *
+	 * Note this does not (cannot) handle the case when thread
+	 * siblings are invisible, for example with virtualization
+	 * if they are owned by some other guest.  The user tool
+	 * has to re-read when a thread sibling gets onlined later.
+	 */
+
+	return sprintf(page, "%s",
+			x86_pmu.ht_on ?
+			pmu_attr->event_str_ht :
+			pmu_attr->event_str_noht);
+}
 
 EVENT_ATTR(cpu-cycles,			CPU_CYCLES		);
 EVENT_ATTR(instructions,		INSTRUCTIONS		);
