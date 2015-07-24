@@ -179,6 +179,17 @@ static inline int nsec_counter(struct perf_evsel *evsel)
 	return 0;
 }
 
+static double scale_val(struct perf_evsel *counter, u64 val)
+{
+	double uval = val;
+
+	if (counter->scale < 0)
+		uval = val * (-counter->scale);
+	else if (counter->scale)
+		uval = val / counter->scale;
+	return uval;
+}
+
 /*
  * Read out the results of a single counter:
  * do not aggregate counts across CPUs in system-wide mode
@@ -630,12 +641,12 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 	const char *fmt;
 
 	if (csv_output) {
-		fmt = sc != 1.0 ?  "%.2f%s" : "%.0f%s";
+		fmt = (sc != 1.0 && sc > 0) ?  "%.2f%s" : "%.0f%s";
 	} else {
 		if (big_num)
-			fmt = sc != 1.0 ? "%'18.2f%s" : "%'18.0f%s";
+			fmt = (sc != 1.0 && sc > 0) ? "%'18.2f%s" : "%'18.0f%s";
 		else
-			fmt = sc != 1.0 ? "%18.2f%s" : "%18.0f%s";
+			fmt = (sc != 1.0 && sc > 0) ? "%18.2f%s" : "%18.0f%s";
 	}
 
 	aggr_printout(evsel, id, nr);
@@ -750,7 +761,7 @@ static void aggr_update_shadow(void)
 					continue;
 				val += perf_counts(counter->counts, cpu, 0)->val;
 			}
-			val = val * counter->scale;
+			val = scale_val(counter, val);
 			perf_stat__update_shadow_stats(counter, &val,
 						       first_shadow_cpu(counter, id));
 		}
@@ -788,7 +799,7 @@ static void print_aggr(char *prefix)
 			if (prefix)
 				fprintf(output, "%s", prefix);
 
-			uval = val * counter->scale;
+			uval = scale_val(counter, val);
 			printout(id, nr, counter, uval, prefix, run, ena, 1.0);
 			fputc('\n', output);
 		}
@@ -815,7 +826,7 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 		if (prefix)
 			fprintf(output, "%s", prefix);
 
-		uval = val * counter->scale;
+		uval = scale_val(counter, val);
 		printout(thread, 0, counter, uval, prefix, run, ena, 1.0);
 		fputc('\n', output);
 	}
@@ -860,7 +871,7 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 		return;
 	}
 
-	uval = avg * counter->scale;
+	uval = scale_val(counter, avg);
 	printout(-1, 0, counter, uval, prefix, avg_running, avg_enabled, avg);
 	fprintf(output, "\n");
 }
@@ -884,7 +895,7 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 		if (prefix)
 			fprintf(output, "%s", prefix);
 
-		uval = val * counter->scale;
+		uval = scale_val(counter, val);
 		printout(cpu, 0, counter, uval, prefix, run, ena, 1.0);
 
 		fputc('\n', output);
