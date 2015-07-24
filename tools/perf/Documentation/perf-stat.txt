@@ -204,6 +204,22 @@ Aggregate counts per physical processor for system-wide mode measurements.
 --no-aggr::
 Do not aggregate counts across all monitored CPUs.
 
+--topdown::
+Print top down level 1 metrics if supported by the CPU. This allows to
+determine bottle necks in the CPU pipeline for CPU bound workloads,
+by breaking it down into frontend bound, backend bound, bad speculation
+and retiring. Metrics are only printed when they cross a threshold.
+
+The top down metrics may be collected per core instead of per
+CPU thread. In this case per core mode is automatically enabled
+and -a (global monitoring) is needed, requiring root rights or
+perf.perf_event_paranoid=-1.
+
+This enables --metric-only, unless overriden with --no-metric-only.
+
+To interpret the results it is usually needed to know on which
+CPUs the workload runs on. If needed the CPUs can be forced using
+taskset.
 
 EXAMPLES
 --------
