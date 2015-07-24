@@ -163,6 +163,14 @@ filter out the startup phase of the program, which is often very different.
 
 Print statistics of transactional execution if supported.
 
+--topdown::
+
+Print top down level 1 metrics if supported by the CPU. This allows to
+determine bottle necks in the CPU pipeline for CPU bound workloads,
+by breaking it down into frontend bound, backend bound, bad speculation
+and retiring.  Specifying the option multiple times shows metrics even
+if the don't cross a threshold.
+
 EXAMPLES
 --------
 
