@@ -93,6 +93,15 @@ static const char * transaction_limited_attrs = {
 	"}"
 };
 
+static const char * topdown_attrs[] = {
+	"topdown-total-slots",
+	"topdown-fetch-bubbles",
+	"topdown-slots-retired",
+	"topdown-recovery-bubbles",
+	"topdown-slots-issued",
+	NULL,
+};
+
 static struct perf_evlist	*evsel_list;
 
 static struct target target = {
@@ -105,6 +114,7 @@ static volatile pid_t		child_pid			= -1;
 static bool			null_run			=  false;
 static int			detailed_run			=  0;
 static bool			transaction_run;
+static int			topdown_run			= 0;
 static bool			big_num				=  true;
 static int			big_num_opt			=  -1;
 static const char		*csv_sep			= NULL;
@@ -735,7 +745,8 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 				first_shadow_cpu(counter, id),
 				pm,
 				nl,
-				&os);
+				&os,
+				topdown_run);
 
 	if (!csv_output) {
 		print_noise(counter, noise);
@@ -1093,12 +1104,90 @@ static int perf_stat_init_aggr_mode(void)
 	return 0;
 }
 
+static void filter_events(const char **attr, char **str, bool use_group)
+{
+	int off = 0;
+	int i;
+	int len = 0;
+	char *s;
+
+	for (i = 0; attr[i]; i++) {
+		if (pmu_have_event("cpu", attr[i])) {
+			len += strlen(attr[i]) + 1;
+			attr[i - off] = attr[i];
+		} else
+			off++;
+	}
+	attr[i - off] = NULL;
+
+	*str = malloc(len + 1 + 2);
+	if (!*str)
+		return;
+	s = *str;
+	if (i - off == 0) {
+		*s = 0;
+		return;
+	}
+	if (use_group)
+		*s++ = '{';
+	for (i = 0; attr[i]; i++) {
+		strcpy(s, attr[i]);
+		s += strlen(s);
+		*s++ = ',';
+	}
+	if (use_group) {
+		s[-1] = '}';
+		*s = 0;
+	} else
+		s[-1] = 0;
+}
+
+/* Caller must free result */
+static char *sysctl_read(const char *fn)
+{
+	int n;
+	char *line = NULL;
+	size_t linelen = 0;
+	FILE *f = fopen(fn, "r");
+	if (!f)
+		return NULL;
+	n = getline(&line, &linelen, f);
+	fclose(f);
+	if (n > 0)
+		return line;
+	free(line);
+	return NULL;
+}
+
+/*
+ * Check whether we can use a group for top down.
+ * Without a group may get bad results.
+ */
+static bool check_group(bool *warn)
+{
+	char *v = sysctl_read("/proc/sys/kernel/nmi_watchdog");
+	int n;
+
+	*warn = false;
+	if (v) {
+		bool res = sscanf(v, "%d", &n) == 1 && n != 0;
+		free(v);
+		if (res) {
+			*warn = true;
+			return false;
+		}
+		return true;
+	}
+	return false; /* Don't know, so don't use group */
+}
+
 /*
  * Add default attributes, if there were no attributes specified or
  * if -d/--detailed, -d -d or -d -d -d is used:
  */
 static int add_default_attributes(void)
 {
+	int err;
 	struct perf_event_attr default_attrs[] = {
 
   { .type = PERF_TYPE_SOFTWARE, .config = PERF_COUNT_SW_TASK_CLOCK		},
@@ -1211,7 +1300,6 @@ static int add_default_attributes(void)
 		return 0;
 
 	if (transaction_run) {
-		int err;
 		if (pmu_have_event("cpu", "cycles-ct") &&
 		    pmu_have_event("cpu", "el-start"))
 			err = parse_events(evsel_list, transaction_attrs, NULL);
@@ -1221,6 +1309,36 @@ static int add_default_attributes(void)
 			fprintf(stderr, "Cannot set up transaction events\n");
 			return -1;
 		}
+		return 0;
+	}
+
+	if (topdown_run) {
+		char *str = NULL;
+		bool warn;
+
+		filter_events(topdown_attrs, &str, check_group(&warn));
+		if (topdown_attrs[0] && str) {
+			if (warn)
+				fprintf(stderr,
+		"nmi_watchdog enabled with topdown. May give wrong results.\n"
+		"Disable with echo 0 > /proc/sys/kernel/nmi_watchdog\n");
+			err = parse_events(evsel_list, str, NULL);
+			if (err) {
+				fprintf(stderr,
+					"Cannot set up top down events %s: %d\n",
+					str, err);
+				free(str);
+				return -1;
+			}
+		} else {
+			fprintf(stderr, "System does not support topdown\n");
+			return -1;
+		}
+		free(str);
+		/*
+		 * Right now combining with the other attributes breaks group
+		 * semantics.
+		 */
 		return 0;
 	}
 
@@ -1260,6 +1378,8 @@ int cmd_stat(int argc, const char **argv, const char *prefix __maybe_unused)
 	const struct option options[] = {
 	OPT_BOOLEAN('T', "transaction", &transaction_run,
 		    "hardware transaction statistics"),
+	OPT_INCR(0, "topdown", &topdown_run,
+		    "measure topdown level 1 statistics"),
 	OPT_CALLBACK('e', "event", &evsel_list, "event",
 		     "event selector. use 'perf list' to list available events",
 		     parse_events_option),
