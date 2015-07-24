@@ -28,6 +28,11 @@ static struct stats runtime_dtlb_cache_stats[NUM_CTX][MAX_NR_CPUS];
 static struct stats runtime_cycles_in_tx_stats[NUM_CTX][MAX_NR_CPUS];
 static struct stats runtime_transaction_stats[NUM_CTX][MAX_NR_CPUS];
 static struct stats runtime_elision_stats[NUM_CTX][MAX_NR_CPUS];
+static struct stats runtime_topdown_total_slots[NUM_CTX][MAX_NR_CPUS];
+static struct stats runtime_topdown_slots_issued[NUM_CTX][MAX_NR_CPUS];
+static struct stats runtime_topdown_slots_retired[NUM_CTX][MAX_NR_CPUS];
+static struct stats runtime_topdown_fetch_bubbles[NUM_CTX][MAX_NR_CPUS];
+static struct stats runtime_topdown_recovery_bubbles[NUM_CTX][MAX_NR_CPUS];
 
 struct stats walltime_nsecs_stats;
 
@@ -68,6 +73,11 @@ void perf_stat__reset_shadow_stats(void)
 		sizeof(runtime_transaction_stats));
 	memset(runtime_elision_stats, 0, sizeof(runtime_elision_stats));
 	memset(&walltime_nsecs_stats, 0, sizeof(walltime_nsecs_stats));
+	memset(runtime_topdown_total_slots, 0, sizeof(runtime_topdown_total_slots));
+	memset(runtime_topdown_slots_retired, 0, sizeof(runtime_topdown_slots_retired));
+	memset(runtime_topdown_slots_issued, 0, sizeof(runtime_topdown_slots_issued));
+	memset(runtime_topdown_fetch_bubbles, 0, sizeof(runtime_topdown_fetch_bubbles));
+	memset(runtime_topdown_recovery_bubbles, 0, sizeof(runtime_topdown_recovery_bubbles));
 }
 
 /*
@@ -90,6 +100,16 @@ void perf_stat__update_shadow_stats(struct perf_evsel *counter, u64 *count,
 		update_stats(&runtime_transaction_stats[ctx][cpu], count[0]);
 	else if (perf_stat_evsel__is(counter, ELISION_START))
 		update_stats(&runtime_elision_stats[ctx][cpu], count[0]);
+	else if (perf_stat_evsel__is(counter, TOPDOWN_TOTAL_SLOTS))
+		update_stats(&runtime_topdown_total_slots[ctx][cpu], count[0]);
+	else if (perf_stat_evsel__is(counter, TOPDOWN_SLOTS_ISSUED))
+		update_stats(&runtime_topdown_slots_issued[ctx][cpu], count[0]);
+	else if (perf_stat_evsel__is(counter, TOPDOWN_SLOTS_RETIRED))
+		update_stats(&runtime_topdown_slots_retired[ctx][cpu], count[0]);
+	else if (perf_stat_evsel__is(counter, TOPDOWN_FETCH_BUBBLES))
+		update_stats(&runtime_topdown_fetch_bubbles[ctx][cpu],count[0]);
+	else if (perf_stat_evsel__is(counter, TOPDOWN_RECOVERY_BUBBLES))
+		update_stats(&runtime_topdown_recovery_bubbles[ctx][cpu], count[0]);
 	else if (perf_evsel__match(counter, HARDWARE, HW_STALLED_CYCLES_FRONTEND))
 		update_stats(&runtime_stalled_cycles_front_stats[ctx][cpu], count[0]);
 	else if (perf_evsel__match(counter, HARDWARE, HW_STALLED_CYCLES_BACKEND))
@@ -293,11 +313,70 @@ static void print_ll_cache_misses(int cpu,
 	print_metric(ctxp, color, "%7.2f%%", "of all LL-cache hits", ratio);
 }
 
+/*
+ * For an explanation of the formulas see:
+ * Yasin, A Top Down Method for Performance analysis and Counter architecture
+ * ISPASS14
+ */
+
+static double td_total_slots(int ctx, int cpu)
+{
+	return avg_stats(&runtime_topdown_total_slots[ctx][cpu]);
+}
+
+static double td_bad_spec(int ctx, int cpu)
+{
+	double bad_spec = 0;
+	double total_slots;
+	double total;
+
+	total = avg_stats(&runtime_topdown_slots_issued[ctx][cpu]) -
+		avg_stats(&runtime_topdown_slots_retired[ctx][cpu]) +
+		avg_stats(&runtime_topdown_recovery_bubbles[ctx][cpu]);
+	total_slots = td_total_slots(ctx, cpu);
+	if (total_slots)
+		bad_spec = total / total_slots;
+	return bad_spec;
+}
+
+static double td_retiring(int ctx, int cpu)
+{
+	double retiring = 0;
+	double total_slots = td_total_slots(ctx, cpu);
+	double ret_slots = avg_stats(&runtime_topdown_slots_retired[ctx][cpu]);
+
+	if (total_slots)
+		retiring = ret_slots / total_slots;
+	return retiring;
+}
+
+static double td_fe_bound(int ctx, int cpu)
+{
+	double fe_bound = 0;
+	double total_slots = td_total_slots(ctx, cpu);
+	double fetch_bub = avg_stats(&runtime_topdown_fetch_bubbles[ctx][cpu]);
+
+	if (total_slots)
+		fe_bound = fetch_bub / total_slots;
+	return fe_bound;
+}
+
+static double td_be_bound(int ctx, int cpu)
+{
+	double sum = (td_fe_bound(ctx, cpu) +
+		      td_bad_spec(ctx, cpu) +
+		      td_retiring(ctx, cpu));
+	if (sum == 0)
+		return 0;
+	return 1.0 - sum;
+}
+
 void perf_stat__print_shadow_stats(struct perf_evsel *evsel,
 				   double avg, int cpu,
 				   print_metric_t print_metric,
 				   void (*new_line)(void *ctx),
-				   void *ctxp)
+				   void *ctxp,
+				   int topdown_run)
 {
 	double total, ratio = 0.0, total2;
 	int ctx = evsel_context(evsel);
@@ -422,6 +501,44 @@ void perf_stat__print_shadow_stats(struct perf_evsel *evsel,
 	} else if (perf_evsel__match(evsel, SOFTWARE, SW_TASK_CLOCK) &&
 		   (ratio = avg_stats(&walltime_nsecs_stats)) != 0) {
 		print_metric(ctxp, NULL, "%8.3f", "CPUs utilized", avg / ratio);
+	} else if (perf_stat_evsel__is(evsel, TOPDOWN_FETCH_BUBBLES)) {
+		double fe_bound = td_fe_bound(ctx, cpu);
+
+		if (fe_bound > 0.2 || topdown_run > 1)
+			print_metric(ctxp, NULL, "%8.2f%%", "frontend bound",
+					fe_bound * 100.);
+		else
+			print_metric(ctxp, NULL, NULL, NULL, 0);
+	} else if (perf_stat_evsel__is(evsel, TOPDOWN_SLOTS_RETIRED)) {
+		double retiring = td_retiring(ctx, cpu);
+
+		if (retiring > 0.7 || topdown_run > 1)
+			print_metric(ctxp, NULL, "%8.2f%%", "retiring",
+					retiring * 100.);
+		else
+			print_metric(ctxp, NULL, NULL, NULL, 0);
+	} else if (perf_stat_evsel__is(evsel, TOPDOWN_RECOVERY_BUBBLES)) {
+		double bad_spec = td_bad_spec(ctx, cpu);
+
+		if (bad_spec > 0.1 || topdown_run > 1)
+			print_metric(ctxp, NULL, "%8.2f%%", "bad speculation",
+					bad_spec * 100.);
+		else
+			print_metric(ctxp, NULL, NULL, NULL, 0);
+	} else if (perf_stat_evsel__is(evsel, TOPDOWN_SLOTS_ISSUED)) {
+		double be_bound = td_be_bound(ctx, cpu);
+		const char *name = "backend bound";
+
+		/* In case the CPU does not support topdown-recovery-bubbles */
+		if (avg_stats(&runtime_topdown_recovery_bubbles[ctx][cpu]) == 0)
+			name = "backend bound/bad spec";
+
+		if (td_total_slots(ctx, cpu) > 0 &&
+			(be_bound > 0.2 || topdown_run > 1))
+			print_metric(ctxp, NULL, "%8.2f%%", name,
+					be_bound * 100.);
+		else
+			print_metric(ctxp, NULL, NULL, NULL, 0);
 	} else if (runtime_nsecs_stats[cpu].n != 0) {
 		char unit = 'M';
 		char unit_buf[10];

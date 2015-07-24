@@ -17,6 +17,11 @@ enum perf_stat_evsel_id {
 	PERF_STAT_EVSEL_ID__TRANSACTION_START,
 	PERF_STAT_EVSEL_ID__ELISION_START,
 	PERF_STAT_EVSEL_ID__CYCLES_IN_TX_CP,
+	PERF_STAT_EVSEL_ID__TOPDOWN_TOTAL_SLOTS,
+	PERF_STAT_EVSEL_ID__TOPDOWN_SLOTS_ISSUED,
+	PERF_STAT_EVSEL_ID__TOPDOWN_SLOTS_RETIRED,
+	PERF_STAT_EVSEL_ID__TOPDOWN_FETCH_BUBBLES,
+	PERF_STAT_EVSEL_ID__TOPDOWN_RECOVERY_BUBBLES,
 	PERF_STAT_EVSEL_ID__MAX,
 };
 
@@ -100,7 +105,8 @@ void perf_stat__print_shadow_stats(struct perf_evsel *evsel,
 				   double avg, int cpu,
 				   print_metric_t print_metric,
 				   void (*new_line)(void *ctx),
-				   void *ctx);
+				   void *ctx,
+				   int topdown_run);
 
 struct perf_counts *perf_counts__new(int ncpus, int nthreads);
 void perf_counts__delete(struct perf_counts *counts);
