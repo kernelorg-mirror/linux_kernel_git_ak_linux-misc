@@ -860,7 +860,8 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 	perf_stat__print_shadow_stats(counter, uval,
 				stat_config.aggr_mode == AGGR_GLOBAL ? 0 :
 				first_shadow_cpu(counter, id),
-				&out);
+				&out,
+				topdown_run);
 
 	if (!metric_only) {
 		print_noise(counter, noise);
@@ -1049,7 +1050,8 @@ static void print_metric_headers(char *prefix)
 		os.evsel = counter;
 		perf_stat__print_shadow_stats(counter, 0,
 					      0,
-					      &out);
+					      &out,
+					      topdown_run);
 	}
 	fputc('\n', stat_config.output);
 }
