@@ -617,7 +617,49 @@ static void aggr_printout(struct perf_evsel *evsel, int id, int nr)
 	}
 }
 
-static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg)
+struct outstate {
+	FILE *fh;
+};
+
+#define BASE_INDENT 41
+#define AGGR_INDENT  8
+#define METRIC_LEN  35
+#define NA_INDENT   16
+
+static void new_line_no_aggr_std(void *ctx)
+{
+	struct outstate *os = ctx;
+	fprintf(os->fh, "\n%*s", BASE_INDENT + NA_INDENT, "");
+}
+
+static void new_line_std(void *ctx)
+{
+	struct outstate *os = ctx;
+	fprintf(os->fh, "\n%-*s", BASE_INDENT + AGGR_INDENT, "");
+}
+
+static void print_metric_std(void *ctx, const char *color, const char *fmt,
+			     const char *unit, double val)
+{
+	struct outstate *os = ctx;
+	FILE *out = os->fh;
+	int n;
+
+	if (unit == NULL) {
+		fprintf(out, "%-*s", METRIC_LEN, "");
+		return;
+	}
+
+	n = fprintf(out, " # ");
+	if (color)
+		n += color_fprintf(out, color, fmt, val);
+	else
+		n += fprintf(out, fmt, val);
+	fprintf(out, " %-*s", METRIC_LEN - n - 1, unit);
+}
+
+static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg,
+			  void *ctx, print_metric_t print_metric)
 {
 	double msecs = avg / 1e6;
 	const char *fmt_v, *fmt_n;
@@ -647,13 +689,16 @@ static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 		return;
 
 	if (perf_evsel__match(evsel, SOFTWARE, SW_TASK_CLOCK))
-		fprintf(output, " # %8.3f CPUs utilized          ",
-			avg / avg_stats(&walltime_nsecs_stats));
+		print_metric(ctx, NULL, "%8.3f", "CPUs utilized",
+			     avg / avg_stats(&walltime_nsecs_stats));
 	else
-		fprintf(output, "                                   ");
+		print_metric(ctx, NULL, NULL, NULL, 0);
 }
 
-static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
+static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg,
+			 void *ctx,
+			 print_metric_t print_metric,
+			 void (*new_line)(void *))
 {
 	double sc =  evsel->scale;
 	const char *fmt;
@@ -688,7 +733,23 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 	if (csv_output || interval)
 		return;
 
-	perf_stat__print_shadow_stats(output, evsel, avg, cpu, aggr_mode);
+	perf_stat__print_shadow_stats(evsel, avg, cpu,
+				      print_metric,
+				      new_line,
+				      ctx);
+}
+
+static void printout(int id, int nr, struct perf_evsel *counter, double uval)
+{
+	struct outstate os = { .fh = output };
+
+	if (nsec_counter(counter))
+		nsec_printout(id, nr, counter, uval, &os, print_metric_std);
+	else
+		abs_printout(id, nr, counter, uval, &os,
+			     print_metric_std,
+			     aggr_mode == AGGR_NONE ?
+			     new_line_no_aggr_std : new_line_std);
 }
 
 static void print_aggr(char *prefix)
@@ -744,12 +805,7 @@ static void print_aggr(char *prefix)
 				continue;
 			}
 			uval = val * counter->scale;
-
-			if (nsec_counter(counter))
-				nsec_printout(id, nr, counter, uval);
-			else
-				abs_printout(id, nr, counter, uval);
-
+			printout(id, nr, counter, uval);
 			if (!csv_output)
 				print_noise(counter, 1.0);
 
@@ -779,11 +835,7 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 			fprintf(output, "%s", prefix);
 
 		uval = val * counter->scale;
-
-		if (nsec_counter(counter))
-			nsec_printout(thread, 0, counter, uval);
-		else
-			abs_printout(thread, 0, counter, uval);
+		printout(thread, 0, counter, uval);
 
 		if (!csv_output)
 			print_noise(counter, 1.0);
@@ -832,11 +884,7 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 	}
 
 	uval = avg * counter->scale;
-
-	if (nsec_counter(counter))
-		nsec_printout(-1, 0, counter, uval);
-	else
-		abs_printout(-1, 0, counter, uval);
+	printout(-1, 0, counter, uval);
 
 	print_noise(counter, avg);
 
@@ -888,11 +936,7 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 		}
 
 		uval = val * counter->scale;
-
-		if (nsec_counter(counter))
-			nsec_printout(cpu, 0, counter, uval);
-		else
-			abs_printout(cpu, 0, counter, uval);
+		printout(cpu, 0, counter, uval);
 
 		if (!csv_output)
 			print_noise(counter, 1.0);
