@@ -90,11 +90,17 @@ void perf_stat_evsel_id_init(struct perf_evsel *evsel);
 
 extern struct stats walltime_nsecs_stats;
 
+typedef void (*print_metric_t)(void *ctx, const char *color, const char *unit,
+			       const char *fmt, double val);
+
 void perf_stat__reset_shadow_stats(void);
 void perf_stat__update_shadow_stats(struct perf_evsel *counter, u64 *count,
 				    int cpu);
-void perf_stat__print_shadow_stats(FILE *out, struct perf_evsel *evsel,
-				   double avg, int cpu, enum aggr_mode aggr);
+void perf_stat__print_shadow_stats(struct perf_evsel *evsel,
+				   double avg, int cpu,
+				   print_metric_t print_metric,
+				   void (*new_line)(void *ctx),
+				   void *ctx);
 
 struct perf_counts *perf_counts__new(int ncpus, int nthreads);
 void perf_counts__delete(struct perf_counts *counts);
