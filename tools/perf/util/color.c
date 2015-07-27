@@ -83,12 +83,12 @@ static int __color_vfprintf(FILE *fp, const char *color, const char *fmt,
 	}
 
 	if (perf_use_color_default && *color)
-		r += fprintf(fp, "%s", color);
+		fprintf(fp, "%s", color);
 	r += vfprintf(fp, fmt, args);
 	if (perf_use_color_default && *color)
-		r += fprintf(fp, "%s", PERF_COLOR_RESET);
+		fprintf(fp, "%s", PERF_COLOR_RESET);
 	if (trail)
-		r += fprintf(fp, "%s", trail);
+		fprintf(fp, "%s", trail);
 	return r;
 }
 
