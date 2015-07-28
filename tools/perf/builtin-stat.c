@@ -619,6 +619,9 @@ static void aggr_printout(struct perf_evsel *evsel, int id, int nr)
 
 struct outstate {
 	FILE *fh;
+	const char *prefix;
+	int nfields;
+	u64 run, ena;
 };
 
 #define BASE_INDENT 41
@@ -629,13 +632,13 @@ struct outstate {
 static void new_line_no_aggr_std(void *ctx)
 {
 	struct outstate *os = ctx;
-	fprintf(os->fh, "\n%*s", BASE_INDENT + NA_INDENT, "");
+	fprintf(os->fh, "\n%s%-*s", os->prefix, BASE_INDENT + NA_INDENT, "");
 }
 
 static void new_line_std(void *ctx)
 {
 	struct outstate *os = ctx;
-	fprintf(os->fh, "\n%-*s", BASE_INDENT + AGGR_INDENT, "");
+	fprintf(os->fh, "\n%s%-*s", os->prefix, BASE_INDENT + AGGR_INDENT, "");
 }
 
 static void print_metric_std(void *ctx, const char *color, const char *fmt,
@@ -662,6 +665,7 @@ static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg,
 			  void *ctx, print_metric_t print_metric)
 {
 	double msecs = avg / 1e6;
+	double ratio;
 	const char *fmt_v, *fmt_n;
 	char name[25];
 
@@ -685,12 +689,13 @@ static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg,
 	if (evsel->cgrp)
 		fprintf(output, "%s%s", csv_sep, evsel->cgrp->name);
 
-	if (csv_output || interval)
+	if (csv_output)
 		return;
 
-	if (perf_evsel__match(evsel, SOFTWARE, SW_TASK_CLOCK))
+	ratio = avg_stats(&walltime_nsecs_stats);
+	if (perf_evsel__match(evsel, SOFTWARE, SW_TASK_CLOCK) && ratio)
 		print_metric(ctx, NULL, "%8.3f", "CPUs utilized",
-			     avg / avg_stats(&walltime_nsecs_stats));
+			     avg / ratio);
 	else
 		print_metric(ctx, NULL, NULL, NULL, 0);
 }
@@ -730,7 +735,7 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg,
 	if (evsel->cgrp)
 		fprintf(output, "%s%s", csv_sep, evsel->cgrp->name);
 
-	if (csv_output || interval)
+	if (csv_output)
 		return;
 
 	perf_stat__print_shadow_stats(evsel, avg, cpu,
@@ -739,17 +744,25 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg,
 				      ctx);
 }
 
-static void printout(int id, int nr, struct perf_evsel *counter, double uval)
+static void printout(int id, int nr, struct perf_evsel *counter, double uval,
+		     char *prefix)
 {
-	struct outstate os = { .fh = output };
+	struct outstate os = {
+		.fh = output,
+		.prefix = prefix ? prefix : ""
+	};
+	print_metric_t pm = print_metric_std;
+	void (*nl)(void *);
+
+	if (aggr_mode == AGGR_NONE)
+		nl = new_line_no_aggr_std;
+	else
+		nl = new_line_std;
 
 	if (nsec_counter(counter))
-		nsec_printout(id, nr, counter, uval, &os, print_metric_std);
+		nsec_printout(id, nr, counter, uval, &os, pm);
 	else
-		abs_printout(id, nr, counter, uval, &os,
-			     print_metric_std,
-			     aggr_mode == AGGR_NONE ?
-			     new_line_no_aggr_std : new_line_std);
+		abs_printout(id, nr, counter, uval, &os, pm, nl);
 }
 
 static void print_aggr(char *prefix)
@@ -805,7 +818,7 @@ static void print_aggr(char *prefix)
 				continue;
 			}
 			uval = val * counter->scale;
-			printout(id, nr, counter, uval);
+			printout(id, nr, counter, uval, prefix);
 			if (!csv_output)
 				print_noise(counter, 1.0);
 
@@ -835,7 +848,7 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 			fprintf(output, "%s", prefix);
 
 		uval = val * counter->scale;
-		printout(thread, 0, counter, uval);
+		printout(thread, 0, counter, uval, prefix);
 
 		if (!csv_output)
 			print_noise(counter, 1.0);
@@ -884,7 +897,7 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 	}
 
 	uval = avg * counter->scale;
-	printout(-1, 0, counter, uval);
+	printout(-1, 0, counter, uval, prefix);
 
 	print_noise(counter, avg);
 
@@ -936,7 +949,7 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 		}
 
 		uval = val * counter->scale;
-		printout(cpu, 0, counter, uval);
+		printout(cpu, 0, counter, uval, prefix);
 
 		if (!csv_output)
 			print_noise(counter, 1.0);
@@ -955,20 +968,25 @@ static void print_interval(char *prefix, struct timespec *ts)
 	if (num_print_interval == 0 && !csv_output) {
 		switch (aggr_mode) {
 		case AGGR_SOCKET:
-			fprintf(output, "#           time socket cpus             counts %*s events\n", unit_width, "unit");
+			fprintf(output, "#	   time  socket  cpus	         counts %*s events		       metric			           multiplex\n",
+					unit_width, "unit");
 			break;
 		case AGGR_CORE:
-			fprintf(output, "#           time core         cpus             counts %*s events\n", unit_width, "unit");
+			fprintf(output, "#	   time  core            cpus          counts %*s events                    metric                              multiplex\n",
+					unit_width, "unit");
 			break;
 		case AGGR_NONE:
-			fprintf(output, "#           time CPU                counts %*s events\n", unit_width, "unit");
+			fprintf(output, "#	   time  CPU		     counts %*s events                    metric                              multiplex\n",
+					unit_width, "unit");
 			break;
 		case AGGR_THREAD:
-			fprintf(output, "#           time             comm-pid                  counts %*s events\n", unit_width, "unit");
+			fprintf(output, "#         time	            comm-pid                 counts   %*s events                    metric\n",
+					unit_width, "unit");
 			break;
 		case AGGR_GLOBAL:
 		default:
-			fprintf(output, "#           time             counts %*s events\n", unit_width, "unit");
+			fprintf(output, "#         time	             counts %*s events                     metric                              multiplex\n",
+					unit_width, "unit");
 		}
 	}
 
