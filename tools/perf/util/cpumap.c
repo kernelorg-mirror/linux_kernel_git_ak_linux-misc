@@ -302,24 +302,32 @@ int cpu_map__get_core(struct cpu_map *map, int idx)
 	cpu = map->map[idx];
 
 	mnt = sysfs__mountpoint();
-	if (!mnt)
+	if (!mnt) {
+		printf("no mount\n");
 		return -1;
+	}
 
 	snprintf(path, PATH_MAX,
 		"%s/devices/system/cpu/cpu%d/topology/core_id",
 		mnt, cpu);
 
 	fp = fopen(path, "r");
-	if (!fp)
+	if (!fp) {
+		printf("missing core_id: %s, idx %d\n", path, idx);
 		return -1;
+	}
 	ret = fscanf(fp, "%d", &cpu);
 	fclose(fp);
-	if (ret != 1)
+	if (ret != 1) {
+		printf("cannot read\n");
 		return -1;
+	}
 
 	s = cpu_map__get_socket(map, idx);
-	if (s == -1)
+	if (s == -1) {
+		printf("get_socket failed\n");
 		return -1;
+	}
 
 	/*
 	 * encode socket in upper 16 bits
