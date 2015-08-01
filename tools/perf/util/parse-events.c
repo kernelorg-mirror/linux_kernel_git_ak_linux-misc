@@ -1027,6 +1027,7 @@ int parse_events_add_pmu(struct parse_events_evlist *data,
 		evsel->unit = info.unit;
 		evsel->scale = info.scale;
 		evsel->per_pkg = info.per_pkg;
+		evsel->aggr_per_core = info.aggr_per_core;
 		evsel->snapshot = info.snapshot;
 	}
 
