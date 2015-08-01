@@ -239,6 +239,13 @@ static int read_counter(struct perf_evsel *counter)
 			count = perf_counts(counter->counts, cpu, thread);
 			if (perf_evsel__read(counter, cpu, thread, count))
 				return -1;
+			if (verbose) {
+				fprintf(stat_config.output,
+					"%s: %d: %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+						perf_evsel__name(counter),
+						cpu,
+						count->val, count->ena, count->run);
+			}
 		}
 	}
 
