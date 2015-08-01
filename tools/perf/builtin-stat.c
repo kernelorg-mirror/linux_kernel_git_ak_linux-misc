@@ -731,6 +731,22 @@ static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 		fprintf(output, "%s%s", csv_sep, evsel->cgrp->name);
 }
 
+static int first_shadow_cpu(struct perf_evsel *evsel, int id)
+{
+	int i;
+
+	if (aggr_get_id == NULL)
+		return 0;
+
+	for (i = 0; i < perf_evsel__nr_cpus(evsel); i++) {
+		int cpu2 = perf_evsel__cpus(evsel)->map[i];
+
+		if (aggr_get_id(evsel_list->cpus, cpu2) == id)
+			return cpu2;
+	}
+	return 0;
+}
+
 static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 {
 	double sc =  evsel->scale;
@@ -800,8 +816,7 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 		abs_printout(id, nr, counter, uval);
 
 	perf_stat__print_shadow_stats(counter, uval,
-				      aggr_mode == AGGR_GLOBAL ? 0 :
-				      cpu_map__id_to_cpu(id),
+				      first_shadow_cpu(counter, id),
 				      pm,
 				      nl,
 				      &os);
@@ -810,6 +825,30 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 		print_noise(counter, noise);
 		if (run != ena)
 			fprintf(output, "  (%.2f%%)", 100.0 * run / ena);
+	}
+}
+
+static void aggr_update_shadow(void)
+{
+	int cpu, cpu2, s2, id, s;
+	u64 val;
+	struct perf_evsel *counter;
+
+	for (s = 0; s < aggr_map->nr; s++) {
+		id = aggr_map->map[s];
+		evlist__for_each(evsel_list, counter) {
+			val = 0;
+			for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
+				cpu2 = perf_evsel__cpus(counter)->map[cpu];
+				s2 = aggr_get_id(evsel_list->cpus, cpu2);
+				if (s2 != id)
+					continue;
+				val += perf_counts(counter->counts, cpu, 0)->val;
+			}
+			val = scale_val(counter, val);
+			perf_stat__update_shadow_stats(counter, &val,
+						       first_shadow_cpu(counter, id));
+		}
 	}
 }
 
@@ -822,6 +861,8 @@ static void print_aggr(char *prefix)
 
 	if (!(aggr_map || aggr_get_id))
 		return;
+
+	aggr_update_shadow();
 
 	for (s = 0; s < aggr_map->nr; s++) {
 		id = aggr_map->map[s];
