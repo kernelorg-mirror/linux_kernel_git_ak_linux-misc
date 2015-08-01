@@ -100,6 +100,7 @@ struct perf_evsel {
 	bool			system_wide;
 	bool			tracking;
 	bool			per_pkg;
+	bool			agg_per_core;
 	/* parse modifier helper */
 	int			exclude_GH;
 	int			nr_members;

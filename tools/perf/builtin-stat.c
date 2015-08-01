@@ -1382,6 +1382,7 @@ int cmd_stat(int argc, const char **argv, const char *prefix __maybe_unused)
 	bool append_file = false;
 	int output_fd = 0;
 	const char *output_name	= NULL;
+	struct perf_evsel *counter;
 	const struct option options[] = {
 	OPT_BOOLEAN('T', "transaction", &transaction_run,
 		    "hardware transaction statistics"),
@@ -1562,6 +1563,23 @@ int cmd_stat(int argc, const char **argv, const char *prefix __maybe_unused)
 
 	if (add_default_attributes())
 		goto out;
+
+	evlist__for_each (evsel_list, counter) {
+		/* Enable per core mode if only a single event requires it. */
+		if (counter->agg_per_core) {
+			if (stat_config.aggr_mode != AGGR_GLOBAL &&
+			    stat_config.aggr_mode != AGGR_CORE) {
+				pr_err("per core event configuration requires per core mode\n");
+				goto out;
+			}
+			stat_config.aggr_mode = AGGR_CORE;
+			if (nr_cgroups || !target__has_cpu(&target)) {
+				pr_err("per core event configuration requires system-wide mode (-a)\n");
+				goto out;
+			}
+			break;
+		}
+	}
 
 	target__validate(&target);
 

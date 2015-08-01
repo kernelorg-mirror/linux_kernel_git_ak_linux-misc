@@ -189,6 +189,23 @@ perf_pmu__parse_per_pkg(struct perf_pmu_alias *alias, char *dir, char *name)
 	return 0;
 }
 
+static void
+perf_pmu__parse_agg_per_core(struct perf_pmu_alias *alias, char *dir, char *name)
+{
+	char path[PATH_MAX];
+	FILE *f;
+	int flag;
+
+	snprintf(path, PATH_MAX, "%s/%s.agg-per-core", dir, name);
+
+	f = fopen(path, "r");
+	if (f && fscanf(f, "%d", &flag) == 1) {
+		alias->agg_per_core = flag != 0;
+		fclose(f);
+	}
+}
+
+
 static int perf_pmu__parse_snapshot(struct perf_pmu_alias *alias,
 				    char *dir, char *name)
 {
@@ -237,6 +254,7 @@ static int __perf_pmu__new_alias(struct list_head *list, char *dir, char *name,
 		perf_pmu__parse_scale(alias, dir, name);
 		perf_pmu__parse_per_pkg(alias, dir, name);
 		perf_pmu__parse_snapshot(alias, dir, name);
+		perf_pmu__parse_agg_per_core(alias, dir, name);
 	}
 
 	list_add_tail(&alias->list, list);
@@ -270,6 +288,8 @@ static inline bool pmu_alias_info_file(char *name)
 	if (len > 8 && !strcmp(name + len - 8, ".per-pkg"))
 		return true;
 	if (len > 9 && !strcmp(name + len - 9, ".snapshot"))
+		return true;
+	if (len > 13 && !strcmp(name + len - 13, ".agg-per-core"))
 		return true;
 
 	return false;
@@ -858,6 +878,7 @@ int perf_pmu__check_alias(struct perf_pmu *pmu, struct list_head *head_terms,
 	int ret;
 
 	info->per_pkg = false;
+	info->agg_per_core = false;
 
 	/*
 	 * Mark unit and scale as not set
@@ -881,6 +902,8 @@ int perf_pmu__check_alias(struct perf_pmu *pmu, struct list_head *head_terms,
 
 		if (alias->per_pkg)
 			info->per_pkg = true;
+		if (alias->agg_per_core)
+			info->agg_per_core = true;
 
 		list_del(&term->list);
 		free(term);
