@@ -510,15 +510,6 @@ static void nsec_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 
 	if (evsel->cgrp)
 		fprintf(output, "%s%s", csv_sep, evsel->cgrp->name);
-
-	if (csv_output || stat_config.interval)
-		return;
-
-	if (perf_evsel__match(evsel, SOFTWARE, SW_TASK_CLOCK))
-		fprintf(output, " # %8.3f CPUs utilized          ",
-			avg / avg_stats(&walltime_nsecs_stats));
-	else
-		fprintf(output, "                                   ");
 }
 
 static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
