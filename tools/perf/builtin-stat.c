@@ -664,6 +664,30 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 		os.ena = ena;
 	}
 
+	if (run == 0 || ena == 0) {
+		aggr_printout(counter, id, nr);
+
+		fprintf(stat_config.output, "%*s%s",
+			csv_output ? 0 : 18,
+			counter->supported ? CNTR_NOT_COUNTED : CNTR_NOT_SUPPORTED,
+			csv_sep);
+
+		fprintf(stat_config.output, "%-*s%s",
+			csv_output ? 0 : unit_width,
+			counter->unit, csv_sep);
+
+		fprintf(stat_config.output, "%*s",
+			csv_output ? 0 : -25,
+			perf_evsel__name(counter));
+
+		if (counter->cgrp)
+			fprintf(stat_config.output, "%s%s",
+				csv_sep, counter->cgrp->name);
+
+		print_running(run, ena);
+		return;
+	}
+
 	if (nsec_counter(counter))
 		nsec_printout(id, nr, counter, uval);
 	else
@@ -712,30 +736,6 @@ static void print_aggr(char *prefix)
 			if (prefix)
 				fprintf(output, "%s", prefix);
 
-			if (run == 0 || ena == 0) {
-				aggr_printout(counter, id, nr);
-
-				fprintf(output, "%*s%s",
-					csv_output ? 0 : 18,
-					counter->supported ? CNTR_NOT_COUNTED : CNTR_NOT_SUPPORTED,
-					csv_sep);
-
-				fprintf(output, "%-*s%s",
-					csv_output ? 0 : unit_width,
-					counter->unit, csv_sep);
-
-				fprintf(output, "%*s",
-					csv_output ? 0 : -25,
-					perf_evsel__name(counter));
-
-				if (counter->cgrp)
-					fprintf(output, "%s%s",
-						csv_sep, counter->cgrp->name);
-
-				print_running(run, ena);
-				fputc('\n', output);
-				continue;
-			}
 			uval = val * counter->scale;
 			printout(id, nr, counter, uval, prefix, run, ena, 1.0);
 			fputc('\n', output);
@@ -831,31 +831,6 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 
 		if (prefix)
 			fprintf(output, "%s", prefix);
-
-		if (run == 0 || ena == 0) {
-			fprintf(output, "CPU%*d%s%*s%s",
-				csv_output ? 0 : -4,
-				perf_evsel__cpus(counter)->map[cpu], csv_sep,
-				csv_output ? 0 : 18,
-				counter->supported ? CNTR_NOT_COUNTED : CNTR_NOT_SUPPORTED,
-				csv_sep);
-
-				fprintf(output, "%-*s%s",
-					csv_output ? 0 : unit_width,
-					counter->unit, csv_sep);
-
-				fprintf(output, "%*s",
-					csv_output ? 0 : -25,
-					perf_evsel__name(counter));
-
-			if (counter->cgrp)
-				fprintf(output, "%s%s",
-					csv_sep, counter->cgrp->name);
-
-			print_running(run, ena);
-			fputc('\n', output);
-			continue;
-		}
 
 		uval = val * counter->scale;
 		printout(cpu, 0, counter, uval, prefix, run, ena, 1.0);
