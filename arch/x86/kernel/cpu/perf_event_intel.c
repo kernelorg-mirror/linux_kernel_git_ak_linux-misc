@@ -1393,7 +1393,7 @@ EVENT_ATTR_STR(topdown-slots-issued, td_slots_issued_slm,
 EVENT_ATTR_STR(topdown-slots-retired, td_slots_retired_slm,
 	       "event=0xc2,umask=0x10");
 
-struct attribute *slm_events_attrs[] = {
+static struct attribute *slm_events_attrs[] = {
 	EVENT_PTR(td_total_slots_slm),
 	EVENT_PTR(td_total_slots_scale_slm),
 	EVENT_PTR(td_fetch_bubbles_slm),
