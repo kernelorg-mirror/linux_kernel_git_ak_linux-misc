@@ -220,46 +220,39 @@ struct attribute *nhm_events_attrs[] = {
 /*
  * TopDown events for Core.
  *
- * With Hyper Threading on, TopDown metrics are averaged between the
- * threads of a core: (count_core0 + count_core1) / 2. The 2 is expressed
- * as a scale parameter. We also tell perf to aggregate per core
- * by setting the .agg-per-core attribute for the alias to 1.
+ * The events are all in slots, which is a free slot in a 4 wide
+ * pipeline. Some events are already reported in slots, for cycle
+ * events we multiply by the pipeline width (4), which is expressed as a
+ * negative scale
  *
- * Some events need to be multiplied by the pipeline width (4), which
- * is expressed as a negative scale. In HT we cancel the factor 4
- * with the 2 dividend for the core average, so we use -2.
+ * With Hyper Threading on, TopDown metrics are summed between the
+ * threads of a core: (count_core0 + count_core1).
+ * We tell perf to aggregate per core by setting the .agg-per-core
+ * attribute for the alias to 1.
  */
 
 EVENT_ATTR_STR_HT(topdown-total-slots, td_total_slots,
 	"event=0x3c,umask=0x0",			/* cpu_clk_unhalted.thread */
 	"event=0x3c,umask=0x0,any=1");		/* cpu_clk_unhalted.thread_any */
-EVENT_ATTR_STR_HT(topdown-total-slots.scale, td_total_slots_scale,
-	"-4", "-2");
+EVENT_ATTR_STR(topdown-total-slots.scale, td_total_slots_scale, "-4");
 EVENT_ATTR_STR_HT(topdown-total-slots.agg-per-core, td_total_slots_pc,
 	"0", "1");
 EVENT_ATTR_STR(topdown-slots-issued, td_slots_issued,
 	"event=0xe,umask=0x1");			/* uops_issued.any */
 EVENT_ATTR_STR_HT(topdown-slots-issued.agg-per-core, td_slots_issued_pc,
 	"0", "1");
-EVENT_ATTR_STR_HT(topdown-slots-issued.scale, td_slots_issued_scale,
-	"0", "2");
 EVENT_ATTR_STR(topdown-slots-retired, td_slots_retired,
 	"event=0xc2,umask=0x2");		/* uops_retired.retire_slots */
 EVENT_ATTR_STR_HT(topdown-slots-retired.agg-per-core, td_slots_retired_pc,
 	"0", "1");
-EVENT_ATTR_STR_HT(topdown-slots-retired.scale, td_slots_retired_scale,
-	"0", "2");
 EVENT_ATTR_STR(topdown-fetch-bubbles, td_fetch_bubbles,
 	"event=0x9c,umask=0x1");		/* idq_uops_not_delivered_core */
 EVENT_ATTR_STR_HT(topdown-fetch-bubbles.agg-per-core, td_fetch_bubbles_pc,
 	"0", "1");
-EVENT_ATTR_STR_HT(topdown-fetch-bubbles.scale, td_fetch_bubbles_scale,
-	"0", "2");
 EVENT_ATTR_STR_HT(topdown-recovery-bubbles, td_recovery_bubbles,
 	"event=0xd,umask=0x3,cmask=1",		/* int_misc.recovery_cycles */
 	"event=0xd,umask=0x3,cmask=1,any=1");	/* int_misc.recovery_cycles_any */
-EVENT_ATTR_STR_HT(topdown-recovery-bubbles.scale, td_recovery_bubbles_scale,
-	"-4", "-2");
+EVENT_ATTR_STR(topdown-recovery-bubbles.scale, td_recovery_bubbles_scale, "-4");
 EVENT_ATTR_STR_HT(topdown-recovery-bubbles.agg-per-core, td_recovery_bubbles_pc,
 	"0", "1");
 
@@ -267,13 +260,10 @@ struct attribute *snb_events_attrs[] = {
 	EVENT_PTR(mem_ld_snb),
 	EVENT_PTR(mem_st_snb),
 	EVENT_PTR(td_slots_issued),
-	EVENT_PTR(td_slots_issued_scale),
 	EVENT_PTR(td_slots_issued_pc),
 	EVENT_PTR(td_slots_retired),
-	EVENT_PTR(td_slots_retired_scale),
 	EVENT_PTR(td_slots_retired_pc),
 	EVENT_PTR(td_fetch_bubbles),
-	EVENT_PTR(td_fetch_bubbles_scale),
 	EVENT_PTR(td_fetch_bubbles_pc),
 	EVENT_PTR(td_total_slots),
 	EVENT_PTR(td_total_slots_scale),
@@ -3262,13 +3252,10 @@ static struct attribute *hsw_events_attrs[] = {
 	EVENT_PTR(mem_ld_hsw),
 	EVENT_PTR(mem_st_hsw),
 	EVENT_PTR(td_slots_issued),
-	EVENT_PTR(td_slots_issued_scale),
 	EVENT_PTR(td_slots_issued_pc),
 	EVENT_PTR(td_slots_retired),
-	EVENT_PTR(td_slots_retired_scale),
 	EVENT_PTR(td_slots_retired_pc),
 	EVENT_PTR(td_fetch_bubbles),
-	EVENT_PTR(td_fetch_bubbles_scale),
 	EVENT_PTR(td_fetch_bubbles_pc),
 	EVENT_PTR(td_total_slots),
 	EVENT_PTR(td_total_slots_scale),
