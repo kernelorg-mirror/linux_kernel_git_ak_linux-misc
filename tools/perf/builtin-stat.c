@@ -842,26 +842,8 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 	if (prefix)
 		fprintf(output, "%s", prefix);
 
-	if (scaled == -1 || !counter->supported) {
-		fprintf(output, "%*s%s",
-			csv_output ? 0 : 18,
-			counter->supported ? CNTR_NOT_COUNTED : CNTR_NOT_SUPPORTED,
-			csv_sep);
-		fprintf(output, "%-*s%s",
-			csv_output ? 0 : unit_width,
-			counter->unit, csv_sep);
-		fprintf(output, "%*s",
-			csv_output ? 0 : -25,
-			perf_evsel__name(counter));
-
-		if (counter->cgrp)
-			fprintf(output, "%s%s", csv_sep, counter->cgrp->name);
-
-		print_running(avg_running, avg_enabled);
-		fputc('\n', output);
-		return;
-	}
-
+	if (scaled == -1)
+		avg_running = avg_enabled = 0;
 	uval = avg * counter->scale;
 	printout(-1, 0, counter, uval, prefix, avg_running, avg_enabled, avg);
 	fprintf(output, "\n");
