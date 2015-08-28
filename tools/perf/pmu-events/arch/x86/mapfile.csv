@@ -17,3 +17,4 @@ GenuineIntel-6-35,V1,Bonnell_core.json,core
 GenuineIntel-6-4E,V11,Skylake_core.json,core
 GenuineIntel-6-5E,V11,Skylake_core.json,core
 GenuineIntel-6-2A,V12,SandyBridge_core.json,core
+GenuineIntel-6-2D,V18,Jaketown_core.json,core
