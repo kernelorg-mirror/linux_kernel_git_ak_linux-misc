@@ -156,6 +156,17 @@
  * particular randomness source.  They do this by keeping track of the
  * first and second order deltas of the event timings.
  *
+ * Distributed pools
+ * =================
+ *
+ * On larger systems the locking on the single non blocking pool can
+ * become a bottleneck. To avoid this, we use an own non blocking pool
+ * for each NUMA node. The distributed pools are fed round robin from
+ * the input pool. Each user then only reads entropy from their local
+ * pool.
+ *
+ * For the blocking pool there is still only a single instance.
+ *
  * Ensuring unpredictability at system startup
  * ============================================
  *
@@ -467,13 +478,48 @@ static struct entropy_store blocking_pool = {
 
 static struct entropy_store nonblocking_pool = {
 	.poolinfo = &poolinfo_table[1],
-	.name = "nonblocking",
+	.name = "nonblocking 0",
 	.pull = &input_pool,
 	.lock = __SPIN_LOCK_UNLOCKED(nonblocking_pool.lock),
 	.pool = nonblocking_pool_data,
 	.push_work = __WORK_INITIALIZER(nonblocking_pool.push_work,
 					push_to_pool),
 };
+
+/*
+ * Per NUMA node nonblocking pool. This avoids lock contention
+ * when many processes extract data from /dev/urandom in parallel.
+ * /dev/random stays single instance for now.
+ *
+ * This variable is only set up once all non node 0 pools
+ * are initialized.
+ */
+#ifdef CONFIG_NUMA
+static struct entropy_store **nonblocking_node_pool __read_mostly;
+static struct entropy_store **early_nonblocking_node_pool __read_mostly;
+#else
+#define nonblocking_node_pool ((struct entropy_store **)NULL)
+#endif
+
+/* User must check for zero nonblocking_node_pool */
+#define for_each_nb_pool(i, pool) \
+	{ int num_nodes = num_possible_nodes(); \
+		for (i = 0; i < num_nodes; i++) { \
+			pool = nonblocking_node_pool[i];
+#define end_for_each_nb() } }
+
+static inline struct entropy_store *get_nonblocking_pool(void)
+{
+	struct entropy_store *pool = &nonblocking_pool;
+
+	/*
+	 * Non node 0 pools may take longer to initialize. Keep using
+	 * the boot nonblocking pool while this happens.
+	 */
+	if (nonblocking_node_pool)
+		pool = nonblocking_node_pool[numa_node_id()];
+	return pool;
+}
 
 static __u32 const twist_table[8] = {
 	0x00000000, 0x3b6e20c8, 0x76dc4190, 0x4db26158,
@@ -608,6 +654,27 @@ static void process_random_ready_list(void)
 	spin_unlock_irqrestore(&random_ready_list_lock, flags);
 }
 
+#define POOL_INIT_BYTES (128 / 8)
+
+void init_node_pools(void)
+{
+#ifdef CONFIG_NUMA
+	int i;
+	int num_nodes = num_possible_nodes();
+
+	for (i = 0; i < num_nodes; i++) {
+		struct entropy_store *pool = early_nonblocking_node_pool[i];
+		char buf[POOL_INIT_BYTES];
+
+		get_random_bytes(buf, sizeof buf);
+		mix_pool_bytes(pool, buf, sizeof buf);
+	}
+	/* Initialize first before setting variable */
+	mb();
+	nonblocking_node_pool = early_nonblocking_node_pool;
+#endif
+}
+
 /*
  * Credit (or debit) the entropy store with n bits of entropy.
  * Use credit_entropy_bits_safe() if the value comes from userspace
@@ -681,6 +748,7 @@ retry:
 			prandom_reseed_late();
 			process_random_ready_list();
 			wake_up_all(&urandom_init_wait);
+			init_node_pools();
 			pr_notice("random: %s pool is initialized\n", r->name);
 		}
 	}
@@ -698,18 +766,23 @@ retry:
 			kill_fasync(&fasync, SIGIO, POLL_IN);
 		}
 		/* If the input pool is getting full, send some
-		 * entropy to the two output pools, flipping back and
-		 * forth between them, until the output pools are 75%
+		 * entropy to the other output pools, cycling
+		 * between them, until the output pools are 75%
 		 * full.
+		 * Feed into all pools round robin.
 		 */
 		if (entropy_bits > random_write_wakeup_bits &&
 		    r->initialized &&
 		    r->entropy_total >= 2*random_read_wakeup_bits) {
 			static struct entropy_store *last = &blocking_pool;
+			static int next_pool = -1;
 			struct entropy_store *other = &blocking_pool;
 
-			if (last == &blocking_pool)
-				other = &nonblocking_pool;
+			/* -1: use blocking pool, 0<=max_node: node nb pool */
+			if (next_pool > -1)
+				other = nonblocking_node_pool[next_pool];
+			if (++next_pool >= num_possible_nodes())
+				next_pool = -1;
 			if (other->entropy_count <=
 			    3 * other->poolinfo->poolfracbits / 4)
 				last = other;
@@ -748,6 +821,17 @@ struct timer_rand_state {
 
 #define INIT_TIMER_RAND_STATE { INITIAL_JIFFIES, };
 
+static void pool_add_buf(struct entropy_store *pool,
+			 const void *buf, unsigned int size)
+{
+	unsigned long flags;
+	unsigned long time = random_get_entropy() ^ jiffies;
+	spin_lock_irqsave(&pool->lock, flags);
+	_mix_pool_bytes(pool, buf, size);
+	_mix_pool_bytes(pool, &time, sizeof(time));
+	spin_unlock_irqrestore(&pool->lock, flags);
+}
+
 /*
  * Add device- or boot-specific data to the input and nonblocking
  * pools to help initialize them to unique values.
@@ -758,19 +842,18 @@ struct timer_rand_state {
  */
 void add_device_randomness(const void *buf, unsigned int size)
 {
-	unsigned long time = random_get_entropy() ^ jiffies;
-	unsigned long flags;
+	struct entropy_store *pool;
+	int i;
 
 	trace_add_device_randomness(size, _RET_IP_);
-	spin_lock_irqsave(&input_pool.lock, flags);
-	_mix_pool_bytes(&input_pool, buf, size);
-	_mix_pool_bytes(&input_pool, &time, sizeof(time));
-	spin_unlock_irqrestore(&input_pool.lock, flags);
-
-	spin_lock_irqsave(&nonblocking_pool.lock, flags);
-	_mix_pool_bytes(&nonblocking_pool, buf, size);
-	_mix_pool_bytes(&nonblocking_pool, &time, sizeof(time));
-	spin_unlock_irqrestore(&nonblocking_pool.lock, flags);
+	pool_add_buf(&input_pool, buf, size);
+	if (!nonblocking_node_pool) {
+		pool_add_buf(&nonblocking_pool, buf, size);
+	} else {
+		for_each_nb_pool (i, pool) {
+			pool_add_buf(pool, buf, size);
+		} end_for_each_nb()
+	}
 }
 EXPORT_SYMBOL(add_device_randomness);
 
@@ -1252,15 +1335,16 @@ static ssize_t extract_entropy_user(struct entropy_store *r, void __user *buf,
  */
 void get_random_bytes(void *buf, int nbytes)
 {
+	struct entropy_store *pool = get_nonblocking_pool();
 #if DEBUG_RANDOM_BOOT > 0
-	if (unlikely(nonblocking_pool.initialized == 0))
+	if (unlikely(pool->initialized == 0))
 		printk(KERN_NOTICE "random: %pF get_random_bytes called "
 		       "with %d bits of entropy available\n",
 		       (void *) _RET_IP_,
-		       nonblocking_pool.entropy_total);
+		       pool->entropy_total);
 #endif
 	trace_get_random_bytes(nbytes, _RET_IP_);
-	extract_entropy(&nonblocking_pool, buf, nbytes, 0, 0);
+	extract_entropy(pool, buf, nbytes, 0, 0);
 }
 EXPORT_SYMBOL(get_random_bytes);
 
@@ -1350,7 +1434,7 @@ void get_random_bytes_arch(void *buf, int nbytes)
 	}
 
 	if (nbytes)
-		extract_entropy(&nonblocking_pool, p, nbytes, 0, 0);
+		extract_entropy(get_nonblocking_pool(), p, nbytes, 0, 0);
 }
 EXPORT_SYMBOL(get_random_bytes_arch);
 
@@ -1390,12 +1474,43 @@ static void init_std_data(struct entropy_store *r)
  * initializations complete at compile time. We should also
  * take care not to overwrite the precious per platform data
  * we were given.
+ *
+ * This is early initialization, if memory allocations of a few
+ * bytes fails the kernel is doomed anyways. So use __GFP_NOFAIL.
  */
 static int rand_initialize(void)
 {
+#ifdef CONFIG_NUMA
+	int i;
+	int num_nodes = num_possible_nodes();
+	struct entropy_store **pool_list;
+#endif
+
 	init_std_data(&input_pool);
 	init_std_data(&blocking_pool);
 	init_std_data(&nonblocking_pool);
+#ifdef CONFIG_NUMA
+	pool_list = kmalloc(num_nodes * sizeof(void *),
+					GFP_KERNEL|__GFP_NOFAIL);
+	pool_list[0] = &nonblocking_pool;
+	for (i = 1; i < num_nodes; i++) {
+		struct entropy_store *pool;
+
+		pool = kzalloc(sizeof(struct entropy_store),
+				GFP_KERNEL|__GFP_NOFAIL);
+		pool_list[i] = pool;
+		pool->poolinfo = &poolinfo_table[1];
+		pool->pull = &input_pool;
+		spin_lock_init(&pool->lock);
+		/* pool data not cleared intentionally */
+		pool->pool = kmalloc(sizeof(nonblocking_pool_data),
+				     GFP_KERNEL|__GFP_NOFAIL);
+		INIT_WORK(&pool->push_work, push_to_pool);
+		pool->name = kasprintf(GFP_KERNEL|__GFP_NOFAIL,
+				"nonblocking %d", i);
+	}
+	early_nonblocking_node_pool = pool_list;
+#endif
 	return 0;
 }
 early_initcall(rand_initialize);
@@ -1458,17 +1573,19 @@ static ssize_t
 urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 {
 	int ret;
+	struct entropy_store *pool;
 
-	if (unlikely(nonblocking_pool.initialized == 0))
+	pool = get_nonblocking_pool();
+	if (unlikely(pool->initialized == 0))
 		printk_once(KERN_NOTICE "random: %s urandom read "
 			    "with %d bits of entropy available\n",
 			    current->comm, nonblocking_pool.entropy_total);
 
 	nbytes = min_t(size_t, nbytes, INT_MAX >> (ENTROPY_SHIFT + 3));
-	ret = extract_entropy_user(&nonblocking_pool, buf, nbytes);
+	ret = extract_entropy_user(pool, buf, nbytes);
 
-	trace_urandom_read(8 * nbytes, ENTROPY_BITS(&nonblocking_pool),
-			   ENTROPY_BITS(&input_pool));
+	trace_urandom_read(8 * nbytes, ENTROPY_BITS(pool),
+			   ENTROPY_BITS(pool));
 	return ret;
 }
 
@@ -1513,22 +1630,34 @@ static ssize_t random_write(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *ppos)
 {
 	size_t ret;
+	struct entropy_store *pool;
+	int i;
 
 	ret = write_pool(&blocking_pool, buffer, count);
 	if (ret)
 		return ret;
-	ret = write_pool(&nonblocking_pool, buffer, count);
-	if (ret)
-		return ret;
+	if (nonblocking_node_pool) {
+		for_each_nb_pool (i, pool) {
+			ret = write_pool(pool, buffer, count);
+			if (ret)
+				return ret;
+		} end_for_each_nb()
+	} else {
+		ret = write_pool(&nonblocking_pool, buffer, count);
+		if (ret)
+			return ret;
+	}
 
 	return (ssize_t)count;
 }
 
 static long random_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 {
+	int i;
 	int size, ent_count;
 	int __user *p = (int __user *)arg;
 	int retval;
+	struct entropy_store *pool;
 
 	switch (cmd) {
 	case RNDGETENTCNT:
@@ -1569,6 +1698,10 @@ static long random_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			return -EPERM;
 		input_pool.entropy_count = 0;
 		nonblocking_pool.entropy_count = 0;
+		if (nonblocking_node_pool)
+			for_each_nb_pool (i, pool) {
+				pool->entropy_count = 0;
+			} end_for_each_nb()
 		blocking_pool.entropy_count = 0;
 		return 0;
 	default:
