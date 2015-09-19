@@ -675,6 +675,9 @@ void init_node_pools(void)
 #endif
 }
 
+static DEFINE_PER_CPU(struct entropy_store *, lastp) = &blocking_pool;
+static DEFINE_PER_CPU(int, next_pool);
+
 /*
  * Credit (or debit) the entropy store with n bits of entropy.
  * Use credit_entropy_bits_safe() if the value comes from userspace
@@ -774,15 +777,17 @@ retry:
 		if (entropy_bits > random_write_wakeup_bits &&
 		    r->initialized &&
 		    r->entropy_total >= 2*random_read_wakeup_bits) {
-			static struct entropy_store *last = &blocking_pool;
-			static int next_pool = -1;
-			struct entropy_store *other = &blocking_pool;
+			struct entropy_store *other = &blocking_pool, *last;
+			int np;
 
 			/* -1: use blocking pool, 0<=max_node: node nb pool */
-			if (next_pool > -1)
-				other = nonblocking_node_pool[next_pool];
-			if (++next_pool >= num_possible_nodes())
-				next_pool = -1;
+			np = __this_cpu_read(next_pool);
+			if (np > -1 && nonblocking_node_pool)
+				other = nonblocking_node_pool[np];
+			if (++np >= num_possible_nodes())
+				np = -1;
+			__this_cpu_write(next_pool, np);
+			last = __this_cpu_read(lastp);
 			if (other->entropy_count <=
 			    3 * other->poolinfo->poolfracbits / 4)
 				last = other;
@@ -791,6 +796,7 @@ retry:
 				schedule_work(&last->push_work);
 				r->entropy_total = 0;
 			}
+			__this_cpu_write(lastp, last);
 		}
 	}
 }
