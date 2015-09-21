@@ -288,25 +288,27 @@ TRACE_EVENT(random_read,
 );
 
 TRACE_EVENT(urandom_read,
-	TP_PROTO(int got_bits, int pool_left, int input_left),
+	TP_PROTO(const char *pool, int got_bits, int pool_left, int input_left),
 
-	TP_ARGS(got_bits, pool_left, input_left),
+	TP_ARGS(pool, got_bits, pool_left, input_left),
 
 	TP_STRUCT__entry(
+		__field( const char *,  pool			)
 		__field(	  int,	got_bits		)
 		__field(	  int,	pool_left		)
 		__field(	  int,	input_left		)
 	),
 
 	TP_fast_assign(
+		__entry->pool		= pool;
 		__entry->got_bits	= got_bits;
 		__entry->pool_left	= pool_left;
 		__entry->input_left	= input_left;
 	),
 
 	TP_printk("got_bits %d nonblocking_pool_entropy_left %d "
-		  "input_entropy_left %d", __entry->got_bits,
-		  __entry->pool_left, __entry->input_left)
+		  "input_entropy_left %d from %s", __entry->got_bits,
+		  __entry->pool_left, __entry->input_left, __entry->pool)
 );
 
 #endif /* _TRACE_RANDOM_H */
