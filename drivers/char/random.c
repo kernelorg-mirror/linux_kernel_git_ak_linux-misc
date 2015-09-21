@@ -1590,7 +1590,7 @@ urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 	nbytes = min_t(size_t, nbytes, INT_MAX >> (ENTROPY_SHIFT + 3));
 	ret = extract_entropy_user(pool, buf, nbytes);
 
-	trace_urandom_read(8 * nbytes, ENTROPY_BITS(pool),
+	trace_urandom_read(pool->name, 8 * nbytes, ENTROPY_BITS(pool),
 			   ENTROPY_BITS(pool));
 	return ret;
 }
