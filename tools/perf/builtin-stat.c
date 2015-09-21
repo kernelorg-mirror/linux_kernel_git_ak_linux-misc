@@ -517,7 +517,6 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 	FILE *output = stat_config.output;
 	double sc =  evsel->scale;
 	const char *fmt;
-	int cpu = cpu_map__id_to_cpu(id);
 
 	if (csv_output) {
 		fmt = sc != 1.0 ?  "%.2f%s" : "%.0f%s";
@@ -530,9 +529,6 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 
 	aggr_printout(evsel, id, nr);
 
-	if (stat_config.aggr_mode == AGGR_GLOBAL)
-		cpu = 0;
-
 	fprintf(output, fmt, avg, csv_sep);
 
 	if (evsel->unit)
@@ -544,12 +540,24 @@ static void abs_printout(int id, int nr, struct perf_evsel *evsel, double avg)
 
 	if (evsel->cgrp)
 		fprintf(output, "%s%s", csv_sep, evsel->cgrp->name);
+}
 
-	if (csv_output || stat_config.interval)
-		return;
+static void printout(int id, int nr, struct perf_evsel *counter, double uval)
+{
+	int cpu = cpu_map__id_to_cpu(id);
 
-	perf_stat__print_shadow_stats(output, evsel, avg, cpu,
-				      stat_config.aggr_mode);
+	if (stat_config.aggr_mode == AGGR_GLOBAL)
+		cpu = 0;
+
+	if (nsec_counter(counter))
+		nsec_printout(id, nr, counter, uval);
+	else
+		abs_printout(id, nr, counter, uval);
+
+	if (!csv_output && !stat_config.interval)
+		perf_stat__print_shadow_stats(stat_config.output, counter,
+					      uval, cpu,
+					      stat_config.aggr_mode);
 }
 
 static void print_aggr(char *prefix)
@@ -605,12 +613,7 @@ static void print_aggr(char *prefix)
 				continue;
 			}
 			uval = val * counter->scale;
-
-			if (nsec_counter(counter))
-				nsec_printout(id, nr, counter, uval);
-			else
-				abs_printout(id, nr, counter, uval);
-
+			printout(id, nr, counter, uval);
 			if (!csv_output)
 				print_noise(counter, 1.0);
 
@@ -641,11 +644,7 @@ static void print_aggr_thread(struct perf_evsel *counter, char *prefix)
 			fprintf(output, "%s", prefix);
 
 		uval = val * counter->scale;
-
-		if (nsec_counter(counter))
-			nsec_printout(thread, 0, counter, uval);
-		else
-			abs_printout(thread, 0, counter, uval);
+		printout(thread, 0, counter, uval);
 
 		if (!csv_output)
 			print_noise(counter, 1.0);
@@ -695,11 +694,7 @@ static void print_counter_aggr(struct perf_evsel *counter, char *prefix)
 	}
 
 	uval = avg * counter->scale;
-
-	if (nsec_counter(counter))
-		nsec_printout(-1, 0, counter, uval);
-	else
-		abs_printout(-1, 0, counter, uval);
+	printout(-1, 0, counter, uval);
 
 	print_noise(counter, avg);
 
@@ -752,12 +747,7 @@ static void print_counter(struct perf_evsel *counter, char *prefix)
 		}
 
 		uval = val * counter->scale;
-
-		if (nsec_counter(counter))
-			nsec_printout(cpu, 0, counter, uval);
-		else
-			abs_printout(cpu, 0, counter, uval);
-
+		printout(cpu, 0, counter, uval);
 		if (!csv_output)
 			print_noise(counter, 1.0);
 		print_running(run, ena);
