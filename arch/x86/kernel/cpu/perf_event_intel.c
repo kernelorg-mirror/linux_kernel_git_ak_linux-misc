@@ -1789,6 +1789,7 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	struct cpu_hw_events *cpuc;
 	int bit, loops;
 	u64 status;
+	u64 orig_status;
 	int handled;
 
 	cpuc = this_cpu_ptr(&cpu_hw_events);
@@ -1803,13 +1804,16 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	handled = intel_pmu_drain_bts_buffer();
 	handled += intel_bts_interrupt();
 	status = intel_pmu_get_status();
+	orig_status = status;
 	if (!status)
 		goto done;
 
 	loops = 0;
 again:
 	intel_pmu_lbr_read();
-	intel_pmu_ack_status(status);
+	if (!x86_pmu.status_ack_after_apic)
+		__intel_pmu_enable_all(0, true);
+
 	if (++loops > 100) {
 		static bool warned = false;
 		if (!warned) {
@@ -1877,15 +1881,20 @@ again:
 			x86_pmu_stop(event, 0);
 	}
 
-	/*
-	 * Repeat if there is more work to be done:
-	 */
-	status = intel_pmu_get_status();
-	if (status)
-		goto again;
+
+	if (!x86_pmu.status_ack_after_apic) {
+		/*
+		 * Repeat if there is more work to be done:
+		 */
+		status = intel_pmu_get_status();
+		if (status)
+			goto again;
+	}
 
 done:
-	__intel_pmu_enable_all(0, true);
+	if (!x86_pmu.status_ack_after_apic)
+		__intel_pmu_enable_all(0, true);
+
 	/*
 	 * Only unmask the NMI after the overflow counters
 	 * have been reset. This avoids spurious NMIs on
@@ -1893,6 +1902,15 @@ done:
 	 */
 	if (x86_pmu.late_ack)
 		apic_write(APIC_LVTPC, APIC_DM_NMI);
+
+	/*
+	 * Ack the PMU late. This avoids bogus freezing
+	 * on Skylake CPUs.
+	 */
+	if (x86_pmu.status_ack_after_apic) {
+		intel_pmu_ack_status(orig_status);
+		__intel_pmu_enable_all(0, true);
+	}
 	return handled;
 }
 
