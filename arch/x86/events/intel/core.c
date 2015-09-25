@@ -1860,6 +1860,18 @@ static void intel_pmu_nhm_enable_all(int added)
 	intel_pmu_enable_all(added);
 }
 
+static void enable_counter_freeze(void)
+{
+	update_debugctlmsr(get_debugctlmsr() |
+			DEBUGCTLMSR_FREEZE_PERFMON_ON_PMI);
+}
+
+static void disable_counter_freeze(void)
+{
+	update_debugctlmsr(get_debugctlmsr() &
+			~DEBUGCTLMSR_FREEZE_PERFMON_ON_PMI);
+}
+
 static inline u64 intel_pmu_get_status(void)
 {
 	u64 status;
@@ -1905,6 +1917,14 @@ static void intel_pmu_disable_event(struct perf_event *event)
 	cpuc->intel_ctrl_guest_mask &= ~(1ull << hwc->idx);
 	cpuc->intel_ctrl_host_mask &= ~(1ull << hwc->idx);
 	cpuc->intel_cp_status &= ~(1ull << hwc->idx);
+
+	/*
+	 * We could disable freezing here, but doesn't hurt if it's on.
+	 * perf remembers the state, and someone else will likely
+	 * reinitialize.
+	 *
+	 * This avoids an extra MSR write in many situations.
+	 */
 
 	if (unlikely(hwc->config_base == MSR_ARCH_PERFMON_FIXED_CTR_CTRL)) {
 		intel_pmu_disable_fixed(hwc);
@@ -1973,6 +1993,11 @@ static void intel_pmu_enable_event(struct perf_event *event)
 		cpuc->intel_ctrl_guest_mask |= (1ull << hwc->idx);
 	if (event->attr.exclude_guest)
 		cpuc->intel_ctrl_host_mask |= (1ull << hwc->idx);
+
+	if (x86_pmu.version >= 4 && !cpuc->frozen_enabled) {
+		enable_counter_freeze();
+		cpuc->frozen_enabled = 1;
+	}
 
 	if (unlikely(event_is_checkpointed(event)))
 		cpuc->intel_cp_status |= (1ull << hwc->idx);
@@ -2055,51 +2080,14 @@ static void intel_pmu_reset(void)
 	local_irq_restore(flags);
 }
 
-/*
- * This handler is triggered by the local APIC, so the APIC IRQ handling
- * rules apply:
- */
-static int intel_pmu_handle_irq(struct pt_regs *regs)
+static int handle_pmi_common(struct pt_regs *regs, u64 status)
 {
 	struct perf_sample_data data;
-	struct cpu_hw_events *cpuc;
-	int bit, loops;
-	u64 status;
-	int handled;
-
-	cpuc = this_cpu_ptr(&cpu_hw_events);
-
-	/*
-	 * No known reason to not always do late ACK,
-	 * but just in case do it opt-in.
-	 */
-	if (!x86_pmu.late_ack)
-		apic_write(APIC_LVTPC, APIC_DM_NMI);
-	intel_bts_disable_local();
-	__intel_pmu_disable_all();
-	handled = intel_pmu_drain_bts_buffer();
-	handled += intel_bts_interrupt();
-	status = intel_pmu_get_status();
-	if (!status)
-		goto done;
-
-	loops = 0;
-again:
-	intel_pmu_lbr_read();
-	intel_pmu_ack_status(status);
-	if (++loops > 100) {
-		static bool warned = false;
-		if (!warned) {
-			WARN(1, "perfevents: irq loop stuck!\n");
-			perf_event_print_debug();
-			warned = true;
-		}
-		intel_pmu_reset();
-		goto done;
-	}
+	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
+	int bit;
+	int handled = 0;
 
 	inc_irq_stat(apic_perf_irqs);
-
 
 	/*
 	 * Ignore a range of extra bits in status that do not indicate
@@ -2109,7 +2097,7 @@ again:
 		    GLOBAL_STATUS_ASIF |
 		    GLOBAL_STATUS_LBRS_FROZEN);
 	if (!status)
-		goto done;
+		return 0;
 
 	/*
 	 * PEBS overflow sets bit 62 in the global status register
@@ -2163,6 +2151,94 @@ again:
 		if (perf_event_overflow(event, &data, regs))
 			x86_pmu_stop(event, 0);
 	}
+
+	return handled;
+}
+
+/*
+ * Simplified handler for Arch Perfmon v4:
+ * - We rely on counter freezing/unfreezing to enable/disable the PMU.
+ * This is done automatically on PMU ack.
+ * - No looping.
+ * - Ack the PMU only after the APIC.
+ */
+
+static int intel_pmu_handle_irq_v4(struct pt_regs *regs)
+{
+	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
+	int handled = 0;
+	bool bts = false;
+	u64 status;
+
+	if (test_bit(INTEL_PMC_IDX_FIXED_BTS, cpuc->active_mask)) {
+		bts = true;
+		intel_bts_disable_local();
+		handled = intel_pmu_drain_bts_buffer();
+		handled += intel_bts_interrupt();
+	}
+	status = intel_pmu_get_status();
+	if (!status)
+		goto done;
+	intel_pmu_lbr_read();
+	handled += handle_pmi_common(regs, status);
+done:
+	/* Ack the PMI in the APIC */
+	apic_write(APIC_LVTPC, APIC_DM_NMI);
+
+	/*
+	 * Ack the PMU late after the APIC.  This avoids bogus
+	 * freezing on Skylake CPUs.  The acking unfreezes the PMU
+	 */
+	intel_pmu_ack_status(status);
+	if (bts)
+		intel_bts_enable_local();
+	return handled;
+}
+
+/*
+ * This handler is triggered by the local APIC, so the APIC IRQ handling
+ * rules apply:
+ */
+static int intel_pmu_handle_irq(struct pt_regs *regs)
+{
+	struct cpu_hw_events *cpuc;
+	int loops;
+	u64 status;
+	int handled;
+
+	cpuc = this_cpu_ptr(&cpu_hw_events);
+
+	/*
+	 * No known reason to not always do late ACK,
+	 * but just in case do it opt-in.
+	 */
+	if (!x86_pmu.late_ack)
+		apic_write(APIC_LVTPC, APIC_DM_NMI);
+	intel_bts_disable_local();
+	__intel_pmu_disable_all();
+	handled = intel_pmu_drain_bts_buffer();
+	handled += intel_bts_interrupt();
+	status = intel_pmu_get_status();
+	if (!status)
+		goto done;
+
+	loops = 0;
+again:
+	intel_pmu_lbr_read();
+	__intel_pmu_enable_all(0, true);
+
+	if (++loops > 100) {
+		static bool warned = false;
+		if (!warned) {
+			WARN(1, "perfevents: irq loop stuck!\n");
+			perf_event_print_debug();
+			warned = true;
+		}
+		intel_pmu_reset();
+		goto done;
+	}
+
+	handled += handle_pmi_common(regs, status);
 
 	/*
 	 * Repeat if there is more work to be done:
@@ -3209,6 +3285,11 @@ static void intel_pmu_cpu_dying(int cpu)
 	free_excl_cntrs(cpu);
 
 	fini_debug_store_on_cpu(cpu);
+
+	if (cpuc->frozen_enabled) {
+		cpuc->frozen_enabled = 0;
+		disable_counter_freeze();
+	}
 }
 
 static void intel_pmu_sched_task(struct perf_event_context *ctx,
@@ -4033,6 +4114,15 @@ __init int intel_pmu_init(void)
 		x86_pmu.max_period = x86_pmu.cntval_mask;
 		x86_pmu.perfctr = MSR_IA32_PMC0;
 		pr_cont("full-width counters, ");
+	}
+
+	/*
+	 * For arch perfmon 4 use counter freezing to avoid
+	 * several MSR accesses in the PMI.
+	 */
+	if (x86_pmu.version >= 4) {
+		x86_pmu.handle_irq = intel_pmu_handle_irq_v4;
+		pr_cont("counter freezing, ");
 	}
 
 	return 0;
