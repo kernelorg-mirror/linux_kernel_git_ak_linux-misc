@@ -147,8 +147,23 @@ EXPORT_SYMBOL(wrmsr_on_cpus);
 static void __rdmsr_safe_on_cpu(void *info)
 {
 	struct msr_info *rv = info;
+	u64 val;
+	DECLARE_ARGS(val, low, high);
 
-	rv->err = rdmsr_safe(rv->msr_no, &rv->reg.l, &rv->reg.h);
+	asm volatile(".globl user_rdmsr\n"
+		     "2: rdmsr\n"
+		    "user_rdmsr:\n"
+		    "   xor %[err],%[err]\n"
+		     "1:\n\t"
+		     ".section .fixup,\"ax\"\n\t"
+		     "3:  mov %[fault],%[err] ; jmp 1b\n\t"
+		     ".previous\n\t"
+		     _ASM_EXTABLE(2b, 3b)
+		     : [err] "=r" (rv->err), EAX_EDX_RET(val, low, high)
+		     : "c" (rv->msr_no), [fault] "i" (-EIO));
+	val = EAX_EDX_VAL(val, low, high);
+	rv->reg.l = val & 0xffffffff;
+	rv->reg.h = val >> 32;
 }
 
 static void __wrmsr_safe_on_cpu(void *info)
