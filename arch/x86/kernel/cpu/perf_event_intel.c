@@ -1457,20 +1457,39 @@ static __initconst const u64 slm_hw_cache_event_ids
  },
 };
 
-/*
- * Use from PMIs where the LBRs are already disabled.
- */
-static void __intel_pmu_disable_all(void)
+static inline void intel_pmu_maybe_disable_bts(void)
 {
 	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
-
-	wrmsrl(MSR_CORE_PERF_GLOBAL_CTRL, 0);
 
 	if (test_bit(INTEL_PMC_IDX_FIXED_BTS, cpuc->active_mask))
 		intel_pmu_disable_bts();
 	else
 		intel_bts_disable_local();
+}
 
+static inline void intel_pmu_maybe_enable_bts(void)
+{
+	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
+
+	if (test_bit(INTEL_PMC_IDX_FIXED_BTS, cpuc->active_mask)) {
+		struct perf_event *event =
+			cpuc->events[INTEL_PMC_IDX_FIXED_BTS];
+
+		if (WARN_ON_ONCE(!event))
+			return;
+
+		intel_pmu_enable_bts(event->hw.config);
+	} else
+		intel_bts_enable_local();
+}
+
+/*
+ * Use from PMIs where the LBRs are already disabled.
+ */
+static void __intel_pmu_disable_all(void)
+{
+	wrmsrl(MSR_CORE_PERF_GLOBAL_CTRL, 0);
+	intel_pmu_maybe_disable_bts();
 	intel_pmu_pebs_disable_all();
 }
 
@@ -1488,17 +1507,7 @@ static void __intel_pmu_enable_all(int added, bool pmi)
 	intel_pmu_lbr_enable_all(pmi);
 	wrmsrl(MSR_CORE_PERF_GLOBAL_CTRL,
 			x86_pmu.intel_ctrl & ~cpuc->intel_ctrl_guest_mask);
-
-	if (test_bit(INTEL_PMC_IDX_FIXED_BTS, cpuc->active_mask)) {
-		struct perf_event *event =
-			cpuc->events[INTEL_PMC_IDX_FIXED_BTS];
-
-		if (WARN_ON_ONCE(!event))
-			return;
-
-		intel_pmu_enable_bts(event->hw.config);
-	} else
-		intel_bts_enable_local();
+	intel_pmu_maybe_enable_bts();
 }
 
 static void intel_pmu_enable_all(int added)
