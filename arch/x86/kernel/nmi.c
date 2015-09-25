@@ -306,11 +306,31 @@ NOKPROBE_SYMBOL(unknown_nmi_error);
 static DEFINE_PER_CPU(bool, swallow_nmi);
 static DEFINE_PER_CPU(unsigned long, last_nmi_rip);
 
+static inline u64 intel_pmu_get_status(void)
+{
+	u64 status;
+
+	rdmsrl(MSR_CORE_PERF_GLOBAL_STATUS, status);
+
+	return status;
+}
+
 static void default_do_nmi(struct pt_regs *regs)
 {
 	unsigned char reason = 0;
 	int handled;
 	bool b2b = false;
+	extern char user_rdmsr[];
+
+	/* If PMI happened inside RDMSR do not count in poller */
+	if (regs->ip == (unsigned long)&user_rdmsr && regs->cx == 0x38e) {
+		trace_printk("hit user_rdmsr msr %lx dx %lx ax %lx, real global_status %llx\n",
+				regs->cx,
+				regs->dx,
+				regs->ax,
+				intel_pmu_get_status());
+		regs->dx = regs->ax = 0;
+	}
 
 	/*
 	 * CPU-specific NMI must be processed before non-CPU-specific
