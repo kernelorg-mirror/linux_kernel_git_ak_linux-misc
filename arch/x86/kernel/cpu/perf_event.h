@@ -634,6 +634,7 @@ struct x86_perf_task_context {
 	int tos;
 	int lbr_callstack_users;
 	int lbr_stack_state;
+	int need_info;
 };
 
 #define x86_add_quirk(func_)						\
@@ -887,7 +888,7 @@ void intel_ds_init(void);
 
 void intel_pmu_lbr_sched_task(struct perf_event_context *ctx, bool sched_in);
 
-void intel_pmu_lbr_reset(void);
+void intel_pmu_lbr_reset(bool need_info);
 
 void intel_pmu_lbr_enable(struct perf_event *event);
 
