@@ -195,27 +195,30 @@ static void intel_pmu_lbr_reset_32(void)
 		wrmsrl(x86_pmu.lbr_from + i, 0);
 }
 
-static void intel_pmu_lbr_reset_64(void)
+static void intel_pmu_lbr_reset_64(bool need_info)
 {
 	int i;
 
 	for (i = 0; i < x86_pmu.lbr_nr; i++) {
 		wrmsrl(x86_pmu.lbr_from + i, 0);
 		wrmsrl(x86_pmu.lbr_to   + i, 0);
-		if (x86_pmu.intel_cap.lbr_format == LBR_FORMAT_INFO)
+		if (need_info)
 			wrmsrl(MSR_LBR_INFO_0 + i, 0);
 	}
 }
 
-void intel_pmu_lbr_reset(void)
+void intel_pmu_lbr_reset(bool need_info)
 {
 	if (!x86_pmu.lbr_nr)
 		return;
 
+	if (x86_pmu.intel_cap.lbr_format != LBR_FORMAT_INFO)
+		need_info = false;
+
 	if (x86_pmu.intel_cap.lbr_format == LBR_FORMAT_32)
 		intel_pmu_lbr_reset_32();
 	else
-		intel_pmu_lbr_reset_64();
+		intel_pmu_lbr_reset_64(need_info);
 }
 
 /*
@@ -242,7 +245,7 @@ static void __intel_pmu_lbr_restore(struct x86_perf_task_context *task_ctx)
 
 	if (task_ctx->lbr_callstack_users == 0 ||
 	    task_ctx->lbr_stack_state == LBR_NONE) {
-		intel_pmu_lbr_reset();
+		intel_pmu_lbr_reset(task_ctx->need_info > 0);
 		return;
 	}
 
@@ -252,7 +255,7 @@ static void __intel_pmu_lbr_restore(struct x86_perf_task_context *task_ctx)
 		lbr_idx = (tos - i) & mask;
 		wrmsrl(x86_pmu.lbr_from + lbr_idx, task_ctx->lbr_from[i]);
 		wrmsrl(x86_pmu.lbr_to + lbr_idx, task_ctx->lbr_to[i]);
-		if (x86_pmu.intel_cap.lbr_format == LBR_FORMAT_INFO)
+		if (task_ctx->need_info)
 			wrmsrl(MSR_LBR_INFO_0 + lbr_idx, task_ctx->lbr_info[i]);
 	}
 	wrmsrl(x86_pmu.lbr_tos, tos);
@@ -276,7 +279,7 @@ static void __intel_pmu_lbr_save(struct x86_perf_task_context *task_ctx)
 		lbr_idx = (tos - i) & mask;
 		rdmsrl(x86_pmu.lbr_from + lbr_idx, task_ctx->lbr_from[i]);
 		rdmsrl(x86_pmu.lbr_to + lbr_idx, task_ctx->lbr_to[i]);
-		if (x86_pmu.intel_cap.lbr_format == LBR_FORMAT_INFO)
+		if (task_ctx->need_info)
 			rdmsrl(MSR_LBR_INFO_0 + lbr_idx, task_ctx->lbr_info[i]);
 	}
 	task_ctx->tos = tos;
@@ -317,7 +320,7 @@ void intel_pmu_lbr_sched_task(struct perf_event_context *ctx, bool sched_in)
 	 * stack with branch from multiple tasks.
  	 */
 	if (sched_in) {
-		intel_pmu_lbr_reset();
+		intel_pmu_lbr_reset(!task_ctx || task_ctx->need_info > 0);
 		cpuc->lbr_context = ctx;
 	}
 }
@@ -340,7 +343,7 @@ void intel_pmu_lbr_enable(struct perf_event *event)
 	 * avoid data leaks.
 	 */
 	if (event->ctx->task && cpuc->lbr_context != event->ctx) {
-		intel_pmu_lbr_reset();
+		intel_pmu_lbr_reset(!(event->hw.branch_reg.reg & LBR_NO_INFO));
 		cpuc->lbr_context = event->ctx;
 	}
 	cpuc->br_sel = event->hw.branch_reg.reg;
@@ -349,6 +352,8 @@ void intel_pmu_lbr_enable(struct perf_event *event)
 					event->ctx->task_ctx_data) {
 		task_ctx = event->ctx->task_ctx_data;
 		task_ctx->lbr_callstack_users++;
+		if (!(cpuc->br_sel & LBR_NO_INFO))
+			task_ctx->need_info++;
 	}
 
 	cpuc->lbr_users++;
@@ -367,6 +372,8 @@ void intel_pmu_lbr_disable(struct perf_event *event)
 					event->ctx->task_ctx_data) {
 		task_ctx = event->ctx->task_ctx_data;
 		task_ctx->lbr_callstack_users--;
+		if (!(cpuc->br_sel & LBR_NO_INFO))
+			task_ctx->need_info--;
 	}
 
 	cpuc->lbr_users--;
