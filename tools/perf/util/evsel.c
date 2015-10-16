@@ -1232,6 +1232,7 @@ int perf_event_attr__fprintf(FILE *fp, struct perf_event_attr *attr,
 	PRINT_ATTRf(config, p_hex);
 	PRINT_ATTRn("{ sample_period, sample_freq }", sample_period, p_unsigned);
 	PRINT_ATTRf(sample_type, p_sample_type);
+	PRINT_ATTRf(branch_sample_type, p_unsigned);
 	PRINT_ATTRf(read_format, p_read_format);
 
 	PRINT_ATTRf(disabled, p_unsigned);
