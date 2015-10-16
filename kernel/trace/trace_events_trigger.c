@@ -774,9 +774,17 @@ traceon_count_trigger(struct event_trigger_data *data)
 	tracing_on();
 }
 
+#define MSR_IA32_RTIT_CTL               0x00000570
+#define TRACE_EN        BIT_ULL(0)
+
 static void
 traceoff_trigger(struct event_trigger_data *data)
 {
+	u64 val;
+	rdmsrl_safe(MSR_IA32_RTIT_CTL, &val);
+	val &= ~TRACE_EN;
+	wrmsrl_safe(MSR_IA32_RTIT_CTL, val);
+
 	if (!tracing_is_on())
 		return;
 
