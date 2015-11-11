@@ -1780,44 +1780,6 @@ int intel_pmu_save_and_restart(struct perf_event *event)
 	return x86_perf_event_set_period(event);
 }
 
-static void intel_pmu_reset(void)
-{
-	struct debug_store *ds = __this_cpu_read(cpu_hw_events.ds);
-	unsigned long flags;
-	int idx;
-
-	if (!x86_pmu.num_counters)
-		return;
-
-	local_irq_save(flags);
-
-	pr_info("clearing PMU state on CPU#%d\n", smp_processor_id());
-
-	for (idx = 0; idx < x86_pmu.num_counters; idx++) {
-		wrmsrl_safe(x86_pmu_config_addr(idx), 0ull);
-		wrmsrl_safe(x86_pmu_event_addr(idx),  0ull);
-	}
-	for (idx = 0; idx < x86_pmu.num_counters_fixed; idx++)
-		wrmsrl_safe(MSR_ARCH_PERFMON_FIXED_CTR0 + idx, 0ull);
-
-	if (ds)
-		ds->bts_index = ds->bts_buffer_base;
-
-	/* Ack all overflows and disable fixed counters */
-	if (x86_pmu.version >= 2) {
-		intel_pmu_ack_status(intel_pmu_get_status());
-		wrmsrl(MSR_CORE_PERF_GLOBAL_CTRL, 0);
-	}
-
-	/* Reset LBRs and LBR freezing */
-	if (x86_pmu.lbr_nr) {
-		update_debugctlmsr(get_debugctlmsr() &
-			~(DEBUGCTLMSR_FREEZE_LBRS_ON_PMI|DEBUGCTLMSR_LBR));
-	}
-
-	local_irq_restore(flags);
-}
-
 /*
  * This handler is triggered by the local APIC, so the APIC IRQ handling
  * rules apply:
@@ -1826,7 +1788,7 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 {
 	struct perf_sample_data data;
 	struct cpu_hw_events *cpuc;
-	int bit, loops;
+	int bit;
 	u64 status;
 	u64 orig_status;
 	int handled;
@@ -1834,12 +1796,6 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 
 	cpuc = this_cpu_ptr(&cpu_hw_events);
 
-	/*
-	 * No known reason to not always do late ACK,
-	 * but just in case do it opt-in.
-	 */
-	if (!x86_pmu.late_ack)
-		apic_write(APIC_LVTPC, APIC_DM_NMI);
 	/*
 	 * With counter freezing the CPU freezes counters on PMI.
 	 * This makes measurements more accurate and generally has
@@ -1859,22 +1815,7 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	if (!status)
 		goto done;
 
-	loops = 0;
-again:
 	intel_pmu_lbr_read();
-	if (!x86_pmu.status_ack_after_apic)
-		__intel_pmu_enable_all(0, true);
-
-	if (++loops > 100) {
-		static bool warned = false;
-		if (!warned) {
-			WARN(1, "perfevents: irq loop stuck!\n");
-			perf_event_print_debug();
-			warned = true;
-		}
-		intel_pmu_reset();
-		goto done;
-	}
 
 	inc_irq_stat(apic_perf_irqs);
 
@@ -1933,38 +1874,23 @@ again:
 	}
 
 
-	if (!x86_pmu.status_ack_after_apic) {
-		/*
-		 * Repeat if there is more work to be done:
-		 */
-		status = intel_pmu_get_status();
-		if (status)
-			goto again;
-	}
-
 done:
-	if (!x86_pmu.status_ack_after_apic)
-		__intel_pmu_enable_all(0, true);
-
 	/*
 	 * Only unmask the NMI after the overflow counters
 	 * have been reset. This avoids spurious NMIs on
 	 * Haswell CPUs.
 	 */
-	if (x86_pmu.late_ack)
-		apic_write(APIC_LVTPC, APIC_DM_NMI);
+	apic_write(APIC_LVTPC, APIC_DM_NMI);
 
 	/*
 	 * Ack the PMU late. This avoids bogus freezing
 	 * on Skylake CPUs.
 	 */
-	if (x86_pmu.status_ack_after_apic) {
-		intel_pmu_ack_status(orig_status);
-		if (!freeze)
-			__intel_pmu_enable_all(0, true);
-		else
-			intel_pmu_maybe_enable_bts();
-	}
+	intel_pmu_ack_status(orig_status);
+	if (!freeze)
+		__intel_pmu_enable_all(0, true);
+	else
+		intel_pmu_maybe_enable_bts();
 	return handled;
 }
 
@@ -3532,7 +3458,6 @@ __init int intel_pmu_init(void)
 	case 69: /* 22nm Haswell ULT */
 	case 70: /* 22nm Haswell + GT3e (Intel Iris Pro graphics) */
 		x86_add_quirk(intel_ht_bug);
-		x86_pmu.late_ack = true;
 		memcpy(hw_cache_event_ids, hsw_hw_cache_event_ids, sizeof(hw_cache_event_ids));
 		memcpy(hw_cache_extra_regs, hsw_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
 
@@ -3557,7 +3482,6 @@ __init int intel_pmu_init(void)
 	case 86: /* 14nm Broadwell Xeon D */
 	case 71: /* 14nm Broadwell + GT3e (Intel Iris Pro graphics) */
 	case 79: /* 14nm Broadwell Server */
-		x86_pmu.late_ack = true;
 		memcpy(hw_cache_event_ids, hsw_hw_cache_event_ids, sizeof(hw_cache_event_ids));
 		memcpy(hw_cache_extra_regs, hsw_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
 
@@ -3590,7 +3514,6 @@ __init int intel_pmu_init(void)
 
 	case 78: /* 14nm Skylake Mobile */
 	case 94: /* 14nm Skylake Desktop */
-		x86_pmu.late_ack = true;
 		memcpy(hw_cache_event_ids, skl_hw_cache_event_ids, sizeof(hw_cache_event_ids));
 		memcpy(hw_cache_extra_regs, skl_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
 		intel_pmu_lbr_init_skl();

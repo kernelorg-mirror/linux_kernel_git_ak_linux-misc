@@ -559,8 +559,6 @@ struct x86_pmu {
 	struct event_constraint *event_constraints;
 	struct x86_pmu_quirk *quirks;
 	int		perfctr_second_write;
-	bool		late_ack;
-	bool		status_ack_after_apic;
 	unsigned	(*limit_period)(struct perf_event *event, unsigned l);
 
 	/*
