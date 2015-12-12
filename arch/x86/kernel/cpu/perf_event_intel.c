@@ -1848,7 +1848,7 @@ static int intel_pmu_handle_irq(struct pt_regs *regs)
 	 * This makes measurements more accurate and generally has
 	 * lower overhead, as we need to change less registers.
 	 *
-	 * We only freeze when all events are in fixed period mode.
+	 * This is only used with arch perfmon v4.
 	 */
 	freeze = cpuc->frozen_enabled > 0;
 	if (!freeze)
