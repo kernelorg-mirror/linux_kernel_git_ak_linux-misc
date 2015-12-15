@@ -290,6 +290,8 @@ unknown_nmi_error(unsigned char reason, struct pt_regs *regs)
 		return;
 	}
 
+	tracing_off();
+
 	__this_cpu_add(nmi_stats.unknown, 1);
 
 	pr_emerg("Uhhuh. NMI received for unknown reason %02x on CPU %d.\n",
