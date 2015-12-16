@@ -827,6 +827,8 @@ static void printout(int id, int nr, struct perf_evsel *counter, double uval,
 			fprintf(stat_config.output, "%s%s",
 				csv_sep, counter->cgrp->name);
 
+		pm(&os, NULL, NULL, "", 0);
+
 		print_running(run, ena);
 		return;
 	}
