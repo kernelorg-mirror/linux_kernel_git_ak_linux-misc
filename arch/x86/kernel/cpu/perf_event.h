@@ -615,6 +615,11 @@ struct x86_pmu {
 	 * Intel host/guest support (KVM)
 	 */
 	struct perf_guest_switch_msr *(*guest_get_msrs)(int *nr);
+
+	/*
+	 * Hyper Threading on?
+	 */
+	bool ht_on;
 };
 
 struct x86_perf_task_context {
