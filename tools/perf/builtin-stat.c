@@ -60,6 +60,7 @@
 #include "util/thread_map.h"
 #include "util/counts.h"
 #include "util/group.h"
+#include "asm/bug.h"
 
 #include <api/fs/fs.h>
 #include <stdlib.h>
