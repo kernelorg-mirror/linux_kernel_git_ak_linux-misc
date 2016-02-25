@@ -272,13 +272,24 @@ static noinline __kprobes void switch_gs_base(unsigned long gs)
 }
 
 /* Interrupts are disabled here. */
-static noinline __kprobes unsigned long read_user_gsbase(void)
+static noinline __kprobes unsigned long __read_user_gsbase(void)
 {
 	unsigned long gs;
 
 	swapgs();
 	gs = rdgsbase();
 	swapgs();
+	return gs;
+}
+
+unsigned long read_user_gsbase(void)
+{
+	unsigned long flags;
+	unsigned long gs;
+
+	local_irq_save(flags);
+	gs = __read_user_gsbase();
+	local_irq_restore(flags);
 	return gs;
 }
 
@@ -315,7 +326,7 @@ __switch_to(struct task_struct *prev_p, struct task_struct *next_p)
 	savesegment(gs, gsindex);
 	if (static_cpu_has(X86_FEATURE_FSGSBASE)) {
 		prev->fs = rdfsbase();
-		prev->gs = read_user_gsbase();
+		prev->gs = __read_user_gsbase();
 	}
 
 	/*

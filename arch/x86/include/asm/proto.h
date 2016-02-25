@@ -31,5 +31,6 @@ void x86_report_nx(void);
 extern int reboot_force;
 
 long do_arch_prctl(struct task_struct *task, int code, unsigned long addr);
+unsigned long read_user_gsbase(void);
 
 #endif /* _ASM_X86_PROTO_H */

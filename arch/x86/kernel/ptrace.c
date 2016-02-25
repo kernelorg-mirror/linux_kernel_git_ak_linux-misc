@@ -38,6 +38,7 @@
 #include <asm/hw_breakpoint.h>
 #include <asm/traps.h>
 #include <asm/syscall.h>
+#include <asm/fsgs.h>
 
 #include "tls.h"
 
@@ -452,12 +453,18 @@ static unsigned long getreg(struct task_struct *task, unsigned long offset)
 
 #ifdef CONFIG_X86_64
 	case offsetof(struct user_regs_struct, fs_base): {
+		unsigned int seg = task->thread.fsindex;
+		if (boot_cpu_has(X86_FEATURE_FSGSBASE)) {
+			if (task == current)
+				return rdfsbase();
+			else
+				return task->thread.fs;
+		}
 		/*
 		 * do_arch_prctl may have used a GDT slot instead of
 		 * the MSR.  To userland, it appears the same either
 		 * way, except the %fs segment selector might not be 0.
 		 */
-		unsigned int seg = task->thread.fsindex;
 		if (task->thread.fs != 0)
 			return task->thread.fs;
 		if (task == current)
@@ -471,6 +478,12 @@ static unsigned long getreg(struct task_struct *task, unsigned long offset)
 		 * Exactly the same here as the %fs handling above.
 		 */
 		unsigned int seg = task->thread.gsindex;
+		if (boot_cpu_has(X86_FEATURE_FSGSBASE)) {
+			if (task == current)
+				return read_user_gsbase();
+			else
+				return task->thread.gs;
+		}
 		if (task->thread.gs != 0)
 			return task->thread.gs;
 		if (task == current)
