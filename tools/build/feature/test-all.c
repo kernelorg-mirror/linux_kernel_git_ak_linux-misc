@@ -149,6 +149,10 @@
 # include "test-sdt.c"
 #undef main
 
+#define main main_test_xed
+#  include "test-xed.c"
+#endif
+
 int main(int argc, char *argv[])
 {
 	main_test_libpython();
@@ -183,6 +187,7 @@ int main(int argc, char *argv[])
 	main_test_bpf();
 	main_test_libcrypto();
 	main_test_sdt();
+	main_test_xed();
 
 	return 0;
 }
