@@ -137,6 +137,10 @@
 # include "test-libcrypto.c"
 #undef main
 
+#define main main_test_udis86
+#  include "test-udis86.c"
+#endif
+
 int main(int argc, char *argv[])
 {
 	main_test_libpython();
@@ -168,6 +172,7 @@ int main(int argc, char *argv[])
 	main_test_get_cpuid();
 	main_test_bpf();
 	main_test_libcrypto();
+	main_test_udis86();
 
 	return 0;
 }
