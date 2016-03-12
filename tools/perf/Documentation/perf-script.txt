@@ -116,7 +116,7 @@ OPTIONS
 --fields::
         Comma separated list of fields to print. Options are:
         comm, tid, pid, time, cpu, event, trace, ip, sym, dso, addr, symoff,
-	srcline, period, iregs, brstack, brstacksym, flags, asm.
+	srcline, period, iregs, brstack, brstacksym, flags, asm, brstackasm
         Field list can be prepended with the type, trace, sw or hw,
         to indicate to which event type the field list applies.
         e.g., -f sw:comm,tid,time,ip,sym  and -f trace:time,cpu,trace
@@ -176,16 +176,23 @@ OPTIONS
 	i.e., -f "" is not allowed.
 
 	The brstack output includes branch related information with raw addresses using the
-	/v/v/v/v/ syntax in the following order:
+	/v/v/v/v/cycles syntax in the following order:
 	FROM: branch source instruction
 	TO  : branch target instruction
         M/P/-: M=branch target mispredicted or branch direction was mispredicted, P=target predicted or direction predicted, -=not supported
 	X/- : X=branch inside a transactional region, -=not in transaction region or not supported
 	A/- : A=TSX abort entry, -=not aborted region or not supported
+	cycles
 
 	The brstacksym is identical to brstack, except that the FROM and TO addresses are printed in a symbolic form if possible.
 
 	When asm is specified the assembler instruction of each sample is printed in disassembled form.
+
+	When brstackasm is specified the full assembler sequences of branch blocks for each sample
+	is printed (a branch block is a sequence of instructions not containing taken branches).
+	This is the full execution path leading to the sample. This is only supported when the
+	sample was recorded with perf record -b or -j any.
+	The maximum number of branch blocks to print can be configured with the --max-blocks option.
 
 -k::
 --vmlinux=<file>::
@@ -277,6 +284,9 @@ include::itrace.txt[]
 -f::
 --force::
 	Don't do ownership validation.
+
+--max-blocks=N:
+	Maximum number of branch blocks to print with -F brstackasm
 
 SEE ALSO
 --------
