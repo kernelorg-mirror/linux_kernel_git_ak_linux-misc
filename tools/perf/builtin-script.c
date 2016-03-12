@@ -43,6 +43,7 @@ static bool			nanosecs;
 static const char		*cpu_list;
 static DECLARE_BITMAP(cpu_bitmap, MAX_NR_CPUS);
 static struct perf_stat_config	stat_config;
+static int 			max_blocks;
 
 unsigned int scripting_max_stack = PERF_MAX_STACK_DEPTH;
 
@@ -68,6 +69,7 @@ enum perf_output_field {
 	PERF_OUTPUT_WEIGHT	    = 1U << 18,
 	PERF_OUTPUT_BPF_OUTPUT	    = 1U << 19,
 	PERF_OUTPUT_ASM		    = 1U << 20,
+	PERF_OUTPUT_BRSTACKASM	    = 1U << 21,
 };
 
 struct output_option {
@@ -95,6 +97,7 @@ struct output_option {
 	{.str = "weight",   .field = PERF_OUTPUT_WEIGHT},
 	{.str = "bpf-output",   .field = PERF_OUTPUT_BPF_OUTPUT},
 	{.str = "asm", .field = PERF_OUTPUT_ASM},
+	{.str = "brstackasm", .field = PERF_OUTPUT_BRSTACKASM},
 };
 
 /* default set to maintain compatibility with current format */
@@ -294,6 +297,13 @@ static int perf_evsel__check_attr(struct perf_evsel *evsel,
 		       "selected.\n");
 		return -EINVAL;
 	}
+	if (PRINT_FIELD(BRSTACKASM) &&
+	    !(perf_evlist__combined_branch_type(session->evlist) &
+	      PERF_SAMPLE_BRANCH_ANY)) {
+		pr_err("Display of branch stack assembler requested, but non all-branch filter set\n");
+		return -EINVAL;
+	}
+
 	if ((PRINT_FIELD(PID) || PRINT_FIELD(TID)) &&
 		perf_evsel__check_stype(evsel, PERF_SAMPLE_TID, "TID",
 					PERF_OUTPUT_TID|PERF_OUTPUT_PID))
@@ -622,6 +632,176 @@ static void print_sample_brstacksym(struct perf_sample *sample,
 	}
 }
 
+#ifdef HAVE_UDIS86
+#define MAXBB 16384UL
+#define MAXINSN 16
+
+static int grab_bb(char *buffer, u64 start, u64 end,
+		    struct machine *machine, struct thread *thread,
+		    bool *is64bit, u8 *cpumode)
+{
+	int offset, len;
+	struct addr_location al;
+	bool kernel;
+
+	if (!start || !end)
+		return 0;
+
+	kernel = machine__kernel_ip(machine, start);
+	if (kernel)
+		*cpumode = PERF_RECORD_MISC_KERNEL;
+	else
+		*cpumode = PERF_RECORD_MISC_USER;
+	if (kernel != machine__kernel_ip(machine, end))
+		return 0;
+
+	memset(&al, 0, sizeof(al));
+	if (end - start > MAXBB - MAXINSN) {
+		printf("\tbasic block %" PRIx64 "-%" PRIx64 " (%ld) too long to dump\n",
+		       start, end, end - start);
+		return 0;
+	}
+
+	thread__find_addr_map(thread, *cpumode, MAP__FUNCTION, start, &al);
+	if (!al.map || !al.map->dso) {
+		printf("\tcannot resolve %" PRIx64 "-%" PRIx64 "\n",
+				start, end);
+		return 0;
+	}
+	if (al.map->dso->data.status == DSO_DATA_STATUS_ERROR) {
+		printf("\tcannot resolve %" PRIx64 "-%" PRIx64 "\n",
+				start, end);
+		return 0;
+	}
+
+	/* Load maps to ensure dso->is_64_bit has been updated */
+	map__load(al.map, machine->symbol_filter);
+
+	offset = al.map->map_ip(al.map, start);
+	len = dso__data_read_offset(al.map->dso, machine,
+				    offset, (u8 *)buffer,
+				    end - start + MAXINSN);
+
+	*is64bit = al.map->dso->is_64_bit;
+	return len;
+}
+#endif
+
+static void print_sample_brstackasm(struct perf_sample *sample,
+				    struct thread *thread __maybe_unused,
+				    struct perf_event_attr *attr __maybe_unused,
+				    struct machine *machine __maybe_unused)
+{
+#ifdef HAVE_UDIS86
+	struct branch_stack *br = sample->branch_stack;
+	u64 start, end;
+	int i;
+	static bool ud_initialized = false;
+	static struct perf_ud ud;
+	char buffer[MAXBB];
+	int len;
+	bool last;
+	bool is64bit;
+	int nr;
+
+	if (!(br && br->nr))
+		return;
+	nr = br->nr;
+	if (max_blocks && nr > max_blocks + 1)
+		nr = max_blocks + 1;
+
+	if (!ud_initialized) {
+		ud_initialized = true;
+		ud_init(&ud.ud_obj);
+		ud_set_syntax(&ud.ud_obj, UD_SYN_ATT);
+		ud_set_sym_resolver(&ud.ud_obj, dis_resolve);
+	}
+	ud.thread = thread;
+	ud.cpu = sample->cpu;
+
+	putchar('\n');
+	for (i = nr - 2; i >= 0; i--) {
+		if (verbose > 0 && (br->entries[i].from || br->entries[i].to))
+			printf("%d: %lx-%lx\n", i,
+				br->entries[i].from,
+				br->entries[i].to);
+		start = br->entries[i + 1].to;
+		end = br->entries[i].from;
+
+		/*
+		 * Leave extra bytes for the final jump instruction for
+		 * which we don't know the length
+		 */
+		len = grab_bb(buffer, start, end + MAXINSN,
+				machine, thread, &is64bit,
+				&ud.cpumode);
+		if (len <= 0)
+			continue;
+
+		ud_set_mode(&ud.ud_obj, is64bit ? 64 : 32);
+		ud_set_pc(&ud.ud_obj, start);
+		ud_set_input_buffer(&ud.ud_obj, (uint8_t *)buffer, len);
+		last = false;
+		while (ud_disassemble(&ud.ud_obj) && !last) {
+			if (ud_insn_ptr(&ud.ud_obj) ==
+					(uint8_t *)buffer + end - start) {
+				printf("\t%016" PRIx64 "\t%-30s\t#%s%s%s%s",
+					ud_insn_off(&ud.ud_obj),
+					ud_insn_asm(&ud.ud_obj),
+					br->entries[i].flags.predicted ? " PRED" : "",
+					br->entries[i].flags.mispred ? " MISPRED" : "",
+					br->entries[i].flags.in_tx ? " INTX" : "",
+					br->entries[i].flags.abort ? " ABORT" : "");
+				if (br->entries[i].flags.cycles)
+					printf(" %d cycles", br->entries[i].flags.cycles);
+				putchar('\n');
+				last = true;
+			} else {
+				printf("\t%016" PRIx64 "\t%s\n",
+						ud_insn_off(&ud.ud_obj),
+					ud_insn_asm(&ud.ud_obj));
+			}
+		}
+	}
+
+	/*
+	 * Hit the branch? In this case we are already done, and the target
+	 * has not been executed yet.
+	 */
+	if (br->entries[0].from == sample->ip)
+		return;
+	if (br->entries[0].flags.abort)
+		return;
+
+	/*
+	 * Print final block upto sample
+	 */
+	start = br->entries[0].to;
+	end = sample->ip;
+	len = grab_bb(buffer, start, end, machine, thread, &is64bit,
+			&ud.cpumode);
+	ud_set_input_buffer(&ud.ud_obj, (uint8_t *)buffer, len);
+	if (len <= 0) {
+		/* Print at least last IP if basic block did not work */
+		len = grab_bb(buffer, sample->ip, sample->ip + MAXINSN,
+				machine, thread, &is64bit, &ud.cpumode);
+		if (len <= 0)
+			return;
+		ud_set_mode(&ud.ud_obj, is64bit ? 64 : 32);
+		ud_set_pc(&ud.ud_obj, sample->ip);
+		if (ud_disassemble(&ud.ud_obj))
+			printf("\t%016" PRIx64 "\t%s\n", ud_insn_off(&ud.ud_obj),
+			       ud_insn_asm(&ud.ud_obj));
+		return;
+	}
+	ud_set_mode(&ud.ud_obj, is64bit ? 64 : 32);
+	ud_set_pc(&ud.ud_obj, start);
+	while (ud_disassemble(&ud.ud_obj) &&
+		ud_insn_ptr(&ud.ud_obj) <= (uint8_t *)buffer + end - start)
+		printf("\t%016" PRIx64 "\t%s\n", ud_insn_off(&ud.ud_obj),
+			       ud_insn_asm(&ud.ud_obj));
+#endif
+}
 
 static void print_sample_addr(struct perf_sample *sample,
 			  struct thread *thread,
@@ -908,6 +1088,8 @@ static void process_event(struct perf_script *script,
 	if (perf_evsel__is_bpf_output(evsel) && PRINT_FIELD(BPF_OUTPUT))
 		print_sample_bpf_output(sample);
 
+	if (PRINT_FIELD(BRSTACKASM))
+		print_sample_brstackasm(sample, thread, attr, machine);
 	if (PRINT_FIELD(ASM))
 		print_sample_asm(sample, thread, attr, al, machine);
 
@@ -2143,6 +2325,8 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
 		    "Show the mmap events"),
 	OPT_BOOLEAN('\0', "show-switch-events", &script.show_switch_events,
 		    "Show context switch events (if recorded)"),
+	OPT_INTEGER(0, "max-blocks", &max_blocks,
+		    "Maximum number of code blocks to dump with brstackasm"),
 	OPT_BOOLEAN('f', "force", &file.force, "don't complain, do it"),
 	OPT_BOOLEAN(0, "ns", &nanosecs,
 		    "Use 9 decimal places when displaying time"),
