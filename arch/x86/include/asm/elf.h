@@ -9,6 +9,8 @@
 #include <asm/ptrace.h>
 #include <asm/user.h>
 #include <asm/auxvec.h>
+#include <asm/proto.h>
+#include <asm/fsgs.h>
 
 typedef unsigned long elf_greg_t;
 
@@ -226,8 +228,13 @@ do {								\
 	(pr_reg)[18] = (regs)->flags;				\
 	(pr_reg)[19] = (regs)->sp;				\
 	(pr_reg)[20] = (regs)->ss;				\
-	(pr_reg)[21] = current->thread.fs;			\
-	(pr_reg)[22] = current->thread.gs;			\
+	if (boot_cpu_has(X86_FEATURE_FSGSBASE)) {		\
+		(pr_reg)[21] = rdfsbase();			\
+		(pr_reg)[22] = read_user_gsbase();		\
+	} else {						\
+		(pr_reg)[21] = current->thread.fs;		\
+		(pr_reg)[22] = current->thread.gs;		\
+	}							\
 	asm("movl %%ds,%0" : "=r" (v)); (pr_reg)[23] = v;	\
 	asm("movl %%es,%0" : "=r" (v)); (pr_reg)[24] = v;	\
 	asm("movl %%fs,%0" : "=r" (v)); (pr_reg)[25] = v;	\
