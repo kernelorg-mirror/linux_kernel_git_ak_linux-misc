@@ -720,7 +720,7 @@ static void print_sample_brstackasm(struct perf_sample *sample,
 
 	putchar('\n');
 	for (i = nr - 2; i >= 0; i--) {
-		if (br->entries[i].from || br->entries[i].to)
+		if (verbose > 0 && (br->entries[i].from || br->entries[i].to))
 			printf("%d: %lx-%lx\n", i,
 				br->entries[i].from,
 				br->entries[i].to);
@@ -744,7 +744,7 @@ static void print_sample_brstackasm(struct perf_sample *sample,
 		while (ud_disassemble(&ud.ud_obj) && !last) {
 			if (ud_insn_ptr(&ud.ud_obj) ==
 					(uint8_t *)buffer + end - start) {
-				printf("\t%016" PRIx64 "\t%-30s\t#%s%s%s%s\n",
+				printf("\t%016" PRIx64 "\t%-30s\t#%s%s%s%s",
 					ud_insn_off(&ud.ud_obj),
 					ud_insn_asm(&ud.ud_obj),
 					br->entries[i].flags.predicted ? " PRED" : "",
@@ -753,6 +753,7 @@ static void print_sample_brstackasm(struct perf_sample *sample,
 					br->entries[i].flags.abort ? " ABORT" : "");
 				if (br->entries[i].flags.cycles)
 					printf(" %d cycles", br->entries[i].flags.cycles);
+				putchar('\n');
 				last = true;
 			} else {
 				printf("\t%016" PRIx64 "\t%s\n",
