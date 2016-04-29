@@ -277,6 +277,10 @@ EVENT_ATTR_STR_HT(topdown-recovery-bubbles.aggr-per-core,
 struct attribute *snb_events_attrs[] = {
 	EVENT_PTR(mem_ld_snb),
 	EVENT_PTR(mem_st_snb),
+	NULL,
+};
+
+struct attribute *snb_events2_attrs[] = {
 	EVENT_PTR(td_slots_issued),
 	EVENT_PTR(td_slots_issued_pc),
 	EVENT_PTR(td_slots_retired),
@@ -3516,6 +3520,10 @@ static struct attribute *hsw_events_attrs[] = {
 	EVENT_PTR(cycles_ct),
 	EVENT_PTR(mem_ld_hsw),
 	EVENT_PTR(mem_st_hsw),
+	NULL,
+};
+
+static struct attribute *hsw_events2_attrs[] = {
 	EVENT_PTR(td_slots_issued),
 	EVENT_PTR(td_slots_issued_pc),
 	EVENT_PTR(td_slots_retired),
@@ -3759,6 +3767,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
 
 		x86_pmu.cpu_events = snb_events_attrs;
+		x86_pmu.cpu_events2 = snb_events2_attrs;
 
 		/* UOPS_ISSUED.ANY,c=1,i=1 to count stall cycles */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -3796,6 +3805,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
 
 		x86_pmu.cpu_events = snb_events_attrs;
+		x86_pmu.cpu_events2 = snb_events2_attrs;
 
 		/* UOPS_ISSUED.ANY,c=1,i=1 to count stall cycles */
 		intel_perfmon_event_map[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND] =
@@ -3828,6 +3838,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.hw_config = hsw_hw_config;
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
 		x86_pmu.cpu_events = hsw_events_attrs;
+		x86_pmu.cpu_events2 = hsw_events2_attrs;
 		x86_pmu.lbr_double_abort = true;
 		pr_cont("Haswell events, ");
 		break;
@@ -3864,6 +3875,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.hw_config = hsw_hw_config;
 		x86_pmu.get_event_constraints = hsw_get_event_constraints;
 		x86_pmu.cpu_events = hsw_events_attrs;
+		x86_pmu.cpu_events2 = hsw_events2_attrs;
 		x86_pmu.limit_period = bdw_limit_period;
 		pr_cont("Broadwell events, ");
 		break;
@@ -3915,6 +3927,7 @@ __init int intel_pmu_init(void)
 						  skl_format_attr);
 		WARN_ON(!x86_pmu.format_attrs);
 		x86_pmu.cpu_events = hsw_events_attrs;
+		x86_pmu.cpu_events = hsw_events2_attrs;
 		pr_cont("Skylake events, ");
 		break;
 
