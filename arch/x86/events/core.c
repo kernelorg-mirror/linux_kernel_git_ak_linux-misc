@@ -1683,6 +1683,11 @@ static struct attribute_group x86_pmu_events_group = {
 	.attrs = events_attr,
 };
 
+static struct attribute_group x86_pmu_events2_group = {
+	.name = "events2",
+	.attrs = NULL,
+};
+
 ssize_t x86_event_sysfs_show(char *page, u64 config, u64 event)
 {
 	u64 umask  = (config & ARCH_PERFMON_EVENTSEL_UMASK) >> 8;
@@ -1721,6 +1726,15 @@ ssize_t x86_event_sysfs_show(char *page, u64 config, u64 event)
 
 	return ret;
 }
+
+enum {
+	GROUP_INDEX_ATTR,
+	GROUP_INDEX_FORMAT,
+	GROUP_INDEX_EVENTS,
+	GROUP_INDEX_EVENTS2,
+};
+
+static const struct attribute_group *x86_pmu_attr_groups[];
 
 static int __init init_hw_perf_events(void)
 {
@@ -1784,6 +1798,17 @@ static int __init init_hw_perf_events(void)
 		if (!WARN_ON(!tmp))
 			x86_pmu_events_group.attrs = tmp;
 	}
+
+	/*
+	 * Old perf binaries silently error out on some new alias attributes.
+	 * To avoid breaking them create an events2 directory if needed
+	 * to use for such new attributes. Only new binaries look
+	 * at the new directory.
+	 */
+
+	x86_pmu_events2_group.attrs = x86_pmu.cpu_events2;
+	if (x86_pmu.cpu_events2)
+		x86_pmu_attr_groups[GROUP_INDEX_EVENTS2] = &x86_pmu_events2_group;
 
 	pr_info("... version:                %d\n",     x86_pmu.version);
 	pr_info("... bit width:              %d\n",     x86_pmu.cntval_bits);
@@ -2138,9 +2163,10 @@ static struct attribute_group x86_pmu_attr_group = {
 };
 
 static const struct attribute_group *x86_pmu_attr_groups[] = {
-	&x86_pmu_attr_group,
-	&x86_pmu_format_group,
-	&x86_pmu_events_group,
+	[GROUP_INDEX_ATTR] = &x86_pmu_attr_group,
+	[GROUP_INDEX_FORMAT] = &x86_pmu_format_group,
+	[GROUP_INDEX_EVENTS] = &x86_pmu_events_group,
+	[GROUP_INDEX_EVENTS2] = NULL,	/* may be filled in with events2 */
 	NULL,
 };
 

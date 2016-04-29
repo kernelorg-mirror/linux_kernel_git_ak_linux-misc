@@ -557,6 +557,7 @@ struct x86_pmu {
 
 	ssize_t		(*events_sysfs_show)(char *page, u64 config);
 	struct attribute **cpu_events;
+	struct attribute **cpu_events2;
 
 	/*
 	 * CPU Hotplug hooks
