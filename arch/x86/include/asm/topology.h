@@ -129,6 +129,10 @@ extern const struct cpumask *cpu_coregroup_mask(int cpu);
 
 extern unsigned int __max_logical_packages;
 #define topology_max_packages()			(__max_logical_packages)
+
+extern int max_smt_threads;
+#define topology_max_smt_threads()		max_smt_threads
+
 int topology_update_package_map(unsigned int apicid, unsigned int cpu);
 extern int topology_phys_to_logical_pkg(unsigned int pkg);
 #else
@@ -136,6 +140,7 @@ extern int topology_phys_to_logical_pkg(unsigned int pkg);
 static inline int
 topology_update_package_map(unsigned int apicid, unsigned int cpu) { return 0; }
 static inline int topology_phys_to_logical_pkg(unsigned int pkg) { return 0; }
+#define topology_max_smt_threads()		1
 #endif
 
 static inline void arch_fix_phys_package_id(int num, u32 slot)
