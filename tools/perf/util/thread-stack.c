@@ -753,3 +753,10 @@ int thread_stack__process(struct thread *thread, struct comm *comm,
 
 	return err;
 }
+
+void thread_stack__print_indent(struct thread *thread)
+{
+	if (!thread->ts)
+		return;
+	printf("%*s", (int)thread->ts->cnt * 4, "");
+}

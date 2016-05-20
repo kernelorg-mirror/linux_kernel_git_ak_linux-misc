@@ -98,6 +98,7 @@ void thread_stack__sample(struct thread *thread, struct ip_callchain *chain,
 			  size_t sz, u64 ip);
 int thread_stack__flush(struct thread *thread);
 void thread_stack__free(struct thread *thread);
+void thread_stack__print_indent(struct thread *thread);
 
 struct call_return_processor *
 call_return_processor__new(int (*process)(struct call_return *cr, void *data),

@@ -103,4 +103,6 @@ int db_export__branch_types(struct db_export *dbe);
 int db_export__call_path(struct db_export *dbe, struct call_path *cp);
 int db_export__call_return(struct db_export *dbe, struct call_return *cr);
 
+struct thread *db_export__main_thread(struct machine *machine, struct thread *thread);
+
 #endif

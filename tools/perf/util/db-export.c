@@ -231,7 +231,7 @@ int db_export__symbol(struct db_export *dbe, struct symbol *sym,
 	return 0;
 }
 
-static struct thread *get_main_thread(struct machine *machine, struct thread *thread)
+struct thread *db_export__main_thread(struct machine *machine, struct thread *thread)
 {
 	if (thread->pid_ == thread->tid)
 		return thread__get(thread);
@@ -308,7 +308,7 @@ int db_export__sample(struct db_export *dbe, union perf_event *event,
 	if (err)
 		return err;
 
-	main_thread = get_main_thread(al->machine, thread);
+	main_thread = db_export__main_thread(al->machine, thread);
 	if (main_thread)
 		comm = machine__thread_exec_comm(al->machine, main_thread);
 

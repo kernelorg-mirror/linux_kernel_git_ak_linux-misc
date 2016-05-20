@@ -21,6 +21,8 @@
 #include "util/cpumap.h"
 #include "util/thread_map.h"
 #include "util/stat.h"
+#include "util/thread-stack.h"
+#include "util/db-export.h"
 #include <linux/bitmap.h>
 #include <linux/stringify.h>
 #include "asm/bug.h"
@@ -63,6 +65,7 @@ enum perf_output_field {
 	PERF_OUTPUT_DATA_SRC	    = 1U << 17,
 	PERF_OUTPUT_WEIGHT	    = 1U << 18,
 	PERF_OUTPUT_BPF_OUTPUT	    = 1U << 19,
+	PERF_OUTPUT_CALLINDENT	    = 1U << 20,
 };
 
 struct output_option {
@@ -89,6 +92,7 @@ struct output_option {
 	{.str = "data_src", .field = PERF_OUTPUT_DATA_SRC},
 	{.str = "weight",   .field = PERF_OUTPUT_WEIGHT},
 	{.str = "bpf-output",   .field = PERF_OUTPUT_BPF_OUTPUT},
+	{.str = "callindent", .field = PERF_OUTPUT_CALLINDENT},
 };
 
 /* default set to maintain compatibility with current format */
@@ -260,6 +264,11 @@ static int perf_evsel__check_attr(struct perf_evsel *evsel,
 		perf_evsel__check_stype(evsel, PERF_SAMPLE_WEIGHT, "WEIGHT",
 					PERF_OUTPUT_WEIGHT))
 		return -EINVAL;
+
+	if (PRINT_FIELD(CALLINDENT) && !PRINT_FIELD(ADDR)) {
+		pr_err("Display of callindent requested, but no branch address\n");
+		return -EINVAL;
+	}
 
 	if (PRINT_FIELD(SYM) && !PRINT_FIELD(IP) && !PRINT_FIELD(ADDR)) {
 		pr_err("Display of symbols requested but neither sample IP nor "
@@ -559,6 +568,39 @@ static void print_sample_addr(struct perf_sample *sample,
 	}
 }
 
+static int dummy_call_return(struct call_return *cr __maybe_unused,
+				     void *arg __maybe_unused)
+{
+	return 0;
+}
+
+static void print_sample_callindent(struct perf_sample *sample,
+				    struct perf_evsel *evsel,
+				    struct thread *thread,
+				    struct addr_location *al)
+{
+	struct perf_event_attr *attr = &evsel->attr;
+
+	if (sample_addr_correlates_sym(attr)) {
+		static struct call_return_processor *crp;
+		struct addr_location addr_al;
+		struct thread *main_thread;
+		struct comm *comm;
+
+		if (!crp)
+			crp = call_return_processor__new(dummy_call_return,
+							 NULL);
+		thread__resolve(thread, &addr_al, sample);
+		main_thread = db_export__main_thread(al->machine, thread);
+		if (main_thread)
+			comm = machine__thread_exec_comm(al->machine,
+							 main_thread);
+		thread_stack__process(thread, comm, sample, al, &addr_al,
+							0, crp);
+	}
+	thread_stack__print_indent(thread);
+}
+
 static void print_sample_bts(struct perf_sample *sample,
 			     struct perf_evsel *evsel,
 			     struct thread *thread,
@@ -566,6 +608,9 @@ static void print_sample_bts(struct perf_sample *sample,
 {
 	struct perf_event_attr *attr = &evsel->attr;
 	bool print_srcline_last = false;
+
+	if (PRINT_FIELD(CALLINDENT))
+		print_sample_callindent(sample, evsel, thread, al);
 
 	/* print branch_from information */
 	if (PRINT_FIELD(IP)) {
