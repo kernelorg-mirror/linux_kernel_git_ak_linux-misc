@@ -82,9 +82,12 @@ struct intel_pt {
 	u64 instructions_id;
 
 	bool sample_branches;
+	bool sample_returns;
 	u32 branches_filter;
 	u64 branches_sample_type;
+	u64 returns_sample_type;
 	u64 branches_id;
+	u64 returns_id;
 
 	bool sample_transactions;
 	u64 transactions_sample_type;
@@ -960,7 +963,8 @@ static int intel_pt_inject_event(union perf_event *event,
 	return perf_event__synthesize_sample(event, type, 0, sample, swapped);
 }
 
-static int intel_pt_synth_branch_sample(struct intel_pt_queue *ptq)
+static int intel_pt_synth_branch_sample(struct intel_pt_queue *ptq,
+					bool is_return)
 {
 	int ret;
 	struct intel_pt *pt = ptq->pt;
@@ -990,8 +994,13 @@ static int intel_pt_synth_branch_sample(struct intel_pt_queue *ptq)
 	sample.pid = ptq->pid;
 	sample.tid = ptq->tid;
 	sample.addr = ptq->state->to_ip;
-	sample.id = ptq->pt->branches_id;
-	sample.stream_id = ptq->pt->branches_id;
+	if (is_return) {
+		sample.id = ptq->pt->returns_id;
+		sample.stream_id = ptq->pt->returns_id;
+	} else {
+		sample.id = ptq->pt->branches_id;
+		sample.stream_id = ptq->pt->branches_id;
+	}
 	sample.period = 1;
 	sample.cpu = ptq->cpu;
 	sample.flags = ptq->flags;
@@ -1014,6 +1023,8 @@ static int intel_pt_synth_branch_sample(struct intel_pt_queue *ptq)
 
 	if (pt->synth_opts.inject) {
 		ret = intel_pt_inject_event(event, &sample,
+					    is_return ?
+					    pt->returns_sample_type :
 					    pt->branches_sample_type,
 					    pt->synth_needs_swap);
 		if (ret)
@@ -1241,7 +1252,13 @@ static int intel_pt_sample(struct intel_pt_queue *ptq)
 		thread_stack__set_trace_nr(ptq->thread, state->trace_nr);
 
 	if (pt->sample_branches) {
-		err = intel_pt_synth_branch_sample(ptq);
+		err = intel_pt_synth_branch_sample(ptq, false);
+		if (err)
+			return err;
+	}
+
+	if (pt->sample_returns) {
+		err = intel_pt_synth_branch_sample(ptq, true);
 		if (err)
 			return err;
 	}
@@ -1956,7 +1973,33 @@ static int intel_pt_synth_events(struct intel_pt *pt,
 		}
 		pt->sample_branches = true;
 		pt->branches_sample_type = attr.sample_type;
-		pt->branches_id = id;
+		pt->branches_id = id++;
+	}
+	if (pt->synth_opts.returns) {
+		attr.config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
+		attr.sample_period = 1;
+		attr.sample_type |= PERF_SAMPLE_ADDR;
+		attr.sample_type &= ~(u64)PERF_SAMPLE_CALLCHAIN;
+		attr.sample_type &= ~(u64)PERF_SAMPLE_BRANCH_STACK;
+		pr_debug("Synthesizing 'return' event with id %" PRIu64 " sample type %#" PRIx64 "\n",
+			 id, (u64)attr.sample_type);
+		err = intel_pt_synth_event(session, &attr, id);
+		if (err) {
+			pr_err("%s: failed to synthesize 'return' event type\n",
+			       __func__);
+			return err;
+		}
+		pt->sample_returns = true;
+		pt->returns_sample_type = attr.sample_type;
+		pt->returns_id = id;
+		evlist__for_each(evlist, evsel) {
+			if (evsel->id && evsel->id[0] == pt->returns_id) {
+				if (evsel->name)
+					zfree(&evsel->name);
+				evsel->name = strdup("return");
+				break;
+			}
+		}
 	}
 
 	pt->synth_needs_swap = evsel->needs_swap;
