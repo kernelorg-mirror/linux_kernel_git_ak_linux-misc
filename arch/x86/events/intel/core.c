@@ -1525,6 +1525,32 @@ static __initconst const u64 slm_hw_cache_event_ids
  },
 };
 
+EVENT_ATTR_STR(topdown-total-slots.scale, td_total_slots_scale_glm, "3");
+/* uops_not_delivered.any */
+EVENT_ATTR_STR(topdown-fetch-bubbles, td_fetch_bubbles_glm,
+	       "event=0x0c,umask=0x50");
+EVENT_ATTR_STR(topdown-fetch-bubbles.scale, td_fetch_bubbles_scale_glm, "3");
+/* uops_retired.any */
+EVENT_ATTR_STR(topdown-slots-issued, td_slots_issued_glm,
+	       "event=0xc2,umask=0x00");
+/* uops_retired.all */
+EVENT_ATTR_STR(topdown-slots-retired, td_slots_retired_glm,
+	       "event=0xc2,umask=0x10");
+/* issue_slots_not_consumed.recovery */
+EVENT_ATTR_STR(topdown-recovery-bubbles, td_recovery_bubbles_glm,
+	       "event=0xca,umask=0x02");
+
+static struct attribute *glm_events_attrs[] = {
+	EVENT_PTR(td_total_slots_slm), /* Reuse from SLM */
+	EVENT_PTR(td_total_slots_scale_glm),
+	EVENT_PTR(td_fetch_bubbles_glm),
+	EVENT_PTR(td_fetch_bubbles_scale_glm),
+	EVENT_PTR(td_slots_issued_glm),
+	EVENT_PTR(td_slots_retired_glm),
+	EVENT_PTR(td_recovery_bubbles_glm),
+	NULL
+};
+
 static struct extra_reg intel_glm_extra_regs[] __read_mostly = {
 	/* must define OFFCORE_RSP_X first, see intel_fixup_er() */
 	INTEL_UEVENT_EXTRA_REG(0x01b7, MSR_OFFCORE_RSP_0, 0x760005ffbfull, RSP_0),
@@ -3670,6 +3696,7 @@ __init int intel_pmu_init(void)
 		x86_pmu.event_constraints = intel_slm_event_constraints;
 		x86_pmu.pebs_constraints = intel_glm_pebs_event_constraints;
 		x86_pmu.extra_regs = intel_glm_extra_regs;
+		x86_pmu.cpu_events = glm_events_attrs;
 		/*
 		 * It's recommended to use CPU_CLK_UNHALTED.CORE_P + NPEBS
 		 * for precise cycles.
