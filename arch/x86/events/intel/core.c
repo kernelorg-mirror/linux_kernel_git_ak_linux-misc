@@ -3882,6 +3882,11 @@ __init int intel_pmu_init(void)
 		x86_pmu.event_constraints = intel_slm_event_constraints;
 		x86_pmu.pebs_constraints = intel_slm_pebs_event_constraints;
 		x86_pmu.extra_regs = intel_knl_extra_regs;
+		x86_pmu.cpu_events = slm_events_attrs;
+
+		/* no_alloc_cycles.not_delivered has umask 0x80 on KNL */
+		event_attr_td_fetch_bubbles_slm.event_str =
+			"event=0xca,umask=0x80";
 
 		/* all extra regs are per-cpu when HT is on */
 		x86_pmu.flags |= PMU_FL_HAS_RSP_1;
