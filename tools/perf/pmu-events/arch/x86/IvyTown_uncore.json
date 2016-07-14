@@ -1,0 +1,602 @@
+[
+    {
+        "BriefDescription": "Uncore cache clock ticks. Derived from unc_c_clockticks",
+        "Counter": "0,1,2,3",
+        "EventName": "UNC_C_CLOCKTICKS",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "All LLC Misses (code+ data rd + data wr - including demand and prefetch). Derived from unc_c_llc_lookup.any",
+        "Counter": "0,1",
+        "EventCode": "0x34",
+        "EventName": "UNC_C_LLC_LOOKUP.ANY",
+        "Filter": "filter_state=0x1",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x11",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "M line evictions from LLC (writebacks to memory). Derived from unc_c_llc_victims.m_state",
+        "Counter": "0,1",
+        "EventCode": "0x37",
+        "EventName": "UNC_C_LLC_VICTIMS.M_STATE",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses - demand and prefetch data reads - excludes LLC prefetches. Derived from unc_c_tor_inserts.miss_opcode.demand",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.DATA_READ",
+        "Filter": "filter_opc=0x182",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses - Uncacheable reads. Derived from unc_c_tor_inserts.miss_opcode.uncacheable",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.UNCACHEABLE",
+        "Filter": "filter_opc=0x187",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC prefetch misses for RFO. Derived from unc_c_tor_inserts.miss_opcode.rfo_prefetch",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.RFO_LLC_PREFETCH",
+        "Filter": "filter_opc=0x190",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC prefetch misses for code reads. Derived from unc_c_tor_inserts.miss_opcode.code",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.CODE_LLC_PREFETCH",
+        "Filter": "filter_opc=0x191",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC prefetch misses for data reads. Derived from unc_c_tor_inserts.miss_opcode.data_read",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.DATA_LLC_PREFETCH",
+        "Filter": "filter_opc=0x192",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe allocating writes that miss LLC - DDIO misses. Derived from unc_c_tor_inserts.miss_opcode.ddio_miss",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.PCIE_WRITE",
+        "Filter": "filter_opc=0x19c",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses for PCIe read current. Derived from unc_c_tor_inserts.miss_opcode.pcie_read",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.PCIE_READ",
+        "Filter": "filter_opc=0x19e",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses for ItoM writes (as part of fast string memcpy stores). Derived from unc_c_tor_inserts.miss_opcode.itom_write",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.ITOM_WRITE",
+        "Filter": "filter_opc=0x1c8",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses for PCIe non-snoop reads. Derived from unc_c_tor_inserts.miss_opcode.pcie_read",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.PCIE_NON_SNOOP_READ",
+        "Filter": "filter_opc=0x1e4",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "LLC misses for PCIe non-snoop writes (full line). Derived from unc_c_tor_inserts.miss_opcode.pcie_write",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_MISSES.PCIE_NON_SNOOP_WRITE",
+        "Filter": "filter_opc=0x1e6",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Streaming stores (full cache line). Derived from unc_c_tor_inserts.opcode.streaming_full",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.STREAMING_FULL",
+        "Filter": "filter_opc=0x18c",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Streaming stores (partial cache line). Derived from unc_c_tor_inserts.opcode.streaming_partial",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.STREAMING_PARTIAL",
+        "Filter": "filter_opc=0x18d",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Partial PCIe reads. Derived from unc_c_tor_inserts.opcode.pcie_partial",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_PARTIAL_READ",
+        "Filter": "filter_opc=0x195",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe allocating writes that hit in LLC (DDIO hits). Derived from unc_c_tor_inserts.opcode.ddio_hit",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_WRITE",
+        "Filter": "filter_opc=0x19c",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe read current. Derived from unc_c_tor_inserts.opcode.pcie_read_current",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_READ",
+        "Filter": "filter_opc=0x19e",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "ItoM write hits (as part of fast string memcpy stores). Derived from unc_c_tor_inserts.opcode.itom_write_hit",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.ITOM_WRITE",
+        "Filter": "filter_opc=0x1c8",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe non-snoop reads. Derived from unc_c_tor_inserts.opcode.pcie_read",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_NS_READ",
+        "Filter": "filter_opc=0x1e4",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe non-snoop writes (partial). Derived from unc_c_tor_inserts.opcode.pcie_partial_write",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_NS_PARTIAL_WRITE",
+        "Filter": "filter_opc=0x1e5",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "PCIe non-snoop writes (full line). Derived from unc_c_tor_inserts.opcode.pcie_full_write",
+        "Counter": "0,1",
+        "EventCode": "0x35",
+        "EventName": "LLC_REFERENCES.PCIE_NS_WRITE",
+        "Filter": "filter_opc=0x1e6",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x1",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Occupancy for all LLC misses that are addressed to local memory. Derived from unc_c_tor_occupancy.miss_local",
+        "EventCode": "0x36",
+        "EventName": "UNC_C_TOR_OCCUPANCY.MISS_LOCAL",
+        "UMask": "0x2A",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Occupancy counter for LLC data reads (demand and L2 prefetch). Derived from unc_c_tor_occupancy.miss_opcode.llc_data_read",
+        "EventCode": "0x36",
+        "EventName": "UNC_C_TOR_OCCUPANCY.LLC_DATA_READ",
+        "Filter": "filter_opc=0x182",
+        "UMask": "0x3",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Occupancy for all LLC misses that are addressed to remote memory. Derived from unc_c_tor_occupancy.miss_remote",
+        "EventCode": "0x36",
+        "EventName": "UNC_C_TOR_OCCUPANCY.MISS_REMOTE",
+        "UMask": "0x8A",
+        "Unit": "CBO"
+    },
+    {
+        "BriefDescription": "Read requests to home agent. Derived from unc_h_requests.reads",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x1",
+        "EventName": "UNC_H_REQUESTS.READS",
+        "UMask": "0x3",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "Write requests to home agent. Derived from unc_h_requests.writes",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x1",
+        "EventName": "UNC_H_REQUESTS.WRITES",
+        "UMask": "0xC",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "M line forwarded from remote cache along with writeback to memory. Derived from unc_h_snoop_resp.rsp_fwd_wb",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x21",
+        "EventName": "UNC_H_SNOOP_RESP.RSP_FWD_WB",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x20",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "M line forwarded from remote cache with no writeback to memory. Derived from unc_h_snoop_resp.rspifwd",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x21",
+        "EventName": "UNC_H_SNOOP_RESP.RSPIFWD",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x4",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "Shared line response from remote cache. Derived from unc_h_snoop_resp.rsps",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x21",
+        "EventName": "UNC_H_SNOOP_RESP.RSPS",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x2",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "Shared line forwarded from remote cache. Derived from unc_h_snoop_resp.rspsfwd",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x21",
+        "EventName": "UNC_H_SNOOP_RESP.RSPSFWD",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x8",
+        "Unit": "HA"
+    },
+    {
+        "BriefDescription": "Memory page activates for reads and writes. Derived from unc_m_act_count.rd",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x1",
+        "EventName": "UNC_M_ACT_COUNT.RD",
+        "UMask": "0x1",
+        "Umask": "0x3",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Read requests to memory controller. Derived from unc_m_cas_count.rd",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x4",
+        "EventName": "UNC_M_CAS_COUNT.RD",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0x3",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Write requests to memory controller. Derived from unc_m_cas_count.wr",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x4",
+        "EventName": "UNC_M_CAS_COUNT.WR",
+        "ScaleUnit": "64Bytes",
+        "UMask": "0xC",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Cycles where DRAM ranks are in power down (CKE) mode. Derived from unc_m_power_channel_ppd",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_M_CLOCKTICKS",
+        "EventCode": "0x85",
+        "EventName": "UNC_M_POWER_CHANNEL_PPD",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Cycles all ranks are in critical thermal throttle. Derived from unc_m_power_critical_throttle_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_M_CLOCKTICKS",
+        "EventCode": "0x86",
+        "EventName": "UNC_M_POWER_CRITICAL_THROTTLE_CYCLES",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Cycles Memory is in self refresh power mode. Derived from unc_m_power_self_refresh",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_M_CLOCKTICKS",
+        "EventCode": "0x43",
+        "EventName": "UNC_M_POWER_SELF_REFRESH",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "Memory page conflicts. Derived from unc_m_pre_count.page_miss",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x2",
+        "EventName": "UNC_M_PRE_COUNT.PAGE_MISS",
+        "UMask": "0x1",
+        "Unit": "iMC"
+    },
+    {
+        "BriefDescription": "QPI clock ticks. Use to get percentages for QPI cycles events. Derived from unc_q_clockticks",
+        "Counter": "0,1,2,3",
+        "EventCode": "0x14",
+        "EventName": "UNC_Q_CLOCKTICKS",
+        "Unit": "QPI LL"
+    },
+    {
+        "BriefDescription": "Cycles where receiving QPI link is in half-width mode. Derived from unc_q_rxl0p_power_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_Q_CLOCKTICKS",
+        "EventCode": "0x10",
+        "EventName": "UNC_Q_RxL0P_POWER_CYCLES",
+        "Unit": "QPI LL"
+    },
+    {
+        "BriefDescription": "Cycles where transmitting QPI link is in half-width mode. Derived from unc_q_txl0p_power_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_Q_CLOCKTICKS",
+        "EventCode": "0xd",
+        "EventName": "UNC_Q_TxL0P_POWER_CYCLES",
+        "Unit": "QPI LL"
+    },
+    {
+        "BriefDescription": "Number of data flits transmitted . Derived from unc_q_txl_flits_g0.data",
+        "Counter": "0,1,2,3",
+        "EventName": "UNC_Q_TxL_FLITS_G0.DATA",
+        "ScaleUnit": "8Bytes",
+        "UMask": "0x2",
+        "Unit": "QPI LL"
+    },
+    {
+        "BriefDescription": "Number of non data (control) flits transmitted . Derived from unc_q_txl_flits_g0.non_data",
+        "Counter": "0,1,2,3",
+        "EventName": "UNC_Q_TxL_FLITS_G0.NON_DATA",
+        "ScaleUnit": "8Bytes",
+        "UMask": "0x4",
+        "Unit": "QPI LL"
+    },
+    {
+        "BriefDescription": "PCU clock ticks. Use to get percentages of PCU cycles events. Derived from unc_p_clockticks",
+        "Counter": "0,1,2,3",
+        "EventName": "UNC_P_CLOCKTICKS",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band0=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band0_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xb",
+        "EventName": "UNC_P_FREQ_BAND0_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band1=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band1_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xc",
+        "EventName": "UNC_P_FREQ_BAND1_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band2=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band2_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xd",
+        "EventName": "UNC_P_FREQ_BAND2_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band3=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band3_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xe",
+        "EventName": "UNC_P_FREQ_BAND3_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of times that the uncore transitioned a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band0=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band0_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xb",
+        "EventName": "UNC_P_FREQ_BAND0_TRANSITIONS",
+        "Filter": "edge=1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of times that the uncore transitioned to a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band1=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band1_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xc",
+        "EventName": "UNC_P_FREQ_BAND1_TRANSITIONS",
+        "Filter": "edge=1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore transitioned to a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band2=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band2_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xd",
+        "EventName": "UNC_P_FREQ_BAND2_TRANSITIONS",
+        "Filter": "edge=1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore transitioned to a frequency greater than or equal to the frequency that is configured in the filter.  (filter_band3=XXX, with XXX in 100Mhz units). One can also use inversion (filter_inv=1) to track cycles when we were less than the configured frequency. Derived from unc_p_freq_band3_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xe",
+        "EventName": "UNC_P_FREQ_BAND3_TRANSITIONS",
+        "Filter": "edge=1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_power_state_occupancy.cores_c0",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x80",
+        "EventName": "UNC_P_POWER_STATE_OCCUPANCY.CORES_C0",
+        "Filter": "occ_sel=1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_power_state_occupancy.cores_c3",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x80",
+        "EventName": "UNC_P_POWER_STATE_OCCUPANCY.CORES_C3",
+        "Filter": "occ_sel=2",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_power_state_occupancy.cores_c6",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x80",
+        "EventName": "UNC_P_POWER_STATE_OCCUPANCY.CORES_C6",
+        "Filter": "occ_sel=3",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_prochot_external_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xa",
+        "EventName": "UNC_P_PROCHOT_EXTERNAL_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_freq_max_limit_thermal_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x4",
+        "EventName": "UNC_P_FREQ_MAX_LIMIT_THERMAL_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_freq_max_os_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x6",
+        "EventName": "UNC_P_FREQ_MAX_OS_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_freq_max_power_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x5",
+        "EventName": "UNC_P_FREQ_MAX_POWER_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_freq_max_current_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x7",
+        "EventName": "UNC_P_FREQ_MAX_CURRENT_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": ". Derived from unc_p_freq_trans_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x60",
+        "EventName": "UNC_P_FREQ_TRANS_CYCLES",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to 1.2Ghz. Derived from unc_p_freq_band0_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xb",
+        "EventName": "UNC_P_FREQ_GE_1200MHZ_CYCLES",
+        "Filter": "filter_band0=1200",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to 2Ghz. Derived from unc_p_freq_band1_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xc",
+        "EventName": "UNC_P_FREQ_GE_2000MHZ_CYCLES",
+        "Filter": "filter_band1=2000",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to 3Ghz. Derived from unc_p_freq_band2_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xd",
+        "EventName": "UNC_P_FREQ_GE_3000MHZ_CYCLES",
+        "Filter": "filter_band2=3000",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore was running at a frequency greater than or equal to 4Ghz. Derived from unc_p_freq_band3_cycles",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xe",
+        "EventName": "UNC_P_FREQ_GE_4000MHZ_CYCLES",
+        "Filter": "filter_band3=4000",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of times that the uncore transitioned to a frequency greater than or equal to 1.2Ghz. Derived from unc_p_freq_band0_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xb",
+        "EventName": "UNC_P_FREQ_GE_1200MHZ_TRANSITIONS",
+        "Filter": "edge=1,filter_band0=1200",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of times that the uncore transitioned to a frequency greater than or equal to 2Ghz. Derived from unc_p_freq_band1_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xc",
+        "EventName": "UNC_P_FREQ_GE_2000MHZ_TRANSITIONS",
+        "Filter": "edge=1,filter_band1=2000",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore transitioned to a frequency greater than or equal to 3Ghz. Derived from unc_p_freq_band2_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xd",
+        "EventName": "UNC_P_FREQ_GE_3000MHZ_TRANSITIONS",
+        "Filter": "edge=1,filter_band2=4000",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Counts the number of cycles that the uncore transitioned to a frequency greater than or equal to 4Ghz. Derived from unc_p_freq_band3_cycles",
+        "Counter": "0,1,2,3",
+        "EventCode": "0xe",
+        "EventName": "UNC_P_FREQ_GE_4000MHZ_TRANSITIONS",
+        "Filter": "edge=1,filter_band3=4000",
+        "Unit": "PCU"
+    }
+]
