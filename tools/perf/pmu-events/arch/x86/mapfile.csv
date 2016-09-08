@@ -21,3 +21,5 @@ GenuineIntel-6-1E,V2,NehalemEP_core,core
 GenuineIntel-6-1F,V2,NehalemEP_core,core
 GenuineIntel-6-1A,V2,NehalemEP_core,core
 GenuineIntel-6-2E,V2,NehalemEX_core,core
+GenuineIntel-6-4E,V22,Skylake_core,core
+GenuineIntel-6-5E,V22,Skylake_core,core
