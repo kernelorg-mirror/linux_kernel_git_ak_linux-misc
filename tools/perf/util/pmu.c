@@ -232,7 +232,7 @@ static int __perf_pmu__new_alias(struct list_head *list, char *dir, char *name,
 				 char *desc __maybe_unused, char *val,
 				 char *long_desc, char *topic,
 				 char *unit, char *perpkg,
-				 char *dividedby)
+				 char *metric_expr)
 {
 	struct perf_pmu_alias *alias;
 	int ret;
@@ -266,7 +266,7 @@ static int __perf_pmu__new_alias(struct list_head *list, char *dir, char *name,
 		perf_pmu__parse_snapshot(alias, dir, name);
 	}
 
-	alias->dividedby = dividedby ? strdup(dividedby) : NULL;
+	alias->metric_expr = metric_expr ? strdup(metric_expr) : NULL;
 	alias->desc = desc ? strdup(desc) : NULL;
 	alias->long_desc = long_desc ? strdup(long_desc) :
 				desc ? strdup(desc) : NULL;
@@ -564,7 +564,7 @@ static void pmu_add_cpu_aliases(struct list_head *head, const char *name)
 				(char *)pe->desc, (char *)pe->event,
 				(char *)pe->long_desc, (char *)pe->topic,
 				(char *)pe->unit, (char *)pe->perpkg,
-				(char *)pe->dividedby);
+				(char *)pe->metric_expr);
 	}
 
 out:
@@ -979,6 +979,7 @@ int perf_pmu__check_alias(struct perf_pmu *pmu, struct list_head *head_terms,
 	info->unit     = NULL;
 	info->scale    = 0.0;
 	info->snapshot = false;
+	info->metric_expr = NULL;
 
 	list_for_each_entry_safe(term, h, head_terms, list) {
 		alias = pmu_find_alias(pmu, term);
@@ -994,6 +995,7 @@ int perf_pmu__check_alias(struct perf_pmu *pmu, struct list_head *head_terms,
 
 		if (alias->per_pkg)
 			info->per_pkg = true;
+		info->metric_expr = alias->metric_expr;
 
 		list_del(&term->list);
 		free(term);
