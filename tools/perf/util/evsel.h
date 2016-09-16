@@ -129,6 +129,9 @@ struct perf_evsel {
 	struct list_head	config_terms;
 	int			bpf_fd;
 	bool			alias;
+	const char *		dividedby;
+	struct perf_evsel	*div_event;
+	bool			collect_stat;
 };
 
 union u64_swap {
