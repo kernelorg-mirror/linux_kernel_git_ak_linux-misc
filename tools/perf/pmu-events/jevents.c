@@ -295,7 +295,8 @@ static void print_events_table_prefix(FILE *fp, const char *tblname)
 
 static int print_events_table_entry(void *data, char *name, char *event,
 				    char *desc, char *long_desc,
-				    char *pmu, char *unit, char *perpkg)
+				    char *pmu, char *unit, char *perpkg,
+				    char *metric_expr)
 {
 	struct perf_entry_data *pd = data;
 	FILE *outfp = pd->outfp;
@@ -319,6 +320,8 @@ static int print_events_table_entry(void *data, char *name, char *event,
 		fprintf(outfp, "\t.unit = \"%s\",\n", unit);
 	if (perpkg)
 		fprintf(outfp, "\t.perpkg = \"%s\",\n", perpkg);
+	if (metric_expr)
+		fprintf(outfp, "\t.metric_expr = \"%s\",\n", metric_expr);
 	fprintf(outfp, "},\n");
 
 	return 0;
@@ -366,7 +369,8 @@ static char *real_event(const char *name, char *event)
 int json_events(const char *fn,
 	  int (*func)(void *data, char *name, char *event, char *desc,
 		      char *long_desc,
-		      char *pmu, char *unit, char *perpkg),
+		      char *pmu, char *unit, char *perpkg,
+		      char *metric_expr),
 	  void *data)
 {
 	int err = -EIO;
@@ -392,6 +396,7 @@ int json_events(const char *fn,
 		char *filter = NULL;
 		char *perpkg = NULL;
 		char *unit = NULL;
+		char *metric_expr = NULL;
 		unsigned long long eventcode = 0;
 		struct msrmap *msr = NULL;
 		jsmntok_t *msrval = NULL;
@@ -402,6 +407,7 @@ int json_events(const char *fn,
 		for (j = 0; j < obj->size; j += 2) {
 			jsmntok_t *field, *val;
 			int nz;
+			char *s;
 
 			field = tok + j;
 			EXPECT(field->type == JSMN_STRING, tok + j,
@@ -448,7 +454,6 @@ int json_events(const char *fn,
 					NULL);
 			} else if (json_streq(map, field, "Unit")) {
 				const char *ppmu;
-				char *s;
 
 				ppmu = field_to_perf(unit_to_pmu, map, val);
 				if (ppmu) {
@@ -468,6 +473,10 @@ int json_events(const char *fn,
 				addfield(map, &unit, "", "", val);
 			} else if (json_streq(map, field, "PerPkg")) {
 				addfield(map, &perpkg, "", "", val);
+			} else if (json_streq(map, field, "MetricExpr")) {
+				addfield(map, &metric_expr, "", "", val);
+				for (s = metric_expr; *s; s++)
+					*s = tolower(*s);
 			}
 			/* ignore unknown fields */
 		}
@@ -492,7 +501,7 @@ int json_events(const char *fn,
 		fixname(name);
 
 		err = func(data, name, real_event(name, event), desc, long_desc,
-				pmu, unit, perpkg);
+				pmu, unit, perpkg, metric_expr);
 		free(event);
 		free(desc);
 		free(name);
@@ -502,6 +511,7 @@ int json_events(const char *fn,
 		free(filter);
 		free(perpkg);
 		free(unit);
+		free(metric_expr);
 		if (err)
 			break;
 		tok += j;
