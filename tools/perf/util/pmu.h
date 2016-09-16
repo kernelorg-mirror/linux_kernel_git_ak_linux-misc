@@ -31,6 +31,7 @@ struct perf_pmu {
 
 struct perf_pmu_info {
 	const char *unit;
+	const char *metric_expr;
 	double scale;
 	bool per_pkg;
 	bool snapshot;
@@ -50,7 +51,7 @@ struct perf_pmu_alias {
 	double scale;
 	bool per_pkg;
 	bool snapshot;
-	char *dividedby;
+	char *metric_expr;
 };
 
 struct perf_pmu *perf_pmu__find(const char *name);
