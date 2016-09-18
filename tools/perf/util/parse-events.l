@@ -183,8 +183,8 @@ modifier_bp	[rwx]{1,3}
 		}
 
 {event_pmu}	|
-{bpf_object}	|
-{bpf_source}	|
+({bpf_object}$)	|
+({bpf_source}$)	|
 {event}		{
 			BEGIN(INITIAL);
 			REWIND(1);
