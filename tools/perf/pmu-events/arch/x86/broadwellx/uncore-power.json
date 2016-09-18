@@ -1,0 +1,54 @@
+[
+    {
+        "BriefDescription": "PCU clock ticks. Use to get percentages of PCU cycles events.",
+        "Counter": "0,1,2,3",
+        "EventName": "UNC_P_CLOCKTICKS",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Cycles chipset asserted PROCHOT to the CPU.",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0xA",
+        "EventName": "UNC_P_PROCHOT_EXTERNAL_CYCLES",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Thermal Strongest Upper Limit Cycles.",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x4",
+        "EventName": "UNC_P_FREQ_MAX_LIMIT_THERMAL_CYCLES",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "OS Strongest Upper Limit Cycles.",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x6",
+        "EventName": "UNC_P_FREQ_MAX_OS_CYCLES",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Power Strongest Upper Limit Cycles.",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x5",
+        "EventName": "UNC_P_FREQ_MAX_POWER_CYCLES",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    },
+    {
+        "BriefDescription": "Cycles spent changing Frequency.",
+        "Counter": "0,1,2,3",
+        "DividedBy": "UNC_P_CLOCKTICKS",
+        "EventCode": "0x74",
+        "EventName": "UNC_P_FREQ_TRANS_CYCLES",
+        "PerPkg": "1",
+        "Unit": "PCU"
+    }
+]
