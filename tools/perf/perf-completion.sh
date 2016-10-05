@@ -161,7 +161,11 @@ __perf_main ()
 	# List possible events for -e option
 	elif [[ $prev == @("-e"|"--event") &&
 		$prev_skip_opts == @(record|stat|top) ]]; then
-		evts=$($cmd list --raw-dump)
+		# handle upper case events
+		case "$cur" in
+			[A-Z]*) evts=$($cmd list --raw-dump | tr a-z A-Z) ;;
+			*) evts=$($cmd list --raw-dump) ;;
+		esac
 		__perfcomp_colon "$evts" "$cur"
 	else
 		# List subcommands for perf commands
