@@ -311,7 +311,7 @@ static struct fixed {
 	const char *name;
 	const char *event;
 } fixed[] = {
-	{ "inst_retired.any", "event=0xc0" },
+	{ "inst_retired.any", "event=0xc0,any=1" },
 	{ "cpu_clk_unhalted.thread", "event=0x3c" },
 	{ "cpu_clk_unhalted.thread_any", "event=0x3c,any=1" },
 	{ NULL, NULL},
