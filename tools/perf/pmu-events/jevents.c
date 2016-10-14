@@ -135,7 +135,6 @@ static struct field {
 	const char *field;
 	const char *kernel;
 } fields[] = {
-	{ "EventCode",	"event=" },
 	{ "UMask",	"umask=" },
 	{ "CounterMask", "cmask=" },
 	{ "Invert",	"inv=" },
@@ -164,6 +163,10 @@ static int match_field(char *map, jsmntok_t *field, int nz,
 
 	for (f = fields; f->field; f++)
 		if (json_streq(map, field, f->field) && nz) {
+			/* Handle all variations of 0 encounted in JSON */
+			if (json_streq(map, val, "0x00") ||
+			     json_streq(map, val, "0x0"))
+				return 1;
 			cut_comma(map, &newval);
 			addfield(map, event, ",", f->kernel, &newval);
 			return 1;
@@ -343,6 +346,7 @@ int json_events(const char *fn,
 	jsmntok_t *tokens, *tok;
 	int i, j, len;
 	char *map;
+	char buf[128];
 
 	if (!fn)
 		return -ENOENT;
@@ -356,6 +360,7 @@ int json_events(const char *fn,
 		char *event = NULL, *desc = NULL, *name = NULL;
 		char *long_desc = NULL;
 		char *extra_desc = NULL;
+		unsigned long long eventcode = 0;
 		struct msrmap *msr = NULL;
 		jsmntok_t *msrval = NULL;
 		jsmntok_t *precise = NULL;
@@ -376,6 +381,11 @@ int json_events(const char *fn,
 			nz = !json_streq(map, val, "0");
 			if (match_field(map, field, nz, &event, val)) {
 				/* ok */
+			} else if (json_streq(map, field, "EventCode")) {
+				char *code = NULL;
+				addfield(map, &code, "", "", val);
+				eventcode |= strtoul(code, NULL, 0);
+				free(code);
 			} else if (json_streq(map, field, "EventName")) {
 				addfield(map, &name, "", "", val);
 			} else if (json_streq(map, field, "BriefDescription")) {
@@ -410,6 +420,8 @@ int json_events(const char *fn,
 				addfield(map, &extra_desc, " ",
 						"(Precise event)", NULL);
 		}
+		snprintf(buf, sizeof buf, "event=%#llx", eventcode);
+		addfield(map, &event, ",", buf, NULL);
 		if (desc && extra_desc)
 			addfield(map, &desc, " ", extra_desc, NULL);
 		if (long_desc && extra_desc)
