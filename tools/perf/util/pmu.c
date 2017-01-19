@@ -592,6 +592,9 @@ static struct perf_pmu *pmu_lookup(const char *name)
 	if (pmu_format(name, &format))
 		return NULL;
 
+	/*
+	 * Check the type first to avoid unnecessary work.
+	 */
 	if (pmu_type(name, &type))
 		return NULL;
 
