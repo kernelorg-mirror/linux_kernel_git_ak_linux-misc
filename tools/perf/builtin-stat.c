@@ -1223,15 +1223,28 @@ static void aggr_cb(struct perf_evsel *counter, void *data, bool first)
 	int cpu, cpu2, s2;
 
 	for (cpu = 0; cpu < perf_evsel__nr_cpus(counter); cpu++) {
+		struct perf_counts_values *counts;
+
 		cpu2 = perf_evsel__cpus(counter)->map[cpu];
 		s2 = aggr_get_id(evsel_list->cpus, cpu2);
 		if (s2 != ad->id)
 			continue;
-		ad->val += perf_counts(counter->counts, cpu, 0)->val;
-		ad->ena += perf_counts(counter->counts, cpu, 0)->ena;
-		ad->run += perf_counts(counter->counts, cpu, 0)->run;
 		if (first)
 			ad->nr++;
+		counts = perf_counts(counter->counts, cpu, 0);
+		/*
+		 * When any result is bad, make them all to give
+		 * consistent output in interval mode.
+		 */
+		if (counts->ena == 0 || counts->run == 0 ||
+		    counter->counts->scaled == -1) {
+			ad->ena = 0;
+			ad->run = 0;
+			break;
+		}
+		ad->val += counts->val;
+		ad->ena += counts->ena;
+		ad->run += counts->run;
 	}
 }
 
