@@ -602,7 +602,7 @@ static int grab_bb(u8 *buffer, u64 start, u64 end,
 		    struct machine *machine, struct thread *thread,
 		    bool *is64bit, u8 *cpumode, bool last)
 {
-	int offset, len;
+	long offset, len;
 	struct addr_location al;
 	bool kernel;
 
