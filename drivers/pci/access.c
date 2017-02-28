@@ -32,11 +32,14 @@ int pci_bus_read_config_##size \
 	int res;							\
 	unsigned long flags;						\
 	u32 data = 0;							\
+	bool ll_allowed = bus->ops->ll_allowed;				\
 	if (PCI_##size##_BAD) return PCIBIOS_BAD_REGISTER_NUMBER;	\
-	raw_spin_lock_irqsave(&pci_lock, flags);			\
+	if (!ll_allowed)						\
+		raw_spin_lock_irqsave(&pci_lock, flags);		\
 	res = bus->ops->read(bus, devfn, pos, len, &data);		\
 	*value = (type)data;						\
-	raw_spin_unlock_irqrestore(&pci_lock, flags);		\
+	if (!ll_allowed)						\
+		raw_spin_unlock_irqrestore(&pci_lock, flags);		\
 	return res;							\
 }
 
@@ -46,10 +49,13 @@ int pci_bus_write_config_##size \
 {									\
 	int res;							\
 	unsigned long flags;						\
+	bool ll_allowed = bus->ops->ll_allowed;				\
 	if (PCI_##size##_BAD) return PCIBIOS_BAD_REGISTER_NUMBER;	\
-	raw_spin_lock_irqsave(&pci_lock, flags);			\
+	if (!ll_allowed)						\
+		raw_spin_lock_irqsave(&pci_lock, flags);		\
 	res = bus->ops->write(bus, devfn, pos, len, value);		\
-	raw_spin_unlock_irqrestore(&pci_lock, flags);		\
+	if (!ll_allowed)						\
+		raw_spin_unlock_irqrestore(&pci_lock, flags);		\
 	return res;							\
 }
 

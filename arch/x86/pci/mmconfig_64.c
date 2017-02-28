@@ -121,6 +121,7 @@ int __init pci_mmcfg_arch_init(void)
 		}
 
 	raw_pci_ext_ops = &pci_mmcfg;
+	pci_root_ops.ll_allowed = true;
 
 	return 1;
 }
