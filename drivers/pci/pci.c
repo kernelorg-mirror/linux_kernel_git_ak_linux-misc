@@ -5236,6 +5236,21 @@ int pci_bus_find_domain_nr(struct pci_bus *bus, struct device *parent)
 #endif
 
 /**
+ * pci_bus_force_mmconfig - enable mmconfig for all config accesses on bus.
+ *
+ * Allow mmconfig for all accesses to devices. This is mainly a performance
+ * optimization, and should be only used if the driver "knows" all the bridges
+ * involved (e.g. SOC on chip devices)
+ *
+ * Default implementation. Architectures can override this.
+ */
+__weak int pci_bus_force_mmconfig(struct pci_bus *bus)
+{
+	return 0;
+}
+EXPORT_SYMBOL(pci_bus_force_mmconfig);
+
+/**
  * pci_ext_cfg_avail - can we access extended PCI config space?
  *
  * Returns 1 if we can access PCI extended config space (offsets

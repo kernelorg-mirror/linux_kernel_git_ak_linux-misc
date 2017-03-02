@@ -891,6 +891,8 @@ void pci_sort_breadthfirst(void);
 
 /* Generic PCI functions exported to card drivers */
 
+int pci_bus_force_mmconfig(struct pci_bus *bus);
+
 enum pci_lost_interrupt_reason {
 	PCI_LOST_IRQ_NO_INFORMATION = 0,
 	PCI_LOST_IRQ_DISABLE_MSI,
