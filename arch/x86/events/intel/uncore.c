@@ -875,6 +875,12 @@ static int uncore_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id
 	struct intel_uncore_box *box;
 	int phys_id, pkg, ret;
 
+	/*
+	 * Force MMCONFIG for all accesses, as we can otherwise
+	 * have significant lock contention on the type1 IO port spinlock.
+	 */
+	pci_bus_force_mmconfig(pdev->bus);
+
 	phys_id = uncore_pcibus_to_physid(pdev->bus);
 	if (phys_id < 0)
 		return -ENODEV;
