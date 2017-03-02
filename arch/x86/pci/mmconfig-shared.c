@@ -816,3 +816,31 @@ int pci_mmconfig_delete(u16 seg, u8 start, u8 end)
 
 	return -ENOENT;
 }
+
+static int pci_mmconfig_read(struct pci_bus *bus, unsigned int devfn,
+			     int where, int size, u32 *value)
+{
+	return raw_pci_ext_ops->read(pci_domain_nr(bus), bus->number,
+				     devfn, where, size, value);
+}
+
+static int pci_mmconfig_write(struct pci_bus *bus, unsigned int devfn,
+			      int where, int size, u32 value)
+{
+	return raw_pci_ext_ops->write(pci_domain_nr(bus), bus->number,
+				      devfn, where, size, value);
+}
+
+struct pci_ops pci_mmconfig_ops = {
+	.read = pci_mmconfig_read,
+	.write = pci_mmconfig_write,
+};
+
+/* Force all config accesses to go through mmconfig. */
+int pci_bus_force_mmconfig(struct pci_bus *bus)
+{
+	if (!raw_pci_ext_ops)
+		return -1;
+	bus->ops = &pci_mmconfig_ops;
+	return 0;
+}
