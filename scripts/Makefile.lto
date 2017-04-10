@@ -15,6 +15,7 @@ ifdef CONFIG_LTO
 # 4.8 was very slow
 # 4.9 still had a few bugs that needed workarounds
 # make it 5.0+ only for now, which is also faster again
+# 5.0 has some rare issues in the lto-streamer, could make this 6.0
 ifeq ($(call cc-ifversion, -ge, 0500,y),y)
 ifneq ($(call cc-option,${LTO_CFLAGS},n),n)
 
@@ -55,6 +56,7 @@ ifneq ($(call cc-option,${LTO_CFLAGS},n),n)
 
 ifdef CONFIG_LTO_DEBUG
 	LTO_FINAL_CFLAGS += -dH -fdump-ipa-cgraph -fdump-ipa-inline-details
+	# useful to add to reproduce compiler crashes
 	# -Wl,-plugin-save-temps -save-temps
 	LTO_CFLAGS +=
 endif
@@ -65,6 +67,8 @@ endif
 
 	KBUILD_CFLAGS += ${LTO_CFLAGS}
 
+	# finally enable LTO for the final linking stage
+
 	LDFINAL := ${CONFIG_SHELL} ${srctree}/scripts/gcc-ld \
                   ${LTO_FINAL_CFLAGS}
 
@@ -73,7 +77,6 @@ endif
 	# instead.
 	TMPDIR ?= $(objtree)
 	export TMPDIR
-        $(info setting TMPDIR to objdir for LTO build)
 
 	# use plugin aware tools
 	AR = $(CROSS_COMPILE)gcc-ar
