@@ -207,6 +207,9 @@ static int create_perf_stat_counter(struct perf_evsel *evsel)
 		attr->read_format = PERF_FORMAT_TOTAL_TIME_ENABLED |
 				    PERF_FORMAT_TOTAL_TIME_RUNNING;
 
+	if (perf_evsel__is_group_leader(evsel) && evsel->nr_members > 1)
+		attr->read_format |= PERF_FORMAT_GROUP;
+
 	attr->inherit = !no_inherit;
 
 	/*
@@ -304,7 +307,7 @@ perf_evsel__write_stat_event(struct perf_evsel *counter, u32 cpu, u32 thread,
 static int read_counter(struct perf_evsel *counter)
 {
 	int nthreads = thread_map__nr(evsel_list->threads);
-	int ncpus, cpu, thread;
+	int ncpus, cpu, thread, err;
 
 	if (target__has_cpu(&target))
 		ncpus = perf_evsel__nr_cpus(counter);
@@ -320,13 +323,26 @@ static int read_counter(struct perf_evsel *counter)
 	for (thread = 0; thread < nthreads; thread++) {
 		for (cpu = 0; cpu < ncpus; cpu++) {
 			struct perf_counts_values *count;
-
 			count = perf_counts(counter->counts, cpu, thread);
-			if (perf_evsel__read(counter, cpu, thread, count)) {
-				counter->counts->scaled = -1;
-				perf_counts(counter->counts, cpu, thread)->ena = 0;
-				perf_counts(counter->counts, cpu, thread)->run = 0;
-				return -1;
+
+			/* Assume the leader always comes first */
+			if ((counter->attr.read_format & PERF_FORMAT_GROUP) &&
+			    perf_evsel__is_group_leader(counter)) {
+				err = perf_evsel__read_group(counter, cpu,
+							     thread);
+				if (err) {
+					if (err == -EINVAL)
+						goto nongroup_fallback;
+					return err;
+				}
+			} else {
+nongroup_fallback:
+				if (perf_evsel__read(counter, cpu, thread, count)) {
+					counter->counts->scaled = -1;
+					perf_counts(counter->counts, cpu, thread)->ena = 0;
+					perf_counts(counter->counts, cpu, thread)->run = 0;
+					return -1;
+				}
 			}
 
 			if (STAT_RECORD) {

@@ -17,6 +17,7 @@
 #include <linux/perf_event.h>
 #include <linux/err.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
 #include <sys/resource.h>
 #include "asm/bug.h"
 #include "callchain.h"
@@ -45,6 +46,7 @@ static struct {
 	bool clockid_wrong;
 	bool lbr_flags;
 	bool write_backward;
+	bool group_read;
 } perf_missing_features;
 
 static clockid_t clockid;
@@ -1200,6 +1202,7 @@ void perf_evsel__exit(struct perf_evsel *evsel)
 	zfree(&evsel->group_name);
 	zfree(&evsel->name);
 	perf_evsel__object.fini(evsel);
+	zfree(&evsel->group_buf);
 }
 
 void perf_evsel__delete(struct perf_evsel *evsel)
@@ -1260,6 +1263,62 @@ int perf_evsel__read(struct perf_evsel *evsel, int cpu, int thread,
 	if (readn(FD(evsel, cpu, thread), count, sizeof(*count)) <= 0)
 		return -errno;
 
+	return 0;
+}
+
+static void reset_counts(struct perf_evsel *evsel, int cpu, int thread)
+{
+	struct perf_counts_values *count;
+	struct perf_evsel *e2;
+
+	/* Other entries just the count for the sibling */
+	count = perf_counts(evsel->leader->counts, cpu, thread);
+	memset(count, 0, sizeof(struct perf_counts_values));
+	for_each_group_member (e2, evsel->leader) {
+		count = perf_counts(e2->counts, cpu, thread);
+		memset(count, 0, sizeof(struct perf_counts_values));
+	}
+}
+
+int perf_evsel__read_group(struct perf_evsel *evsel, int cpu, int thread)
+{
+	int sz;
+	u64 *buf, *p, *er;
+	struct perf_counts_values *count;
+	struct perf_evsel *e2;
+
+	if (FD(evsel, cpu, thread) < 0)
+		return -EINVAL;
+
+	sz = (3 + evsel->nr_members) * sizeof(u64);
+	if (evsel->group_buf) {
+		buf = evsel->group_buf;
+	} else {
+		buf = malloc(sz);
+		if (!buf)
+			return -ENOMEM;
+		evsel->group_buf = buf;
+	}
+
+	reset_counts(evsel, cpu, thread);
+	if (read(FD(evsel, cpu, thread), buf, sz) != sz) {
+		reset_counts(evsel, cpu, thread);
+		evsel->counts->scaled = -1;
+		return -errno;
+	}
+
+	p = buf + 1;
+	er = p;
+	count = perf_counts(evsel->leader->counts, cpu, thread);
+	count->ena = *p++;
+	count->run = *p++;
+	count->val = *p++;
+	for_each_group_member (e2, evsel->leader) {
+		count = perf_counts(e2->counts, cpu, thread);
+		count->val = *p++;
+		count->ena = er[0];
+		count->run = er[1];
+	}
 	return 0;
 }
 
@@ -1538,6 +1597,8 @@ fallback_missing_features:
 	if (perf_missing_features.lbr_flags)
 		evsel->attr.branch_sample_type &= ~(PERF_SAMPLE_BRANCH_NO_FLAGS |
 				     PERF_SAMPLE_BRANCH_NO_CYCLES);
+	if (perf_missing_features.group_read && evsel->attr.inherit)
+		evsel->attr.read_format &= ~PERF_FORMAT_GROUP;
 retry_sample_id:
 	if (perf_missing_features.sample_id_all)
 		evsel->attr.sample_id_all = 0;
@@ -1682,6 +1743,11 @@ try_fallback:
 			 (PERF_SAMPLE_BRANCH_NO_CYCLES |
 			  PERF_SAMPLE_BRANCH_NO_FLAGS))) {
 		perf_missing_features.lbr_flags = true;
+		goto fallback_missing_features;
+	} else if (!perf_missing_features.group_read &&
+		   evsel->attr.inherit &&
+		   (evsel->attr.read_format & PERF_FORMAT_GROUP)) {
+		perf_missing_features.group_read = true;
 		goto fallback_missing_features;
 	}
 out_close:

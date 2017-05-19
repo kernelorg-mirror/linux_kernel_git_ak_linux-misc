@@ -136,6 +136,7 @@ struct perf_evsel {
 	const char *		metric_name;
 	struct perf_evsel	**metric_events;
 	bool			collect_stat;
+	void			*group_buf;
 };
 
 union u64_swap {
@@ -298,6 +299,7 @@ static inline bool perf_evsel__match2(struct perf_evsel *e1,
 
 int perf_evsel__read(struct perf_evsel *evsel, int cpu, int thread,
 		     struct perf_counts_values *count);
+int perf_evsel__read_group(struct perf_evsel *evsel, int cpu, int thread);
 
 int __perf_evsel__read_on_cpu(struct perf_evsel *evsel,
 			      int cpu, int thread, bool scale);
