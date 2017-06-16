@@ -516,6 +516,26 @@ char * __weak get_cpuid_str(void)
 	return NULL;
 }
 
+char *perf_pmu__getcpuid(void)
+{
+	char *cpuid;
+	static bool printed;
+
+	cpuid = getenv("PERF_CPUID");
+	if (cpuid)
+		cpuid = strdup(cpuid);
+	if (!cpuid)
+		cpuid = get_cpuid_str();
+	if (!cpuid)
+		return NULL;
+
+	if (!printed) {
+		pr_debug("Using CPUID %s\n", cpuid);
+		printed = true;
+	}
+	return cpuid;
+}
+
 /*
  * From the pmu_events_map, find the table of PMU events that corresponds
  * to the current running CPU. Then, add all PMU events from that table
@@ -526,21 +546,7 @@ static void pmu_add_cpu_aliases(struct list_head *head, const char *name)
 	int i;
 	struct pmu_events_map *map;
 	struct pmu_event *pe;
-	char *cpuid;
-	static bool printed;
-
-	cpuid = getenv("PERF_CPUID");
-	if (cpuid)
-		cpuid = strdup(cpuid);
-	if (!cpuid)
-		cpuid = get_cpuid_str();
-	if (!cpuid)
-		return;
-
-	if (!printed) {
-		pr_debug("Using CPUID %s\n", cpuid);
-		printed = true;
-	}
+	char *cpuid = perf_pmu__getcpuid();
 
 	i = 0;
 	while (1) {
@@ -560,8 +566,11 @@ static void pmu_add_cpu_aliases(struct list_head *head, const char *name)
 		const char *pname;
 
 		pe = &map->table[i++];
-		if (!pe->name)
+		if (!pe->name) {
+			if (pe->metric_group || pe->metric_name)
+				continue;
 			break;
+		}
 
 		pname = pe->pmu ? pe->pmu : "cpu";
 		if (strncmp(pname, name, strlen(pname)))

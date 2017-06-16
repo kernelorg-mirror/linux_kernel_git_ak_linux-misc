@@ -90,4 +90,6 @@ int perf_pmu__test(void);
 
 struct perf_event_attr *perf_pmu__get_default_config(struct perf_pmu *pmu);
 
+char *perf_pmu__getcpuid(void);
+
 #endif /* __PMU_H */
