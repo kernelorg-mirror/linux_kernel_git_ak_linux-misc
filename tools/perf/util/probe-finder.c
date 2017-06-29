@@ -1369,6 +1369,7 @@ static int collect_variables_cb(Dwarf_Die *die_mem, void *data)
 	if (tag == DW_TAG_formal_parameter ||
 	    tag == DW_TAG_variable) {
 		struct probe_trace_arg ta;
+		struct probe_trace_arg_ref *ref;
 
 		memset(&ta, 0, sizeof(struct probe_trace_arg));
 		ret = convert_variable_location(die_mem, af->pf.addr,
@@ -1400,6 +1401,10 @@ static int collect_variables_cb(Dwarf_Die *die_mem, void *data)
 				ret2 = die_get_var_range(&af->pf.sp_die,
 							die_mem, &buf);
 			}
+
+			strbuf_addf(&buf, "\t%s", ta.value);
+			for (ref = ta.ref; ref; ref = ref->next)
+				strbuf_addf(&buf, " off %ld", ref->offset);
 
 			pr_debug("Add new var: %s\n", buf.buf);
 			if (ret2 == 0) {
