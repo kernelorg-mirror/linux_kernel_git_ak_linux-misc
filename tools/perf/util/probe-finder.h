@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include "intlist.h"
+#include "strlist.h"
 #include "probe-event.h"
 #include "sane_ctype.h"
 
@@ -115,6 +116,12 @@ struct line_finder {
 	Dwarf_Die		cu_die;		/* Current CU */
 	Dwarf_Die		sp_die;
 	int			found;
+};
+
+struct variable_node {
+	struct str_node		snode;
+	char			value[64];
+	char			name[256];
 };
 
 #endif /* HAVE_DWARF_SUPPORT */
