@@ -17,7 +17,8 @@ struct rb_node *strlist__node_new(struct rblist *rblist, const void *entry)
 	const char *s = entry;
 	struct rb_node *rc = NULL;
 	struct strlist *strlist = container_of(rblist, struct strlist, rblist);
-	struct str_node *snode = malloc(sizeof(*snode));
+	struct str_node *snode = malloc(sizeof(struct str_node) +
+			strlist->data_size);
 
 	if (snode != NULL) {
 		if (strlist->dupstr) {
@@ -63,6 +64,15 @@ static int strlist__node_cmp(struct rb_node *rb_node, const void *entry)
 int strlist__add(struct strlist *slist, const char *new_entry)
 {
 	return rblist__add_node(&slist->rblist, new_entry);
+}
+
+struct str_node *strlist__add_node(struct strlist *slist, const char *new_entry)
+{
+	struct rb_node *nd;
+
+	if (rblist__add_node_ptr(&slist->rblist, new_entry, &nd) < 0)
+		return NULL;
+	return container_of(nd, struct str_node, rb_node);
 }
 
 int strlist__load(struct strlist *slist, const char *filename)
@@ -164,11 +174,13 @@ struct strlist *strlist__new(const char *list, const struct strlist_config *conf
 		bool dupstr = true;
 		bool file_only = false;
 		const char *dirname = NULL;
+		size_t data_size = 0;
 
 		if (config) {
 			dupstr = !config->dont_dupstr;
 			dirname = config->dirname;
 			file_only = config->file_only;
+			data_size = config->data_size;
 		}
 
 		rblist__init(&slist->rblist);
@@ -178,6 +190,7 @@ struct strlist *strlist__new(const char *list, const struct strlist_config *conf
 
 		slist->dupstr	 = dupstr;
 		slist->file_only = file_only;
+		slist->data_size = data_size;
 
 		if (list && strlist__parse_list(slist, list, dirname) != 0)
 			goto out_error;
