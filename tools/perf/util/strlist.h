@@ -10,24 +10,32 @@
 struct str_node {
 	struct rb_node rb_node;
 	const char     *s;
+	u8		data[0];
 };
 
 struct strlist {
 	struct rblist rblist;
 	bool	      dupstr;
 	bool	      file_only;
+	size_t	      data_size;
 };
 
 /*
  * @file_only: When dirname is present, only consider entries as filenames,
  *             that should not be added to the list if dirname/entry is not
  *             found
+ * @data_size: Allocate extra space after str_node which can be used for other
+ *	       data. This is the complete size including str_node
  */
 struct strlist_config {
 	bool dont_dupstr;
 	bool file_only;
 	const char *dirname;
+	size_t data_size;
 };
+
+#define STRLIST_CONFIG_DEFAULT \
+	{ false, false, NULL, sizeof(struct str_node) }
 
 struct strlist *strlist__new(const char *slist, const struct strlist_config *config);
 void strlist__delete(struct strlist *slist);
@@ -35,6 +43,7 @@ void strlist__delete(struct strlist *slist);
 void strlist__remove(struct strlist *slist, struct str_node *sn);
 int strlist__load(struct strlist *slist, const char *filename);
 int strlist__add(struct strlist *slist, const char *str);
+struct str_node *strlist__add_node(struct strlist *slist, const char *str);
 
 struct str_node *strlist__entry(const struct strlist *slist, unsigned int idx);
 struct str_node *strlist__find(struct strlist *slist, const char *entry);
