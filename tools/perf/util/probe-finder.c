@@ -1368,9 +1368,12 @@ static int collect_variables_cb(Dwarf_Die *die_mem, void *data)
 	tag = dwarf_tag(die_mem);
 	if (tag == DW_TAG_formal_parameter ||
 	    tag == DW_TAG_variable) {
+		struct probe_trace_arg ta;
+
+		memset(&ta, 0, sizeof(struct probe_trace_arg));
 		ret = convert_variable_location(die_mem, af->pf.addr,
 						af->pf.fb_ops, &af->pf.sp_die,
-						af->pf.machine, NULL);
+						af->pf.machine, &ta);
 		if (ret == 0 || ret == -ERANGE) {
 			int ret2;
 			bool externs = !af->child;
@@ -1400,8 +1403,23 @@ static int collect_variables_cb(Dwarf_Die *die_mem, void *data)
 
 			pr_debug("Add new var: %s\n", buf.buf);
 			if (ret2 == 0) {
-				strlist__add(vl->vars,
-					strbuf_detach(&buf, NULL));
+				struct str_node *sn;
+
+				/* Will get confused with shadowed variables */
+				sn = strlist__add_node(vl->vars,
+						       strbuf_detach(&buf, NULL));
+				if (sn) {
+					struct variable_node *vn =
+						container_of(sn, struct variable_node, snode);
+					if (dwarf_diename(die_mem))
+						strlcpy(vn->name, dwarf_diename(die_mem), sizeof(vn->name));
+					else
+						vn->name[0] = 0;
+					if (ta.value)
+						strlcpy(vn->value, ta.value, sizeof(vn->value));
+					else
+						vn->value[0] = 0;
+				}
 			}
 			strbuf_release(&buf);
 		}
@@ -1420,12 +1438,15 @@ error:
 /* Add a found vars into available variables list */
 static int add_available_vars(Dwarf_Die *sc_die, struct probe_finder *pf)
 {
+	static struct strlist_config sconfig = STRLIST_CONFIG_DEFAULT;
 	struct available_var_finder *af =
 			container_of(pf, struct available_var_finder, pf);
 	struct perf_probe_point *pp = &pf->pev->point;
 	struct variable_list *vl;
 	Dwarf_Die die_mem;
 	int ret;
+
+	sconfig.node_size = sizeof(struct variable_node);
 
 	/* Check number of tevs */
 	if (af->nvls == af->max_vls) {
@@ -1444,7 +1465,7 @@ static int add_available_vars(Dwarf_Die *sc_die, struct probe_finder *pf)
 		 vl->point.offset);
 
 	/* Find local variables */
-	vl->vars = strlist__new(NULL, NULL);
+	vl->vars = strlist__new(NULL, &sconfig);
 	if (vl->vars == NULL)
 		return -ENOMEM;
 	af->child = true;
