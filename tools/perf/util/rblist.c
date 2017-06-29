@@ -11,11 +11,13 @@
 
 #include "rblist.h"
 
-int rblist__add_node(struct rblist *rblist, const void *new_entry)
+int rblist__add_node_ptr(struct rblist *rblist, const void *new_entry,
+		       struct rb_node **nodep)
 {
 	struct rb_node **p = &rblist->entries.rb_node;
 	struct rb_node *parent = NULL, *new_node;
 
+	*nodep = NULL;
 	while (*p != NULL) {
 		int rc;
 
@@ -26,19 +28,29 @@ int rblist__add_node(struct rblist *rblist, const void *new_entry)
 			p = &(*p)->rb_left;
 		else if (rc < 0)
 			p = &(*p)->rb_right;
-		else
+		else {
+			*nodep = parent;
 			return -EEXIST;
+		}
 	}
 
 	new_node = rblist->node_new(rblist, new_entry);
 	if (new_node == NULL)
 		return -ENOMEM;
+	*nodep = new_node;
 
 	rb_link_node(new_node, parent, p);
 	rb_insert_color(new_node, &rblist->entries);
 	++rblist->nr_entries;
 
 	return 0;
+}
+
+int rblist__add_node(struct rblist *rblist, const void *new_entry)
+{
+	struct rb_node *nd;
+
+	return rblist__add_node_ptr(rblist, new_entry, &nd);
 }
 
 void rblist__remove_node(struct rblist *rblist, struct rb_node *rb_node)
