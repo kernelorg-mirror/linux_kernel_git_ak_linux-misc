@@ -31,6 +31,8 @@ struct rblist {
 void rblist__init(struct rblist *rblist);
 void rblist__delete(struct rblist *rblist);
 int rblist__add_node(struct rblist *rblist, const void *new_entry);
+int rblist__add_node_ptr(struct rblist *rblist, const void *new_entry,
+			 struct rb_node **nodep);
 void rblist__remove_node(struct rblist *rblist, struct rb_node *rb_node);
 struct rb_node *rblist__find(struct rblist *rblist, const void *entry);
 struct rb_node *rblist__findnew(struct rblist *rblist, const void *entry);
