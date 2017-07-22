@@ -715,6 +715,8 @@ try_again:
 	 * group leaders.
 	 */
 	read_counters();
+	if (!target__has_cpu(&target))
+		evsel_list->cpus = cpu_map__dummy_new();
 	perf_evlist__close(evsel_list);
 
 	return WEXITSTATUS(status);
