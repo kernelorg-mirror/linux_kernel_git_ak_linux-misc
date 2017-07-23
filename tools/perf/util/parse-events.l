@@ -182,9 +182,13 @@ modifier_bp	[rwx]{1,3}
 			REWIND(0);
 		}
 
+({bpf_object}|{bpf_source})/[^a-z] {
+			BEGIN(INITIAL);
+			REWIND(1);
+			return PE_EVENT_NAME;
+		}
+
 {event_pmu}	|
-{bpf_object}	|
-{bpf_source}	|
 {event}		{
 			BEGIN(INITIAL);
 			REWIND(1);
@@ -307,8 +311,8 @@ r{num_raw_hex}		{ return raw(yyscanner); }
 {num_hex}		{ return value(yyscanner, 16); }
 
 {modifier_event}	{ return str(yyscanner, PE_MODIFIER_EVENT); }
-{bpf_object}		{ return str(yyscanner, PE_BPF_OBJECT); }
-{bpf_source}		{ return str(yyscanner, PE_BPF_SOURCE); }
+{bpf_object}/[^a-z]	{ return str(yyscanner, PE_BPF_OBJECT); }
+{bpf_source}/[^a-z]	{ return str(yyscanner, PE_BPF_SOURCE); }
 {name}			{ return pmu_str_check(yyscanner); }
 "/"			{ BEGIN(config); return '/'; }
 -			{ return '-'; }
