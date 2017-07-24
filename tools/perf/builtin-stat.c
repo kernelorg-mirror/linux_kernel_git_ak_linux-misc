@@ -564,7 +564,7 @@ static int __run_perf_stat(int argc, const char **argv)
 	int interval = stat_config.interval;
 	char msg[BUFSIZ];
 	unsigned long long t0, t1;
-	struct perf_evsel *counter;
+	struct perf_evsel *counter, *c2, *leader;
 	struct timespec ts;
 	size_t l;
 	int status = 0;
@@ -595,6 +595,32 @@ static int __run_perf_stat(int argc, const char **argv)
 	evlist__for_each_entry(evsel_list, counter) {
 try_again:
 		if (create_perf_stat_counter(counter) < 0) {
+			/* Weak group failed. Reset the group. */
+			if (errno == EINVAL &&
+			    counter->leader != counter &&
+			    counter->weak_group) {
+				bool is_open = true;
+
+				pr_debug("Weak group for %s/%d failed\n",
+						counter->leader->name, counter->nr_members);
+				leader = counter->leader;
+				evlist__for_each_entry(evsel_list, c2) {
+					if (c2 == counter)
+						is_open = false;
+					if (c2->leader == leader) {
+						if (is_open)
+							perf_evsel__close(c2,
+								c2->cpus ? c2->cpus->nr :
+								cpu_map__nr(evsel_list->cpus),
+								thread_map__nr(evsel_list->threads));
+						c2->leader = c2;
+						c2->nr_members = 0;
+					}
+				}
+				counter = leader;
+				goto try_again;
+			}
+
 			/*
 			 * PPC returns ENXIO for HW counters until 2.6.37
 			 * (behavior changed with commit b0a873e).
