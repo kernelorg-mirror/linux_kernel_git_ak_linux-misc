@@ -343,9 +343,12 @@ void metricgroup__print(bool metrics, bool metricgroups, char *filter,
 					continue;
 				if (raw)
 					s = (char *)pe->metric_name;
-				else
-					asprintf(&s, "%s\n\t[%s]",
-						 pe->metric_name, pe->desc);
+				else {
+					if (asprintf(&s, "%s\n\t[%s]",
+						     pe->metric_name, pe->desc) < 0)
+						return;
+				}
+
 				if (!s)
 					continue;
 
