@@ -599,7 +599,7 @@ static struct perf_evsel *reset_weak_group(struct perf_evsel *counter)
 
 	leader = counter->leader;
 	pr_debug("Weak group for %s/%d failed\n",
-			leader->name, counter->nr_members);
+			leader->name, leader->nr_members);
 
 	/*
 	 * for_each_group_member doesn't work here because it doesn't
