@@ -118,7 +118,8 @@ OPTIONS
         comm, tid, pid, time, cpu, event, trace, ip, sym, dso, addr, symoff,
         srcline, period, iregs, uregs, brstack, brstacksym, flags, bpf-output, brstackinsn,
         brstackoff, callindent, insn, insnlen, synth, phys_addr, metric, misc, srccode, ipc,
-	iregvals.
+	iregvals, insnvar.
+
         Field list can be prepended with the type, trace, sw or hw,
         to indicate to which event type the field list applies.
         e.g., -F sw:comm,tid,time,ip,sym  and -F trace:time,cpu,trace
@@ -257,6 +258,10 @@ OPTIONS
 	With iregvals perf script uses dwarf debug information to map sampled register values
 	(with perf record -I ...) to their symbolic names in the program. This requires availability
 	of debug information in the binaries.
+
+	With insnvar try to decode and symbolize operands of sampled or traced instructions
+	using debug information.  When PTWRITEs are synthesized with Intel PT the values of the
+	PTWRITEs are automatically symbolized.
 
 -k::
 --vmlinux=<file>::
