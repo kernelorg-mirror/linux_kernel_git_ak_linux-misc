@@ -132,7 +132,7 @@ OPTIONS
         Comma separated list of fields to print. Options are:
         comm, tid, pid, time, cpu, event, trace, ip, sym, dso, addr, symoff,
         srcline, period, iregs, uregs, brstack, brstacksym, flags, bpf-output,
-        brstackinsn, brstackinsnlen, brstackoff, callindent, insn, insnlen, iregvals, synth,
+        brstackinsn, brstackinsnlen, brstackoff, callindent, insn, insnlen, iregvals, insnvar, synth,
         phys_addr, metric, misc, srccode, ipc, data_page_size, code_page_size, ins_lat,
         machine_pid, vcpu.
         Field list can be prepended with the type, trace, sw or hw,
@@ -285,6 +285,10 @@ OPTIONS
 	With iregvals perf script uses dwarf debug information to map sampled register values
 	(with perf record -I ...) to their symbolic names in the program. This requires availability
 	of debug information in the binaries.
+
+	With insnvar try to decode and symbolize operands of sampled or traced instructions
+	using debug information.  When PTWRITEs are synthesized with Intel PT the values of the
+	PTWRITEs are automatically symbolized.
 
 -k::
 --vmlinux=<file>::

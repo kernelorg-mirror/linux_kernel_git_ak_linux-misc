@@ -46,6 +46,7 @@
 #include "util/dump-insn.h"
 #include "util/probe-finder.h"
 #include "util/dwarf-sample.h"
+#include "util/operand.h"
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -130,6 +131,7 @@ enum perf_output_field {
 	PERF_OUTPUT_MACHINE_PID     = 1ULL << 37,
 	PERF_OUTPUT_VCPU            = 1ULL << 38,
 	PERF_OUTPUT_IREG_VALS	    = 1ULL << 39,
+	PERF_OUTPUT_INSN_VAR	    = 1ULL << 40,
 };
 
 struct perf_script {
@@ -193,6 +195,7 @@ struct output_option {
 	{.str = "misc", .field = PERF_OUTPUT_MISC},
 	{.str = "srccode", .field = PERF_OUTPUT_SRCCODE},
 	{.str = "iregvals", .field = PERF_OUTPUT_IREG_VALS},
+	{.str = "insnvar", .field = PERF_OUTPUT_INSN_VAR},
 	{.str = "ipc", .field = PERF_OUTPUT_IPC},
 	{.str = "tod", .field = PERF_OUTPUT_TOD},
 	{.str = "data_page_size", .field = PERF_OUTPUT_DATA_PAGE_SIZE},
@@ -543,7 +546,7 @@ static int evsel__check_attr(struct evsel *evsel, struct perf_session *session)
 	    evsel__check_stype(evsel, PERF_SAMPLE_WEIGHT_STRUCT, "WEIGHT_STRUCT", PERF_OUTPUT_INS_LAT))
 		return -EINVAL;
 
-	if (PRINT_FIELD(IREG_VALS)) {
+	if (PRINT_FIELD(IREG_VALS) || PRINT_FIELD(INSN_VAR)) {
 		if (init_probe_symbol_maps(false) >= 0)
 			probe_conf.max_probes = MAX_PROBES;
 	}
@@ -1408,6 +1411,162 @@ out:
 	return printed;
 }
 
+#ifdef HAVE_DWARF_SUPPORT
+
+struct operand_print_ctx {
+	FILE *fp;
+	struct variable_list *vls;
+	int dret;
+	struct thread *thread;
+	u8 cpumode;
+};
+
+static void print_op_reg(void *ctx, int reg, bool has_value, u64 val,
+			 const char *arch)
+{
+	struct operand_print_ctx *oc = ctx;
+	char *name, *type;
+
+	if (!dwarf_varlist_find_reg(oc->vls, oc->dret, reg, &name, &type, arch)) {
+		fprintf(oc->fp, " { %s", name);
+		if (has_value)
+			fprintf(oc->fp, " = %#" PRIx64, val);
+		fprintf(oc->fp, ", %.*s }", (int)strcspn(type, "\t"), type);
+	} else if (verbose)
+		fprintf(oc->fp, " {?NO-MATCH-REG}");
+}
+
+static void print_op_symbol(void *ctx, u64 addr, bool has_val, u64 val)
+{
+	struct operand_print_ctx *oc = ctx;
+	struct addr_location al;
+
+	memset(&al, 0, sizeof(struct addr_location));
+	thread__find_map(oc->thread, oc->cpumode, addr, &al);
+	if (!al.map)
+		thread__find_map(oc->thread, oc->cpumode, addr, &al);
+	if (al.map)
+		al.sym = map__find_symbol(al.map, al.addr);
+
+	if (al.map && al.sym) {
+		fprintf(oc->fp, " { ");
+		symbol__fprintf_symname_offs(al.sym, &al, oc->fp);
+		if (has_val)
+			fprintf(oc->fp, " = %lx", val);
+		fprintf(oc->fp, ", symbol }");
+	} else
+		fprintf(oc->fp, " {?BAD-SYM}");
+}
+
+static void print_op_unknown(void *ctx)
+{
+	struct operand_print_ctx *oc = ctx;
+
+	if (verbose)
+		fprintf(oc->fp, " {?}");
+}
+
+static void print_op_indirect_reg(void *ctx,
+				  int reg,
+				  s32 off,
+				  bool has_val,
+				  u64 val,
+				  const char *arch)
+{
+	struct operand_print_ctx *oc = ctx;
+	char *name, *type;
+
+	/* Should resolve field names too, for now just print offsets */
+	if (!dwarf_varlist_find_reg(oc->vls, oc->dret, reg, &name, &type, arch)) {
+		/* Likely frame pointer. Should resolve separately. */
+		if (!strncmp(type, "unknown_type", 12))
+			return;
+
+		fprintf(oc->fp, " { %d(%s)", off, name);
+		if (has_val)
+			fprintf(oc->fp, " = %" PRIx64, val);
+		fprintf(oc->fp, ", %.*s }", (int)strcspn(type, "\t"), type);
+	} else if (verbose)
+		fprintf(oc->fp, " {?NO-MATCH-IND-REG}");
+
+}
+
+static struct operand_print_ops operand_ops = {
+	.print_reg = print_op_reg,
+	.print_symbol = print_op_symbol,
+	.print_unknown = print_op_unknown,
+	.print_indirect_reg = print_op_indirect_reg,
+};
+
+#define MAX_INSN 16
+
+/* Resolve operands of instructions to their dwarf name */
+static void perf_sample__fprint_insn_var(struct perf_sample *sample,
+			   struct thread *thread,
+			   struct perf_event_attr *attr,
+			   struct machine *machine,
+			   FILE *fp,
+			   const char *arch)
+{
+	struct operand_print_ctx oc = {
+		.fp = fp,
+		.thread = thread,
+	};
+	u8 ibuf[MAX_INSN*2];
+	bool is64bit;
+	u64 val = 0;
+
+	if (grab_bb(ibuf, sample->ip, sample->ip + MAX_INSN,
+		    machine,
+		    thread,
+		    &is64bit,
+		    &oc.cpumode,
+		    false) < 0) {
+		if (verbose)
+			fprintf(fp, " {?NO-TEXT}");
+		return;
+	}
+
+	oc.cpumode = sample->cpumode;
+
+	oc.dret = dwarf_resolve_sample(sample, thread, &oc.vls);
+	if (oc.dret < 0) {
+		if (verbose)
+			fprintf(fp, " {?BAD-DWARF}");
+		return;
+	}
+
+	if (attr->config == PERF_SYNTH_INTEL_PTWRITE) {
+		struct perf_synth_intel_ptwrite *data =
+			perf_sample__synth_ptr(sample);
+		if (!perf_sample__bad_synth_size(sample, *data))
+			val = le64_to_cpu(data->payload);
+	}
+
+	arch_resolve_operand((char *)ibuf, MAX_INSN, is64bit,
+			     sample->ip,
+			     val,
+			     &operand_ops,
+			     &oc,
+			     arch);
+}
+
+#else
+
+static void perf_sample__fprint_insn_var(
+		struct perf_sample *sample __maybe_unused,
+		struct thread *thread __maybe_unused,
+		struct perf_event_attr *attr __maybe_unused,
+		struct machine *machine __maybe_unused,
+		FILE *fp __maybe_unused,
+		const char *arch __maybe_unused)
+{
+	if (verbose)
+		fprintf(fp, " {?}");
+}
+
+#endif
+
 static int perf_sample__fprintf_addr(struct perf_sample *sample,
 				     struct thread *thread,
 				     struct perf_event_attr *attr, FILE *fp)
@@ -1534,7 +1693,8 @@ void script_fetch_insn(struct perf_sample *sample, struct thread *thread,
 static int perf_sample__fprintf_insn(struct perf_sample *sample,
 				     struct perf_event_attr *attr,
 				     struct thread *thread,
-				     struct machine *machine, FILE *fp)
+				     struct machine *machine, FILE *fp,
+				     const char *arch)
 {
 	int printed = 0;
 
@@ -1549,6 +1709,8 @@ static int perf_sample__fprintf_insn(struct perf_sample *sample,
 		for (i = 0; i < sample->insn_len; i++)
 			printed += fprintf(fp, " %02x", (unsigned char)sample->insn[i]);
 	}
+	if (PRINT_FIELD(INSN_VAR))
+		perf_sample__fprint_insn_var(sample, thread, attr, machine, fp, arch);
 	if (PRINT_FIELD(BRSTACKINSN) || PRINT_FIELD(BRSTACKINSNLEN))
 		printed += perf_sample__fprintf_brstackinsn(sample, thread, attr, machine, fp);
 
@@ -1574,7 +1736,8 @@ static int perf_sample__fprintf_bts(struct perf_sample *sample,
 				    struct thread *thread,
 				    struct addr_location *al,
 				    struct addr_location *addr_al,
-				    struct machine *machine, FILE *fp)
+				    struct machine *machine, FILE *fp,
+				    const char *arch)
 {
 	struct perf_event_attr *attr = &evsel->core.attr;
 	unsigned int type = output_type(attr->type);
@@ -1620,7 +1783,7 @@ static int perf_sample__fprintf_bts(struct perf_sample *sample,
 	if (print_srcline_last)
 		printed += map__fprintf_srcline(al->map, al->addr, "\n  ", fp);
 
-	printed += perf_sample__fprintf_insn(sample, attr, thread, machine, fp);
+	printed += perf_sample__fprintf_insn(sample, attr, thread, machine, fp, arch);
 	printed += fprintf(fp, "\n");
 	if (PRINT_FIELD(SRCCODE)) {
 		int ret = map__fprintf_srccode(al->map, al->addr, stdout,
@@ -2207,7 +2370,7 @@ static void process_event(struct perf_script *script,
 		perf_sample__fprintf_flags(sample->flags, fp);
 
 	if (is_bts_event(attr)) {
-		perf_sample__fprintf_bts(sample, evsel, thread, al, addr_al, machine, fp);
+		perf_sample__fprintf_bts(sample, evsel, thread, al, addr_al, machine, fp, arch);
 		return;
 	}
 
@@ -2265,7 +2428,7 @@ static void process_event(struct perf_script *script,
 
 	if (evsel__is_bpf_output(evsel) && PRINT_FIELD(BPF_OUTPUT))
 		perf_sample__fprintf_bpf_output(sample, fp);
-	perf_sample__fprintf_insn(sample, attr, thread, machine, fp);
+	perf_sample__fprintf_insn(sample, attr, thread, machine, fp, arch);
 
 	if (PRINT_FIELD(PHYS_ADDR))
 		fprintf(fp, "%16" PRIx64, sample->phys_addr);
@@ -3906,7 +4069,7 @@ int cmd_script(int argc, const char **argv)
 		     "Fields: comm,tid,pid,time,cpu,event,trace,ip,sym,dso,"
 		     "addr,symoff,srcline,period,iregs,uregs,brstack,"
 		     "brstacksym,flags,data_src,weight,bpf-output,brstackinsn,"
-		     "brstackinsnlen,brstackoff,callindent,insn,insnlen,iregvals,synth,"
+		     "brstackinsnlen,brstackoff,callindent,insn,insnlen,iregvals,insnvar,synth,"
 		     "phys_addr,metric,misc,srccode,ipc,tod,data_page_size,"
 		     "code_page_size,ins_lat",
 		     parse_output_fields),
