@@ -44,6 +44,7 @@
 #include "util/dump-insn.h"
 #include "util/probe-finder.h"
 #include "util/dwarf-sample.h"
+#include "util/operand.h"
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -117,6 +118,7 @@ enum perf_output_field {
 	PERF_OUTPUT_SRCCODE	    = 1U << 30,
 	PERF_OUTPUT_IPC             = 1U << 31,
 	PERF_OUTPUT_IREG_VALS	    = 1ULL << 32,
+	PERF_OUTPUT_INSN_VAR	    = 1ULL << 33,
 };
 
 struct output_option {
@@ -156,6 +158,7 @@ struct output_option {
 	{.str = "srccode", .field = PERF_OUTPUT_SRCCODE},
 	{.str = "ipc", .field = PERF_OUTPUT_IPC},
 	{.str = "iregvals", .field = PERF_OUTPUT_IREG_VALS},
+	{.str = "insnvar", .field = PERF_OUTPUT_INSN_VAR},
 };
 
 enum {
@@ -491,7 +494,7 @@ static int perf_evsel__check_attr(struct evsel *evsel,
 					PERF_OUTPUT_PHYS_ADDR))
 		return -EINVAL;
 
-	if (PRINT_FIELD(IREG_VALS)) {
+	if (PRINT_FIELD(IREG_VALS) || PRINT_FIELD(INSN_VAR)) {
 		if (init_probe_symbol_maps(false) >= 0)
 			probe_conf.max_probes = MAX_PROBES;
 	}
@@ -1253,6 +1256,155 @@ out:
 	return printed;
 }
 
+#ifdef HAVE_DWARF_SUPPORT
+
+struct operand_print_ctx {
+	FILE *fp;
+	struct variable_list *vls;
+	int dret;
+	struct thread *thread;
+	u8 cpumode;
+};
+
+static void print_op_reg(void *ctx, int reg, bool has_value, u64 val)
+{
+	struct operand_print_ctx *oc = ctx;
+	char *name, *type;
+
+	if (!dwarf_varlist_find_reg(oc->vls, oc->dret, reg, &name, &type)) {
+		fprintf(oc->fp, " { %s", name);
+		if (has_value)
+			fprintf(oc->fp, " = %#" PRIx64, val);
+		fprintf(oc->fp, ", %.*s }", (int)strcspn(type, "\t"), type);
+	} else if (verbose)
+		fprintf(oc->fp, " {?NO-MATCH-REG}");
+}
+
+static void print_op_symbol(void *ctx, u64 addr, bool has_val, u64 val)
+{
+	struct operand_print_ctx *oc = ctx;
+	struct addr_location al;
+
+	memset(&al, 0, sizeof(struct addr_location));
+	thread__find_map(oc->thread, oc->cpumode, addr, &al);
+	if (al.map)
+		al.sym = map__find_symbol(al.map, al.addr);
+
+	if (al.map && al.sym) {
+		fprintf(oc->fp, " { ");
+		symbol__fprintf_symname_offs(al.sym, &al, oc->fp);
+		if (has_val)
+			fprintf(oc->fp, " = %lx", val);
+		fprintf(oc->fp, ", symbol }");
+	} else
+		fprintf(oc->fp, " {?BAD-SYM}");
+}
+
+static void print_op_unknown(void *ctx)
+{
+	struct operand_print_ctx *oc = ctx;
+
+	if (verbose)
+		fprintf(oc->fp, " {?}");
+}
+
+static void print_op_indirect_reg(void *ctx,
+				  int reg,
+				  s32 off,
+				  bool has_val,
+				  u64 val)
+{
+	struct operand_print_ctx *oc = ctx;
+	char *name, *type;
+
+	/* Should resolve field names too, for now just print offsets */
+	if (!dwarf_varlist_find_reg(oc->vls, oc->dret, reg, &name, &type)) {
+		/* Likely frame pointer. Should resolve separately. */
+		if (!strncmp(type, "unknown_type", 12))
+			return;
+
+		fprintf(oc->fp, " { %d(%s)", off, name);
+		if (has_val)
+			fprintf(oc->fp, " = %" PRIx64, val);
+		fprintf(oc->fp, ", %.*s }", (int)strcspn(type, "\t"), type);
+	} else if (verbose)
+		fprintf(oc->fp, " {?NO-MATCH-IND-REG}");
+
+}
+
+static struct operand_print_ops operand_ops = {
+	.print_reg = print_op_reg,
+	.print_symbol = print_op_symbol,
+	.print_unknown = print_op_unknown,
+	.print_indirect_reg = print_op_indirect_reg,
+};
+
+#define MAX_INSN 16
+
+/* Resolve operands of instructions to their dwarf name */
+static void perf_sample__fprint_insn_var(struct perf_sample *sample,
+			   struct thread *thread,
+			   struct perf_event_attr *attr,
+			   struct machine *machine,
+			   FILE *fp)
+{
+	struct operand_print_ctx oc = {
+		.fp = fp,
+		.thread = thread,
+	};
+	u8 ibuf[MAX_INSN*2];
+	bool is64bit;
+	u64 val = 0;
+
+	if (grab_bb(ibuf, sample->ip, sample->ip + MAX_INSN,
+		    machine,
+		    thread,
+		    &is64bit,
+		    &oc.cpumode,
+		    false) < 0) {
+		if (verbose)
+			fprintf(fp, " {?NO-TEXT}");
+		return;
+	}
+
+	oc.cpumode = sample->cpumode;
+
+	oc.dret = dwarf_resolve_sample(sample, thread, &oc.vls);
+	if (oc.dret < 0) {
+		if (verbose)
+			fprintf(fp, " {?BAD-DWARF}");
+		return;
+	}
+
+	if (attr->config == PERF_SYNTH_INTEL_PTWRITE) {
+		struct perf_synth_intel_ptwrite *data =
+			perf_sample__synth_ptr(sample);
+		if (!perf_sample__bad_synth_size(sample, *data))
+			val = le64_to_cpu(data->payload);
+	}
+
+	arch_resolve_operand((char *)ibuf, MAX_INSN, is64bit,
+			     sample->ip,
+			     val,
+			     &operand_ops,
+			     &oc);
+}
+
+#else
+
+static void perf_sample__fprint_insn_var(
+		struct perf_sample *sample __maybe_unused,
+		struct thread *thread __maybe_unused,
+		struct perf_event_attr *attr __maybe_unused,
+		struct machine *machine __maybe_unused,
+		FILE *fp __maybe_unused)
+{
+	if (verbose)
+		fprintf(fp, " {?}");
+}
+
+#endif
+
 static int perf_sample__fprintf_addr(struct perf_sample *sample,
 				     struct thread *thread,
 				     struct perf_event_attr *attr, FILE *fp)
@@ -1385,6 +1537,8 @@ static int perf_sample__fprintf_insn(struct perf_sample *sample,
 		for (i = 0; i < sample->insn_len; i++)
 			printed += fprintf(fp, " %02x", (unsigned char)sample->insn[i]);
 	}
+	if (PRINT_FIELD(INSN_VAR))
+		perf_sample__fprint_insn_var(sample, thread, attr, machine, fp);
 	if (PRINT_FIELD(BRSTACKINSN))
 		printed += perf_sample__fprintf_brstackinsn(sample, thread, attr, machine, fp);
 
@@ -3630,7 +3784,7 @@ int cmd_script(int argc, const char **argv)
 		     "addr,symoff,srcline,period,iregs,uregs,brstack,"
 		     "brstacksym,flags,bpf-output,brstackinsn,brstackoff,"
 		     "callindent,insn,insnlen,synth,phys_addr,metric,misc,ipc,"
-		     "iregvals",
+		     "iregvals,insnvar",
 		     parse_output_fields),
 	OPT_BOOLEAN('a', "all-cpus", &system_wide,
 		    "system-wide collection from all CPUs"),
