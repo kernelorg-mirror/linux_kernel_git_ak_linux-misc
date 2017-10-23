@@ -261,6 +261,14 @@ struct {
 	struct perf_header_string map;
 }[number_of_cache_levels];
 
+	HEADER_SCALE = 21,
+
+Save scaling factor of events. One entry for each event in the same
+order as other events in the header.
+
+	u32 	nr;
+	double	scale[nr];
+
 	other bits are reserved and should ignored for now
 	HEADER_FEAT_BITS	= 256,
 

@@ -2147,6 +2147,65 @@ out_free_caches:
 	return -1;
 }
 
+static int write_scale(struct feat_fd *ff, struct perf_evlist *evlist)
+{
+	u32 num;
+	struct perf_evsel *evsel;
+
+	num = 0;
+	evlist__for_each_entry (evlist, evsel)
+		num++;
+
+	if (do_write(ff, &num, sizeof num) < 0)
+		return -1;
+	evlist__for_each_entry (evlist, evsel) {
+		if (do_write(ff, &evsel->scale, sizeof(double)) < 0)
+			return -1;
+	}
+	return 0;
+}
+
+static void print_scale(struct feat_fd *ff, FILE *fp)
+{
+	struct perf_session *session;
+	struct perf_evsel *evsel;
+	int num = 0;
+
+	session = container_of(ff->ph, struct perf_session, header);
+
+	num = 0;
+	evlist__for_each_entry(session->evlist, evsel) {
+		fprintf(fp, "# event %d %s scale %f\n",
+			num++,
+			evsel->name,
+			evsel->scale);
+	}
+}
+
+static int process_scale(struct feat_fd *ff, void *data __maybe_unused)
+{
+	u32 cnt;
+	struct perf_evsel *evsel;
+	struct perf_session *session;
+
+	session = container_of(ff->ph, struct perf_session, header);
+	if (do_read_u32(ff, &cnt))
+		return -1;
+	evlist__for_each_entry(session->evlist, evsel) {
+		if (__do_read(ff, &evsel->scale, sizeof(double)))
+			return -1;
+		if (ff->ph->needs_swap)
+			mem_bswap_64(&evsel->scale, sizeof(double));
+		if (--cnt <= 0)
+			break;
+	}
+	if (cnt) {
+		pr_debug("missing scale descriptors\n");
+		return 1;
+	}
+	return 0;
+}
+
 struct feature_ops {
 	int (*write)(struct feat_fd *ff, struct perf_evlist *evlist);
 	void (*print)(struct feat_fd *ff, FILE *fp);
@@ -2204,6 +2263,7 @@ static const struct feature_ops feat_ops[HEADER_LAST_FEATURE] = {
 	FEAT_OPN(AUXTRACE,	auxtrace,	false),
 	FEAT_OPN(STAT,		stat,		false),
 	FEAT_OPN(CACHE,		cache,		true),
+	FEAT_OPN(SCALE,		scale,		true),
 };
 
 struct header_print_data {
