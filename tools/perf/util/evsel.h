@@ -108,6 +108,8 @@ struct perf_evsel {
 	struct cpu_map		*cpus;
 	struct cpu_map		*own_cpus;
 	struct thread_map	*threads;
+	u64			val;
+	int			gnum;
 	unsigned int		sample_size;
 	int			id_pos;
 	int			is_pos;

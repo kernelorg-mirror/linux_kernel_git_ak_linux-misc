@@ -21,6 +21,7 @@
 #include "util/cpumap.h"
 #include "util/thread_map.h"
 #include "util/stat.h"
+#include "util/color.h"
 #include "util/string2.h"
 #include "util/thread-stack.h"
 #include "util/time-utils.h"
@@ -89,6 +90,7 @@ enum perf_output_field {
 	PERF_OUTPUT_SYNTH           = 1U << 25,
 	PERF_OUTPUT_PHYS_ADDR       = 1U << 26,
 	PERF_OUTPUT_UREGS	    = 1U << 27,
+	PERF_OUTPUT_METRIC	    = 1U << 28,
 };
 
 struct output_option {
@@ -123,6 +125,7 @@ struct output_option {
 	{.str = "brstackoff", .field = PERF_OUTPUT_BRSTACKOFF},
 	{.str = "synth", .field = PERF_OUTPUT_SYNTH},
 	{.str = "phys_addr", .field = PERF_OUTPUT_PHYS_ADDR},
+	{.str = "metric", .field = PERF_OUTPUT_METRIC},
 };
 
 enum {
@@ -1398,6 +1401,82 @@ static size_t data_src__printf(u64 data_src)
 	return printf("%-*s", maxlen, out);
 }
 
+struct metric_ctx {
+	struct perf_sample	*sample;
+	struct thread		*thread;
+	struct perf_evsel	*evsel;
+};
+
+static void script_print_metric(void *ctx,
+				const char *color,
+				const char *fmt,
+				const char *unit, double val)
+{
+	struct metric_ctx *mctx = ctx;
+
+	if (!fmt)
+		return;
+	print_sample_start(mctx->sample, mctx->thread, mctx->evsel);
+	fputs("\tmetric: ", stdout);
+	if (color)
+		color_fprintf(stdout, color, fmt, val);
+	else
+		printf(fmt, val);
+	printf(" %s\n", unit);
+}
+
+static void script_new_line(void *ctx)
+{
+	struct metric_ctx *mctx = ctx;
+
+	print_sample_start(mctx->sample, mctx->thread, mctx->evsel);
+	fputs("\tmetric: ", stdout);
+}
+
+static void print_metric(struct perf_script *script,
+			 struct thread *thread,
+			 struct perf_evsel *evsel,
+			 struct perf_sample *sample)
+{
+	struct perf_stat_output_ctx ctx = {
+		.print_metric = script_print_metric,
+		.new_line = script_new_line,
+		.ctx = &(struct metric_ctx) {
+				.sample = sample,
+				.thread = thread,
+				.evsel = evsel
+			 },
+		.force_header = false,
+	};
+	struct perf_evsel *ev2;
+	static bool init;
+	u64 val;
+
+	if (!init) {
+		perf_stat__init_shadow_stats();
+		init = true;
+	}
+	if (!evsel->priv)
+		perf_evlist__alloc_stats(script->session->evlist, false);
+	if (evsel->leader->gnum++ == 0)
+		perf_stat__reset_shadow_stats();
+	val = sample->period * evsel->scale;
+	perf_stat__update_shadow_stats(evsel,
+				       &val,
+				       sample->cpu);
+	evsel->val = sample->period;
+	if (evsel->leader->gnum == evsel->leader->nr_members) {
+		for_each_group_member (ev2, evsel->leader) {
+			perf_stat__print_shadow_stats(ev2,
+						      ev2->val * ev2->scale,
+						      sample->cpu,
+						      &ctx,
+						      NULL);
+		}
+		evsel->leader->gnum = 0;
+	}
+}
+
 static void process_event(struct perf_script *script,
 			  struct perf_sample *sample, struct perf_evsel *evsel,
 			  struct addr_location *al,
@@ -1481,6 +1560,9 @@ static void process_event(struct perf_script *script,
 	if (PRINT_FIELD(PHYS_ADDR))
 		printf("%16" PRIx64, sample->phys_addr);
 	printf("\n");
+
+	if (PRINT_FIELD(METRIC))
+		print_metric(script, thread, evsel, sample);
 }
 
 static struct scripting_ops	*scripting_ops;
