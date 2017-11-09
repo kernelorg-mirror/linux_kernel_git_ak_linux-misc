@@ -490,7 +490,7 @@ static struct debuginfo *open_debuginfo(const char *module, struct nsinfo *nsi,
 static struct debuginfo *debuginfo_cache;
 static char *debuginfo_cache_path;
 
-static struct debuginfo *debuginfo_cache__open(const char *module, bool silent)
+struct debuginfo *debuginfo_cache__open(const char *module, bool silent)
 {
 	const char *path = module;
 

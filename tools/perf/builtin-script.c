@@ -42,6 +42,8 @@
 #include "asm/bug.h"
 #include "util/mem-events.h"
 #include "util/dump-insn.h"
+#include "util/probe-finder.h"
+#include "util/dwarf-sample.h"
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -114,6 +116,7 @@ enum perf_output_field {
 	PERF_OUTPUT_MISC            = 1U << 29,
 	PERF_OUTPUT_SRCCODE	    = 1U << 30,
 	PERF_OUTPUT_IPC             = 1U << 31,
+	PERF_OUTPUT_IREG_VALS	    = 1ULL << 32,
 };
 
 struct output_option {
@@ -152,6 +155,7 @@ struct output_option {
 	{.str = "misc", .field = PERF_OUTPUT_MISC},
 	{.str = "srccode", .field = PERF_OUTPUT_SRCCODE},
 	{.str = "ipc", .field = PERF_OUTPUT_IPC},
+	{.str = "iregvals", .field = PERF_OUTPUT_IREG_VALS},
 };
 
 enum {
@@ -472,7 +476,7 @@ static int perf_evsel__check_attr(struct evsel *evsel,
 					   PERF_OUTPUT_CPU, allow_user_set))
 		return -EINVAL;
 
-	if (PRINT_FIELD(IREGS) &&
+	if ((PRINT_FIELD(IREGS) || PRINT_FIELD(IREG_VALS)) &&
 		perf_evsel__check_stype(evsel, PERF_SAMPLE_REGS_INTR, "IREGS",
 					PERF_OUTPUT_IREGS))
 		return -EINVAL;
@@ -486,6 +490,11 @@ static int perf_evsel__check_attr(struct evsel *evsel,
 		perf_evsel__check_stype(evsel, PERF_SAMPLE_PHYS_ADDR, "PHYS_ADDR",
 					PERF_OUTPUT_PHYS_ADDR))
 		return -EINVAL;
+
+	if (PRINT_FIELD(IREG_VALS)) {
+		if (init_probe_symbol_maps(false) >= 0)
+			probe_conf.max_probes = MAX_PROBES;
+	}
 
 	return 0;
 }
@@ -587,9 +596,53 @@ out:
 	return 0;
 }
 
+#ifdef HAVE_DWARF_SUPPORT
+/* Resolve registers in samples to their dwarf name */
+static void print_sample__fprintf_ireg_vals(struct perf_sample *sample,
+				   struct perf_event_attr *attr,
+				   struct thread *thread,
+				   FILE *fp)
+{
+	struct regs_dump *regs = &sample->intr_regs;
+	uint64_t mask = attr->sample_regs_intr;
+	unsigned i = 0, r;
+	struct variable_list *vls;
+	int dret;
+
+	if (!regs)
+		return;
+
+	dret = dwarf_resolve_sample(sample, thread, &vls);
+	if (dret < 0)
+		return;
+
+	for_each_set_bit(r, (unsigned long *) &mask, sizeof(mask) * 8) {
+		u64 val = regs->regs[i++];
+		char *name;
+		char *type;
+
+		if (!dwarf_varlist_find_reg(vls, dret, r, &name, &type))
+			fprintf(fp, " { %s = %#" PRIx64 ", %.*s } ", name, val,
+					(int)strcspn(type, "\t"), type);
+	}
+
+	dwarf_free_varlist(vls, dret);
+}
+
+#else
+
+static void print_sample__fprintf_ireg_vals(
+		struct perf_sample *sample __maybe_unused,
+		struct perf_event_attr *attr __maybe_unused,
+		struct thread *thread __maybe_unused,
+		FILE *fp __maybe_unused)
+{
+}
+
+#endif
+
 static int perf_sample__fprintf_regs(struct regs_dump *regs, uint64_t mask,
-				     FILE *fp
-)
+				     FILE *fp)
 {
 	unsigned i = 0, r;
 	int printed = 0;
@@ -1938,6 +1991,9 @@ static void process_event(struct perf_script *script,
 
 	if (PRINT_FIELD(UREGS))
 		perf_sample__fprintf_uregs(sample, attr, fp);
+
+	if (PRINT_FIELD(IREG_VALS))
+		print_sample__fprintf_ireg_vals(sample, attr, thread, fp);
 
 	if (PRINT_FIELD(BRSTACK))
 		perf_sample__fprintf_brstack(sample, thread, attr, fp);
@@ -3573,7 +3629,8 @@ int cmd_script(int argc, const char **argv)
 		     "Fields: comm,tid,pid,time,cpu,event,trace,ip,sym,dso,"
 		     "addr,symoff,srcline,period,iregs,uregs,brstack,"
 		     "brstacksym,flags,bpf-output,brstackinsn,brstackoff,"
-		     "callindent,insn,insnlen,synth,phys_addr,metric,misc,ipc",
+		     "callindent,insn,insnlen,synth,phys_addr,metric,misc,ipc,"
+		     "iregvals",
 		     parse_output_fields),
 	OPT_BOOLEAN('a', "all-cpus", &system_wide,
 		    "system-wide collection from all CPUs"),

@@ -78,6 +78,7 @@ perf-y += hist.o
 perf-y += util.o
 perf-y += cpumap.o
 perf-y += affinity.o
+perf-y += dwarf-sample.o
 perf-y += cputopo.o
 perf-y += cgroup.o
 perf-y += target.o
@@ -145,6 +146,7 @@ endif
 perf-$(CONFIG_DWARF) += probe-finder.o
 perf-$(CONFIG_DWARF) += dwarf-aux.o
 perf-$(CONFIG_DWARF) += dwarf-regs.o
+perf-$(CONFIG_DWARF) += dwarf-sample.o
 
 perf-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
 perf-$(CONFIG_LOCAL_LIBUNWIND)    += unwind-libunwind-local.o

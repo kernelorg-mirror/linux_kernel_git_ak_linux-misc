@@ -117,7 +117,8 @@ OPTIONS
         Comma separated list of fields to print. Options are:
         comm, tid, pid, time, cpu, event, trace, ip, sym, dso, addr, symoff,
         srcline, period, iregs, uregs, brstack, brstacksym, flags, bpf-output, brstackinsn,
-        brstackoff, callindent, insn, insnlen, synth, phys_addr, metric, misc, srccode, ipc.
+        brstackoff, callindent, insn, insnlen, synth, phys_addr, metric, misc, srccode, ipc,
+	iregvals.
         Field list can be prepended with the type, trace, sw or hw,
         to indicate to which event type the field list applies.
         e.g., -F sw:comm,tid,time,ip,sym  and -F trace:time,cpu,trace
@@ -252,6 +253,10 @@ OPTIONS
 	   sched-messaging  1407 U     28690.636600:     325620 cycles ...
 	   sched-messaging  1414 K     28690.636608:      19473 cycles ...
 	  misc field ___________/
+
+	With iregvals perf script uses dwarf debug information to map sampled register values
+	(with perf record -I ...) to their symbolic names in the program. This requires availability
+	of debug information in the binaries.
 
 -k::
 --vmlinux=<file>::

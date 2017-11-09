@@ -197,4 +197,7 @@ struct map *get_target_map(const char *target, struct nsinfo *nsi, bool user);
 void arch__post_process_probe_trace_events(struct perf_probe_event *pev,
 					   int ntevs);
 
+struct debuginfo;
+struct debuginfo *debuginfo_cache__open(const char *module, bool silent);
+
 #endif /*_PROBE_EVENT_H */
