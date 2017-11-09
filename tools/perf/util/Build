@@ -42,6 +42,7 @@ libperf-y += callchain.o
 libperf-y += values.o
 libperf-y += debug.o
 libperf-y += machine.o
+libperf-y += dwarf-sample.o
 libperf-y += map.o
 libperf-y += pstack.o
 libperf-y += session.o
