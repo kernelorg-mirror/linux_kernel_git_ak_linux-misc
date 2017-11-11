@@ -1262,6 +1262,12 @@ static void intel_pt_prep_p_sample(struct intel_pt *pt,
 	 */
 	if (!sample->ip)
 		sample->flags = 0;
+
+	/*
+	 * Don't have valid instructions because decoder already ran ahead.
+	 */
+	sample->insn_len = 0;
+	memset(sample->insn, 0, INTEL_PT_INSN_BUF_SZ);
 }
 
 static int intel_pt_synth_ptwrite_sample(struct intel_pt_queue *ptq)
