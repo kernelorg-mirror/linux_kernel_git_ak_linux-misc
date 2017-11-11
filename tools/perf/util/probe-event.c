@@ -462,7 +462,7 @@ static struct debuginfo *open_debuginfo(const char *module, struct nsinfo *nsi,
 					strcpy(reason, "(unknown)");
 			} else
 				dso__strerror_load(dso, reason, STRERR_BUFSIZE);
-			if (!silent) {
+			if (!silent || verbose) {
 				if (module)
 					pr_err("Module %s is not loaded, please specify its full path name.\n", module);
 				else
@@ -474,7 +474,7 @@ static struct debuginfo *open_debuginfo(const char *module, struct nsinfo *nsi,
 	}
 	nsinfo__mountns_enter(nsi, &nsc);
 	ret = debuginfo__new(path);
-	if (!ret && !silent) {
+	if (!ret && (!silent || verbose)) {
 		pr_warning("The %s file has no debug information.\n", path);
 		if (!module || !strtailcmp(path, ".ko"))
 			pr_warning("Rebuild with CONFIG_DEBUG_INFO=y, ");
