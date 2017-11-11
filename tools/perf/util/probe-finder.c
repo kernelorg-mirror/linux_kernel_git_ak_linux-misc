@@ -270,8 +270,8 @@ static_var:
 
 	regs = get_dwarf_regstr(regn, machine);
 	if (!regs) {
-		/* This should be a bug in DWARF or this tool */
-		pr_warning("Mapping for the register number %u "
+		/* This can happen with floating point */
+		pr_debug("Mapping for the register number %u "
 			   "missing on this architecture.\n", regn);
 		return -ENOTSUP;
 	}
