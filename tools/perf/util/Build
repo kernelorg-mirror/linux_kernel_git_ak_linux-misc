@@ -14,6 +14,7 @@ libperf-y += kallsyms.o
 libperf-y += levenshtein.o
 libperf-y += llvm-utils.o
 libperf-y += mmap.o
+libperf-y += insnlen.o
 libperf-y += memswap.o
 libperf-y += parse-events.o
 libperf-y += perf_regs.o

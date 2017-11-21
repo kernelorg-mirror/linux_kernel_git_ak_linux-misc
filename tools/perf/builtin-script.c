@@ -20,6 +20,7 @@
 #include "util/data.h"
 #include "util/auxtrace.h"
 #include "util/cpumap.h"
+#include "util/insnlen.h"
 #include "util/thread_map.h"
 #include "util/stat.h"
 #include "util/string2.h"
@@ -1107,6 +1108,18 @@ static int perf_sample__fprintf_insn(struct perf_sample *sample,
 				     struct machine *machine, FILE *fp)
 {
 	int printed = 0;
+
+	if ((PRINT_FIELD(INSNLEN) || PRINT_FIELD(INSN)) && !sample->insn_len) {
+		u8 ibuf[64];
+		bool is64bit;
+		u8 cpumode;
+
+		if (grab_bb(ibuf, sample->ip, sample->ip + 16,
+			    machine, thread, &is64bit, &cpumode, false) > 0) {
+			sample->insn_len = arch_insn_len((char *)ibuf, 16, is64bit);
+			memcpy(sample->insn, ibuf, sample->insn_len);
+		}
+	}
 
 	if (PRINT_FIELD(INSNLEN))
 		printed += fprintf(fp, " ilen: %d", sample->insn_len);

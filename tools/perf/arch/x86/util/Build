@@ -1,6 +1,7 @@
 libperf-y += header.o
 libperf-y += tsc.o
 libperf-y += pmu.o
+libperf-y += insnlen.o
 libperf-y += kvm-stat.o
 libperf-y += perf_regs.o
 libperf-y += group.o
