@@ -475,12 +475,16 @@ static struct debuginfo *open_debuginfo(const char *module, struct nsinfo *nsi,
 	nsinfo__mountns_enter(nsi, &nsc);
 	ret = debuginfo__new(path);
 	if (!ret && (!silent || verbose)) {
-		pr_warning("The %s file has no debug information.\n", path);
-		if (!module || !strtailcmp(path, ".ko"))
-			pr_warning("Rebuild with CONFIG_DEBUG_INFO=y, ");
-		else
-			pr_warning("Rebuild with -g, ");
-		pr_warning("or install an appropriate debuginfo package.\n");
+		static char printed[1024];
+		if (strcmp(path, printed)) {
+			snprintf(printed, sizeof printed, "%s", path);
+			pr_warning("The %s file has no debug information.\n", path);
+			if (!module || !strtailcmp(path, ".ko"))
+				pr_warning("Rebuild with CONFIG_DEBUG_INFO=y, ");
+			else
+				pr_warning("Rebuild with -g, ");
+			pr_warning("or install an appropriate debuginfo package.\n");
+		}
 	}
 	nsinfo__mountns_exit(&nsc);
 	return ret;
