@@ -21,6 +21,11 @@ extern int debug_data_convert;
 	eprintf(0, verbose, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_warning(fmt, ...) \
 	eprintf(0, verbose, pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_warning_flag(flag, fmt, ...) \
+	do {				\
+		if (flag)		\
+			eprintf(0, verbose, pr_fmt(fmt), ##__VA_ARGS__); \
+	} while(0)
 #define pr_info(fmt, ...) \
 	eprintf(0, verbose, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_debug(fmt, ...) \

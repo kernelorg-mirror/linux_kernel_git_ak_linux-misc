@@ -689,12 +689,12 @@ static int call_probe_finder(Dwarf_Die *sc_die, struct probe_finder *pf)
 	if (!die_is_func_def(sc_die)) {
 		if (!die_find_realfunc(&pf->cu_die, pf->addr, &pf->sp_die)) {
 			if (die_find_tailfunc(&pf->cu_die, pf->addr, &pf->sp_die)) {
-				pr_warning("Ignoring tail call from %s\n",
+				pr_warning_flag(!pf->quiet, "Ignoring tail call from %s\n",
 						dwarf_diename(&pf->sp_die));
 				return 0;
 			} else {
-				pr_warning("Failed to find probe point in any "
-					   "functions.\n");
+				pr_warning_flag(!pf->quiet, "Failed to find probe point in any "
+						   "functions.\n");
 				return -ENOENT;
 			}
 		}
@@ -712,8 +712,8 @@ static int call_probe_finder(Dwarf_Die *sc_die, struct probe_finder *pf)
 		if ((dwarf_cfi_addrframe(pf->cfi_eh, pf->addr, &frame) != 0 &&
 		     (dwarf_cfi_addrframe(pf->cfi_dbg, pf->addr, &frame) != 0)) ||
 		    dwarf_frame_cfa(frame, &pf->fb_ops, &nops) != 0) {
-			pr_warning("Failed to get call frame on 0x%jx\n",
-				   (uintmax_t)pf->addr);
+			pr_warning_flag(!pf->quiet, "Failed to get call frame on 0x%jx\n",
+					   (uintmax_t)pf->addr);
 			free(frame);
 			return -ENOENT;
 		}
@@ -1637,10 +1637,12 @@ out:
  */
 int debuginfo__find_available_vars_at(struct debuginfo *dbg,
 				      struct perf_probe_event *pev,
-				      struct variable_list **vls)
+				      struct variable_list **vls,
+				      bool be_quiet)
 {
 	struct available_var_finder af = {
-			.pf = {.pev = pev, .callback = add_available_vars},
+			.pf = {.pev = pev, .callback = add_available_vars,
+			       .quiet = be_quiet},
 			.mod = dbg->mod,
 			.max_vls = probe_conf.max_probes};
 	int ret;
