@@ -57,7 +57,8 @@ int debuginfo__find_line_range(struct debuginfo *dbg, struct line_range *lr);
 /* Find available variables */
 int debuginfo__find_available_vars_at(struct debuginfo *dbg,
 				      struct perf_probe_event *pev,
-				      struct variable_list **vls);
+				      struct variable_list **vls,
+				      bool quiet);
 
 /* Find a src file from a DWARF tag path */
 int get_real_path(const char *raw_path, const char *comp_dir,
@@ -88,6 +89,8 @@ struct probe_finder {
 	unsigned int		machine;	/* Target machine arch */
 	struct perf_probe_arg	*pvar;		/* Current target variable */
 	struct probe_trace_arg	*tvar;		/* Current result variable */
+
+	bool			quiet;		/* Avoid warnings */
 };
 
 struct trace_event_finder {
