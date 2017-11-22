@@ -1071,12 +1071,12 @@ static int show_available_vars_at(struct debuginfo *dinfo,
 		return -EINVAL;
 	pr_debug("Searching variables at %s\n", buf);
 
-	ret = debuginfo__find_available_vars_at(dinfo, pev, &vls);
+	ret = debuginfo__find_available_vars_at(dinfo, pev, &vls, false);
 	if (!ret) {  /* Not found, retry with an alternative */
 		ret = get_alternative_probe_event(dinfo, pev, &tmp);
 		if (!ret) {
 			ret = debuginfo__find_available_vars_at(dinfo, pev,
-								&vls);
+								&vls, false);
 			/* Release the old probe_point */
 			clear_perf_probe_point(&tmp);
 		}
