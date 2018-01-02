@@ -230,6 +230,15 @@ KBUILD_CFLAGS += -Wno-sign-compare
 #
 KBUILD_CFLAGS += -fno-asynchronous-unwind-tables
 
+#
+RETPOLINE_CFLAGS += $(call cc-option,-mindirect-branch=thunk-extern)
+ifneq ($(RETPOLINE_CFLAGS),)
+	KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
+	KBUILD_AFLAGS += -DRETPOLINE
+else
+        $(warning Retpoline not supported in compiler. Kernel may be insecure.)
+endif
+
 archscripts: scripts_basic
 	$(Q)$(MAKE) $(build)=arch/x86/tools relocs
 
