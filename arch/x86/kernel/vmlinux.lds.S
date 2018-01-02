@@ -103,6 +103,7 @@ SECTIONS
 		/* bootstrapping code */
 		HEAD_TEXT
 		. = ALIGN(8);
+		*(.text.__x86.indirect_thunk)
 		TEXT_TEXT
 		SCHED_TEXT
 		CPUIDLE_TEXT
