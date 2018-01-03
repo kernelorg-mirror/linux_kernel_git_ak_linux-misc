@@ -12,6 +12,7 @@
 
 #include <linux/linkage.h>
 #include <asm/frame.h>
+#include <asm/jump-asm.h>
 
 #define CAMELLIA_TABLE_BYTE_LEN 272
 
