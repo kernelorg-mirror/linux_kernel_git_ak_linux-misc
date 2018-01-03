@@ -1296,6 +1296,12 @@ void __init setup_arch(char **cmdline_p)
 #endif
 
 	unwind_init();
+
+#ifndef RETPOLINE
+	add_taint(TAINT_NO_RETPOLINE, LOCKDEP_STILL_OK);
+	pr_warn("No support for retpoline in kernel compiler\n");
+	pr_warn("System may be vulnerable to data leaks.\n");
+#endif
 }
 
 #ifdef CONFIG_X86_32
