@@ -7,6 +7,7 @@
 #include <linux/nmi.h>
 #include <asm/io.h>
 #include <asm/hyperv.h>
+#include <asm/jump-asm.h>
 
 /*
  * The below CPUID leaves are present if VersionAndFeatures.HypervisorPresent
@@ -186,7 +187,7 @@ static inline u64 hv_do_hypercall(u64 control, void *input, void *output)
 		return U64_MAX;
 
 	__asm__ __volatile__("mov %4, %%r8\n"
-			     "call *%5"
+			     NOSPEC_CALL("%5")
 			     : "=a" (hv_status), ASM_CALL_CONSTRAINT,
 			       "+c" (control), "+d" (input_address)
 			     :  "r" (output_address), "m" (hv_hypercall_pg)
@@ -200,7 +201,7 @@ static inline u64 hv_do_hypercall(u64 control, void *input, void *output)
 	if (!hv_hypercall_pg)
 		return U64_MAX;
 
-	__asm__ __volatile__("call *%7"
+	__asm__ __volatile__(NOSPEC_CALL("%7")
 			     : "=A" (hv_status),
 			       "+c" (input_address_lo), ASM_CALL_CONSTRAINT
 			     : "A" (control),
@@ -227,7 +228,7 @@ static inline u64 hv_do_fast_hypercall8(u16 code, u64 input1)
 
 #ifdef CONFIG_X86_64
 	{
-		__asm__ __volatile__("call *%4"
+		__asm__ __volatile__(NOSPEC_CALL("%4")
 				     : "=a" (hv_status), ASM_CALL_CONSTRAINT,
 				       "+c" (control), "+d" (input1)
 				     : "m" (hv_hypercall_pg)
@@ -238,7 +239,7 @@ static inline u64 hv_do_fast_hypercall8(u16 code, u64 input1)
 		u32 input1_hi = upper_32_bits(input1);
 		u32 input1_lo = lower_32_bits(input1);
 
-		__asm__ __volatile__ ("call *%5"
+		__asm__ __volatile__ (NOSPEC_CALL("%5")
 				      : "=A"(hv_status),
 					"+c"(input1_lo),
 					ASM_CALL_CONSTRAINT
