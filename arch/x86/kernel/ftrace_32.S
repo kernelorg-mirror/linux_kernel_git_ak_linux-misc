@@ -8,6 +8,7 @@
 #include <asm/segment.h>
 #include <asm/export.h>
 #include <asm/ftrace.h>
+#include <asm/jump-asm.h>
 
 #ifdef CC_USING_FENTRY
 # define function_hook	__fentry__
@@ -241,5 +242,5 @@ return_to_handler:
 	movl	%eax, %ecx
 	popl	%edx
 	popl	%eax
-	jmp	*%ecx
+	NOSPEC_JMP	%ecx
 #endif
