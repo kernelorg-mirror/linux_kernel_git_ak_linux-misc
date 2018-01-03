@@ -7,7 +7,7 @@
 #include <asm/ptrace.h>
 #include <asm/ftrace.h>
 #include <asm/export.h>
-
+#include <asm/jump-asm.h>
 
 	.code64
 	.section .entry.text, "ax"
@@ -286,7 +286,7 @@ trace:
 	 * ip and parent ip are used and the list function is called when
 	 * function tracing is enabled.
 	 */
-	call   *ftrace_trace_function
+	NOSPEC_CALL ftrace_trace_function
 
 	restore_mcount_regs
 
@@ -329,5 +329,5 @@ GLOBAL(return_to_handler)
 	movq 8(%rsp), %rdx
 	movq (%rsp), %rax
 	addq $24, %rsp
-	jmp *%rdi
+	NOSPEC_JMP %rdi
 #endif
