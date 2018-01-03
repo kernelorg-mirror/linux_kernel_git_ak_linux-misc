@@ -1343,7 +1343,7 @@ camellia_xts_crypt_32way:
 	vpxor 14 * 32(%rax), %ymm15, %ymm14;
 	vpxor 15 * 32(%rax), %ymm15, %ymm15;
 
-	call *%r9;
+	NOSPEC_CALL %r9;
 
 	addq $(16 * 32), %rsp;
 
