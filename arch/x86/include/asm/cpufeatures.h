@@ -342,5 +342,6 @@
 #define X86_BUG_MONITOR			X86_BUG(12) /* IPI required to wake up remote CPU */
 #define X86_BUG_AMD_E400		X86_BUG(13) /* CPU is among the affected by Erratum 400 */
 #define X86_BUG_CPU_INSECURE		X86_BUG(14) /* CPU is insecure and needs kernel page table isolation */
+#define X86_BUG_NO_RETPOLINE		X86_BUG(15) /* Placeholder: disable retpoline branch thunks */
 
 #endif /* _ASM_X86_CPUFEATURES_H */
