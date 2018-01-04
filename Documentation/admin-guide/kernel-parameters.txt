@@ -2623,6 +2623,9 @@
 
 	nohugeiomap	[KNL,x86] Disable kernel huge I/O mappings.
 
+	noretpoline	[X86] Disable the retpoline kernel indirect branch speculation
+			workarounds. System may allow data leaks with this option.
+
 	nosmt		[KNL,S390] Disable symmetric multithreading (SMT).
 			Equivalent to smt=1.
 
