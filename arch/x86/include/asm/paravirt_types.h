@@ -336,11 +336,17 @@ extern struct pv_lock_ops pv_lock_ops;
 #define PARAVIRT_PATCH(x)					\
 	(offsetof(struct paravirt_patch_template, x) / sizeof(void *))
 
+#define paravirt_clobber(clobber)		\
+	[paravirt_clobber] "i" (clobber)
+#ifdef CONFIG_RETPOLINE
+#define paravirt_type(op)				\
+	[paravirt_typenum] "i" (PARAVIRT_PATCH(op)),	\
+	[paravirt_opptr] "r" ((op))
+#else
 #define paravirt_type(op)				\
 	[paravirt_typenum] "i" (PARAVIRT_PATCH(op)),	\
 	[paravirt_opptr] "i" (&(op))
-#define paravirt_clobber(clobber)		\
-	[paravirt_clobber] "i" (clobber)
+#endif
 
 /*
  * Generate some code, and mark it as patchable by the
@@ -392,7 +398,11 @@ int paravirt_disable_iospace(void);
  * offset into the paravirt_patch_template structure, and can therefore be
  * freely converted back into a structure offset.
  */
+#ifdef CONFIG_RETPOLINE
+#define PARAVIRT_CALL	"call __x86.indirect_thunk.%V[paravirt_opptr];"
+#else
 #define PARAVIRT_CALL	"call *%c[paravirt_opptr];"
+#endif
 
 /*
  * These macros are intended to wrap calls through one of the paravirt
