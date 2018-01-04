@@ -4,6 +4,8 @@
 
 #ifdef __ASSEMBLY__
 
+#ifdef CONFIG_RETPOLINE
+
 /*
  * Jump to an indirect pointer without speculation.
  *
@@ -30,9 +32,23 @@
 	call	1222b
 .endm
 
+#else /* CONFIG_RETPOLINE */
+
+.macro NOSPEC_JMP target
+	jmp *\target
+.endm
+
+.macro NOSPEC_CALL target
+	call *\target
+.endm
+
+#endif /* !CONFIG_RETPOLINE */
+
 #else /* __ASSEMBLY__ */
 
-#define NOSPEC_JUMP(t) \
+#ifdef CONFIG_RETPOLINE
+
+#define NOSPEC_JMP(t) \
 	"push " t "; "				\
 	"jmp __x86.indirect_thunk; "
 
@@ -41,6 +57,13 @@
 	"1222:	push " t ";"			\
 	"	jmp __x86.indirect_thunk;"	\
 	"1221:	call 1222b;"
+
+#else /* CONFIG_RETPOLINE */
+
+#define NOSPEC_JMP(t) "jmp *" t "; "
+#define NOSPEC_CALL(t) "call *" t "; "
+
+#endif /* !CONFIG_RETPOLINE */
 
 #endif /* !__ASSEMBLY */
 
