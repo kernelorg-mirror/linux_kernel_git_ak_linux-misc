@@ -11,6 +11,7 @@
  */
 
 #include <linux/linkage.h>
+#include <linux/compiler.h>
 #include <asm/dwarf2.h>
 #include <asm/export.h>
 
@@ -21,7 +22,9 @@ ENTRY(__x86.indirect_thunk)
 	call	retpoline_call_target
 2:
 	lfence		/* stop speculation */
+	ASM_UNREACHABLE
 	jmp	2b
+	ASM_UNREACHABLE
 retpoline_call_target:
 #ifdef CONFIG_64BIT
 	lea	8(%rsp), %rsp

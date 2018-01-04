@@ -269,7 +269,15 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
 
 #endif /* __KERNEL__ */
 
-#endif /* __ASSEMBLY__ */
+#else /* __ASSEMBLY__ */
+
+#define ASM_UNREACHABLE \
+	999:						\
+	.pushsection .discard.unreachable;		\
+	.long 999b - .;					\
+	.popsection
+
+#endif /* !__ASSEMBLY__ */
 
 /* Compile time object size, -1 for unknown */
 #ifndef __compiletime_object_size
