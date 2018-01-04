@@ -31,6 +31,17 @@
 #include <asm/apic.h>
 #endif
 
+#ifdef RETPOLINE
+static int __init noretpoline_setup(char *__unused)
+{
+	pr_info("Retpoline runtime disabled\n");
+	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE);
+	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE_AMD);
+	return 1;
+}
+__setup("noretpoline", noretpoline_setup);
+#endif
+
 /*
  * Just in case our CPU detection goes bad, or you have a weird system,
  * allow a way to override the automatic disabling of MPX.
