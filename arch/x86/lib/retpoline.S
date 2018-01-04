@@ -2,6 +2,7 @@
 
 #include <linux/stringify.h>
 #include <linux/linkage.h>
+#include <linux/compiler.h>
 #include <asm/dwarf2.h>
 #include <asm/cpufeatures.h>
 #include <asm/alternative-asm.h>
@@ -14,7 +15,9 @@ ENTRY(__x86.indirect_thunk.\reg)
 	ALTERNATIVE "call 2f", __stringify(jmp *%\reg), X86_BUG_NO_RETPOLINE
 1:
 	lfence
+	ASM_UNREACHABLE
 	jmp	1b
+	ASM_UNREACHABLE
 2:
 	mov	%\reg, (%\sp)
 	ret
@@ -40,7 +43,9 @@ ENTRY(__x86.indirect_thunk)
 	ALTERNATIVE "call 2f", "ret", X86_BUG_NO_RETPOLINE
 1:
 	lfence
+	ASM_UNREACHABLE
 	jmp	1b
+	ASM_UNREACHABLE
 2:
 	lea	4(%esp), %esp
 	ret
