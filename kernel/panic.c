@@ -325,6 +325,7 @@ const struct taint_flag taint_flags[TAINT_FLAGS_COUNT] = {
 	{ 'L', ' ', false },	/* TAINT_SOFTLOCKUP */
 	{ 'K', ' ', true },	/* TAINT_LIVEPATCH */
 	{ 'X', ' ', true },	/* TAINT_AUX */
+	{ 'Z', ' ', true },	/* TAINT_NO_RETPOLINE */
 };
 
 /**
