@@ -76,6 +76,7 @@
 .text
 ENTRY(crc_pcl)
 #define    bufp		%rdi
+#define    bufp_raw	 rdi
 #define    bufp_dw	%edi
 #define    bufp_w	%di
 #define    bufp_b	%dil
@@ -173,7 +174,7 @@ continue_block:
 	movzxw  (bufp, %rax, 2), len
 	lea	crc_array(%rip), bufp
 	lea     (bufp, len, 1), bufp
-	NOSPEC_JMP bufp
+	NOSPEC_JMP bufp_raw
 
 	################################################################
 	## 2a) PROCESS FULL BLOCKS:
