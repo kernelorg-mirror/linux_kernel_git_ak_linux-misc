@@ -435,7 +435,8 @@ config RETPOLINE
 	help
 	  Compile kernel with the retpoline compiler options to guard against
 	  kernel to user data leaks by avoiding speculative indirect
-	  branches. Requires a new enough compiler. The kernel may run slower.
+	  branches. Requires compiler with the -mindirect-branch=thunk-extern
+	  option supported. The kernel may run slower.
 
 config INTEL_RDT
 	bool "Intel Resource Director Technology support"
