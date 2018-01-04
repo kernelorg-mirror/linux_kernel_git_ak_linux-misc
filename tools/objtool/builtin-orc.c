@@ -54,7 +54,7 @@ int cmd_orc(int argc, const char **argv)
 
 		objname = argv[0];
 
-		return check(objname, no_fp, no_unreachable, true);
+		return check(objname, no_fp, no_unreachable, no_call_symbol, true);
 	}
 
 	if (!strcmp(argv[0], "dump")) {

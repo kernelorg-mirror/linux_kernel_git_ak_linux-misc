@@ -503,13 +503,13 @@ static int add_call_destinations(struct objtool_file *file)
 			insn->call_dest = find_symbol_by_offset(insn->sec,
 								dest_off);
 			if (!insn->call_dest) {
-#if 0
-				/* Compilers with -mindirect-branch=thunk-extern trigger
-				 * this everywhere on x86. Disable for now.
-				 */
-				WARN_FUNC("can't find call dest symbol at offset 0x%lx",
-					  insn->sec, insn->offset, dest_off);
-#endif
+				if (!file->no_call_symbol) {
+					/* Compilers with -mindirect-branch=thunk-extern
+					 * trigger this everywhere on x86. Disable for now.
+					 */
+					WARN_FUNC("can't find call dest symbol at offset 0x%lx",
+						  insn->sec, insn->offset, dest_off);
+				}
 				return -1;
 			}
 		} else if (rela->sym->type == STT_SECTION) {
@@ -1721,14 +1721,14 @@ static int validate_branch(struct objtool_file *file, struct instruction *first,
 					return 1;
 
 			} else if (func && has_modified_stack_frame(&state)) {
-#if 0
-				/* Compilers with -mindirect-branch=thunk-extern trigger
-				 * this everywhere on x86. Disable for now.
-				 */
+				if (!file->no_call_symbol) {
+					/* Compilers with -mindirect-branch=thunk-extern
+					 * trigger this everywhere on x86. Disable for now.
+					 */
 
-				WARN_FUNC("sibling call from callable instruction with modified stack frame",
-					  sec, insn->offset);
-#endif
+					WARN_FUNC("sibling call from callable instruction with modified stack frame",
+						  sec, insn->offset);
+				}
 				return 1;
 			}
 
@@ -1927,7 +1927,8 @@ static void cleanup(struct objtool_file *file)
 	elf_close(file->elf);
 }
 
-int check(const char *_objname, bool _no_fp, bool no_unreachable, bool orc)
+int check(const char *_objname, bool _no_fp, bool no_unreachable,
+	  bool no_call_symbol, bool orc)
 {
 	struct objtool_file file;
 	int ret, warnings = 0;
@@ -1945,6 +1946,7 @@ int check(const char *_objname, bool _no_fp, bool no_unreachable, bool orc)
 	file.rodata = find_section_by_name(file.elf, ".rodata");
 	file.c_file = find_section_by_name(file.elf, ".comment");
 	file.ignore_unreachables = no_unreachable;
+	file.no_call_symbol = no_call_symbol;
 	file.hints = false;
 
 	arch_initial_func_cfi_state(&initial_func_cfi);

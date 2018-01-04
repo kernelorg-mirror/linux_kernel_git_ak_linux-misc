@@ -59,10 +59,11 @@ struct objtool_file {
 	struct list_head insn_list;
 	DECLARE_HASHTABLE(insn_hash, 16);
 	struct section *rodata, *whitelist;
-	bool ignore_unreachables, c_file, hints;
+	bool ignore_unreachables, c_file, hints, no_call_symbol;
 };
 
-int check(const char *objname, bool no_fp, bool no_unreachable, bool orc);
+int check(const char *objname, bool no_fp, bool no_unreachable, bool no_call_symbol,
+	  bool orc);
 
 struct instruction *find_insn(struct objtool_file *file,
 			      struct section *sec, unsigned long offset);
