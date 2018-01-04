@@ -192,7 +192,7 @@ ENTRY(entry_SYSCALL_64_trampoline)
 	 */
 	pushq	%rdi
 	movq	$entry_SYSCALL_64_stage2, %rdi
-	NOSPEC_JMP	%rdi
+	NOSPEC_JMP_INLINE	%rdi
 END(entry_SYSCALL_64_trampoline)
 
 	.popsection

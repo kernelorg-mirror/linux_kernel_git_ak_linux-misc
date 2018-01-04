@@ -18,6 +18,20 @@
 	jmp	__x86.indirect_thunk
 .endm
 
+.macro NOSPEC_JMP_INLINE target
+	push	\target
+	call	2221f
+2222:
+	lfence
+	jmp	2222b
+2221:
+#ifdef CONFIG_64BIT
+	addq	$8, %rsp
+#else
+	addl	$4, %esp
+#endif
+	ret
+.endm
 
 /*
  * Call an indirect pointer without speculation.
@@ -35,6 +49,10 @@
 #else /* CONFIG_RETPOLINE */
 
 .macro NOSPEC_JMP target
+	jmp *\target
+.endm
+
+.macro NOSPEC_JMP_INLINE target
 	jmp *\target
 .endm
 
