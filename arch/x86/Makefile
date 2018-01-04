@@ -236,7 +236,7 @@ ifdef CONFIG_RETPOLINE
     ifneq ($(RETPOLINE_CFLAGS),)
 	KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
     else
-	$(warning Retpoline not supported in compiler. System may be insecure.)
+        $(warning Retpoline not supported in compiler. System may be insecure.)
     endif
 endif
 
