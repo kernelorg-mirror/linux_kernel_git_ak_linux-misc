@@ -53,6 +53,37 @@
 #endif
 .endm
 
+/*
+ * Fill the CPU return branch buffer to prevent
+ * indirect branch prediction on underflow.
+ * Caller should check for X86_FEATURE_SMEP and X86_FEATURE_RETPOLINE
+ */
+.macro __FILL_RETURN_BUFFER
+#ifdef CONFIG_RETPOLINE
+	.rept	32
+	call	1221f
+	pause	/* stop speculation */
+1221:
+	.endr
+#ifdef CONFIG_64BIT
+	addq	$8*32, %rsp
+#else
+	addl    $4*32, %esp
+#endif
+#endif
+.endm
+
+/* This version does the alternative checking automatically */
+
+.macro FILL_RETURN_BUFFER
+#ifdef CONFIG_RETPOLINE
+	ALTERNATIVE "jmp 322f", "", X86_FEATURE_RETPOLINE
+	ALTERNATIVE "", "jmp 322f", X86_FEATURE_SMEP
+	__FILL_RETURN_BUFFER
+322:
+#endif
+.endm
+
 #else /* __ASSEMBLY__ */
 
 #if defined(CONFIG_X86_64) && defined(RETPOLINE)
@@ -86,6 +117,7 @@
 # define NOSPEC_CALL "call *%[thunk_target]\n"
 # define THUNK_TARGET(addr) [thunk_target] "rm" (addr)
 #endif
+
 
 #endif /* __ASSEMBLY__ */
 #endif /* __NOSPEC_BRANCH_H__ */

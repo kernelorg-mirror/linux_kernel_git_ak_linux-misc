@@ -65,7 +65,6 @@
 # define preempt_stop(clobbers)	DISABLE_INTERRUPTS(clobbers); TRACE_IRQS_OFF
 #else
 # define preempt_stop(clobbers)
-# define resume_kernel		restore_all
 #endif
 
 .macro TRACE_IRQS_IRET
@@ -250,6 +249,23 @@ ENTRY(__switch_to_asm)
 	popl	%ebx
 	popl	%ebp
 
+	/*
+	 * When we switch from a shallower to a deeper call stack
+	 * the call stack will underflow in the kernel in the next task.
+	 * This could cause the CPU to fall back to indirect branch
+	 * prediction, which may be poisoned.
+	 *
+	 * To guard against that always fill the return stack with
+	 * known values.
+	 *
+	 * We do this in assembler because it needs to be before
+	 * any calls on the new stack, and this can be difficult to
+	 * ensure in a complex C function like __switch_to.
+	 */
+	ALTERNATIVE "jmp __switch_to", "", X86_FEATURE_RETPOLINE
+	ALTERNATIVE "", "jmp __switch_to", X86_FEATURE_SMEP
+
+	__FILL_RETURN_BUFFER
 	jmp	__switch_to
 END(__switch_to_asm)
 
@@ -335,8 +351,15 @@ ENTRY(resume_userspace)
 	jmp	restore_all
 END(ret_from_exception)
 
-#ifdef CONFIG_PREEMPT
 ENTRY(resume_kernel)
+	/*
+	 * Interrupts/faults could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+	FILL_RETURN_BUFFER
+#ifdef CONFIG_PREEMPT
 	DISABLE_INTERRUPTS(CLBR_ANY)
 .Lneed_resched:
 	cmpl	$0, PER_CPU_VAR(__preempt_count)
@@ -345,8 +368,10 @@ ENTRY(resume_kernel)
 	jz	restore_all
 	call	preempt_schedule_irq
 	jmp	.Lneed_resched
-END(resume_kernel)
+#else
+	jmp	restore_all
 #endif
+END(resume_kernel)
 
 GLOBAL(__begin_SYSENTER_singlestep_region)
 /*

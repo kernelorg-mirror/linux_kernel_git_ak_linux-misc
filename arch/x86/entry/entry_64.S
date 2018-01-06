@@ -495,6 +495,23 @@ ENTRY(__switch_to_asm)
 	popq	%rbx
 	popq	%rbp
 
+	/*
+	 * When we switch from a shallower to a deeper call stack
+	 * the call stack will underflow in the kernel in the next task.
+	 * This could cause the CPU to fall back to indirect branch
+	 * prediction, which may be poisoned.
+	 *
+	 * To guard against that always fill the return stack with
+	 * known values.
+	 *
+	 * We do this in assembler because it needs to be before
+	 * any calls on the new stack, and this can be difficult to
+	 * ensure in a complex C function like __switch_to.
+	 */
+	ALTERNATIVE "jmp __switch_to", "", X86_FEATURE_RETPOLINE
+	ALTERNATIVE "", "jmp __switch_to", X86_FEATURE_SMEP
+
+	__FILL_RETURN_BUFFER
 	jmp	__switch_to
 END(__switch_to_asm)
 
@@ -778,6 +795,14 @@ retint_kernel:
 	TRACE_IRQS_IRETQ
 
 GLOBAL(restore_regs_and_return_to_kernel)
+	/*
+	 * Interrupts/faults could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+	FILL_RETURN_BUFFER
+
 #ifdef CONFIG_DEBUG_ENTRY
 	/* Assert that pt_regs indicates kernel mode. */
 	testb	$3, CS(%rsp)
@@ -1646,6 +1671,10 @@ nested_nmi:
 nested_nmi_out:
 	popq	%rdx
 
+	/*
+	 * No need to clear return buffer here because the outter NMI will do it,
+	 * and we assume two NMIs will not overflow the return buffer.
+	 */
 	/* We are returning to kernel mode, so this cannot result in a fault. */
 	iretq
 
@@ -1743,6 +1772,16 @@ end_repeat_nmi:
 nmi_swapgs:
 	SWAPGS_UNSAFE_STACK
 nmi_restore:
+
+	/*
+	 * NMI could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+
+	FILL_RETURN_BUFFER
+
 	POP_EXTRA_REGS
 	POP_C_REGS
 
