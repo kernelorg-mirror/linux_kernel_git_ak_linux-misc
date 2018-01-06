@@ -61,6 +61,7 @@
 #include <asm/trace/mpx.h>
 #include <asm/mpx.h>
 #include <asm/vm86.h>
+#include <asm/nospec-branch.h>
 
 #ifdef CONFIG_X86_64
 #include <asm/x86_init.h>
@@ -615,6 +616,8 @@ dotraplinkage void notrace do_int3(struct pt_regs *regs, long error_code)
 	debug_stack_usage_dec();
 exit:
 	ist_exit(regs);
+	/* In case someone set a break point in retpoline */
+	fill_return_buffer();
 }
 NOKPROBE_SYMBOL(do_int3);
 
@@ -816,6 +819,8 @@ dotraplinkage void do_debug(struct pt_regs *regs, long error_code)
 
 exit:
 	ist_exit(regs);
+	/* In case someone is stepping through retpoline */
+	fill_return_buffer();
 }
 NOKPROBE_SYMBOL(do_debug);
 

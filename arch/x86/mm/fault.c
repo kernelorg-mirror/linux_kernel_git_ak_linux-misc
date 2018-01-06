@@ -1261,7 +1261,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	prefetchw(&mm->mmap_sem);
 
 	if (unlikely(kmmio_fault(regs, address)))
-		return;
+		goto out_fill_return;
 
 	/*
 	 * We fault-in kernel-space virtual memory on-demand. The
@@ -1279,25 +1279,28 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (unlikely(fault_in_kernel_space(address))) {
 		if (!(error_code & (X86_PF_RSVD | X86_PF_USER | X86_PF_PROT))) {
 			if (vmalloc_fault(address) >= 0)
-				return;
+				goto out_fill_return;
 
 			if (kmemcheck_fault(regs, address, error_code))
-				return;
+				goto out_fill_return;
 		}
 
 		/* Can handle a stale RO->RW TLB: */
 		if (spurious_fault(error_code, address))
-			return;
+			goto out_fill_return;
 
 		/* kprobes don't want to hook the spurious faults: */
 		if (kprobes_fault(regs))
-			return;
+			goto out_fill_return;
 		/*
 		 * Don't take the mm semaphore here. If we fixup a prefetch
 		 * fault we could otherwise deadlock:
 		 */
 		bad_area_nosemaphore(regs, error_code, address, NULL);
 
+out_fill_return:
+		/* In case we interrupted a retpoline */
+		fill_return_buffer();
 		return;
 	}
 

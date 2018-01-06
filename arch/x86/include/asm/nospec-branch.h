@@ -53,6 +53,26 @@
 #endif
 .endm
 
+/*
+ * Fill the CPU return branch buffer to prevent
+ * indirect branch prediction on underflow.
+ *
+ * Caller should check for X86_FEATURE_SMEP.
+ */
+.macro FILL_RETURN_BUFFER
+	.rept	32
+	call	1221f
+	pause	/* stop speculation */
+	/* should be marked unreachable */
+1221:
+	.endr
+#ifdef CONFIG_64BIT
+	addq	$8*32, %rsp
+#else
+	addl    $4*32, %esp
+#endif
+.endm
+
 #else /* __ASSEMBLY__ */
 
 #if defined(CONFIG_X86_64) && defined(RETPOLINE)
@@ -86,6 +106,28 @@
 # define NOSPEC_CALL "call *%[thunk_target]\n"
 # define THUNK_TARGET(addr) [thunk_target] "rm" (addr)
 #endif
+
+/* Fill the CPU return branch buffer */
+
+static inline void fill_return_buffer(void)
+{
+	if (boot_cpu_has(X86_BUG_CPU_MELTDOWN) &&
+	    !boot_cpu_has(X86_FEATURE_SMEP))
+		asm volatile(
+			"	.rept 32\n"
+			"	call  1221f\n"
+			"	pause\n"	/* stop speculation */
+			ASM_UNREACHABLE
+			"1221:\n"
+			"	.endr\n"
+#ifdef CONFIG_64BIT
+			"	addq $32*8, %%rsp"
+#else
+			"	addl $32*4, %%esp"
+#endif
+
+			::: "memory");
+}
 
 #endif /* __ASSEMBLY__ */
 #endif /* __NOSPEC_BRANCH_H__ */

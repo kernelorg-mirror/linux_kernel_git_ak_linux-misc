@@ -10,6 +10,7 @@
 #include <asm/fixmap.h>
 #include <asm/mpspec.h>
 #include <asm/msr.h>
+#include <asm/nospec-branch.h>
 
 #define ARCH_APICTIMER_STOPS_ON_C3	1
 
@@ -635,11 +636,28 @@ static inline void ipi_entering_ack_irq(void)
 
 static inline void exiting_irq(void)
 {
+	/*
+	 * Fill the return branch buffer of the CPU
+	 * when exiting interupts.
+	 *
+	 * This guards against interrupts interrupting a retpoline
+	 * emptying the return buffer; and then the final return
+	 * in the retpoline hitting an empty buffer and falling back
+	 * to indirect branch prediction.
+	 *
+	 * We only need to do that when in the middle of a kernel
+	 * retpoline. Unfortunately retpoline can be inlined, so it's
+	 * hard to test IPs. Thus it's done unconditionally.
+	 *
+	 * It's also only needed on CPUs without SMEP.
+	 */
+	fill_return_buffer();
 	irq_exit();
 }
 
 static inline void exiting_ack_irq(void)
 {
+	fill_return_buffer();
 	ack_APIC_irq();
 	irq_exit();
 }

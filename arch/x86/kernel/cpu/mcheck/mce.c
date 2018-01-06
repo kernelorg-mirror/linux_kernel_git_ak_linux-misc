@@ -52,6 +52,7 @@
 #include <asm/msr.h>
 #include <asm/reboot.h>
 #include <asm/set_memory.h>
+#include <asm/nospec-branch.h>
 
 #include "mce-internal.h"
 
@@ -1159,7 +1160,7 @@ void do_machine_check(struct pt_regs *regs, long error_code)
 		mcgstatus = mce_rdmsrl(MSR_IA32_MCG_STATUS);
 		if (mcgstatus & MCG_STATUS_RIPV) {
 			mce_wrmsrl(MSR_IA32_MCG_STATUS, 0);
-			return;
+			goto out_fill;
 		}
 	}
 
@@ -1321,6 +1322,9 @@ out:
 
 out_ist:
 	ist_exit(regs);
+out_fill:
+	/* In case of a machine check during retpoline */
+	fill_return_buffer();
 }
 EXPORT_SYMBOL_GPL(do_machine_check);
 

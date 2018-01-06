@@ -521,6 +521,7 @@ nmi_restart:
 		default_do_nmi(regs);
 
 	nmi_exit();
+	fill_return_buffer();
 
 #ifdef CONFIG_X86_64
 	if (unlikely(this_cpu_read(update_debug_stack))) {

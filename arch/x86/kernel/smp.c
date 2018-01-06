@@ -272,9 +272,10 @@ __visible void __irq_entry smp_reschedule_interrupt(struct pt_regs *regs)
 		scheduler_ipi();
 		trace_reschedule_exit(RESCHEDULE_VECTOR);
 		irq_exit();
-		return;
+	} else {
+		scheduler_ipi();
 	}
-	scheduler_ipi();
+	fill_return_buffer();
 }
 
 __visible void __irq_entry smp_call_function_interrupt(struct pt_regs *regs)
