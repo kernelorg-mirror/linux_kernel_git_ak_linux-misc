@@ -53,6 +53,35 @@
 #endif
 .endm
 
+/*
+ * We use 32-N: 32 is the max return buffer size,
+ * but there should have been at a minimum two
+ * controlled calls already: one into the kernel
+ * from entry*.S and another into the function
+ * containing this macro. So N=2, thus 30.
+ */
+#define NUM_BRANCHES_TO_FILL	30
+
+/*
+ * Fill the CPU return branch buffer to prevent
+ * indirect branch prediction on underflow.
+ * Caller should check for X86_FEATURE_SMEP and X86_FEATURE_RETPOLINE
+ */
+.macro FILL_RETURN_BUFFER
+#ifdef CONFIG_RETPOLINE
+	.rept	NUM_BRANCHES_TO_FILL
+	call	1221f
+	pause	/* stop speculation */
+1221:
+	.endr
+#ifdef CONFIG_64BIT
+	addq	$8*NUM_BRANCHES_TO_FILL, %rsp
+#else
+	addl    $4*NUM_BRANCHES_TO_FILL, %esp
+#endif
+#endif
+.endm
+
 #else /* __ASSEMBLY__ */
 
 #if defined(CONFIG_X86_64) && defined(RETPOLINE)
