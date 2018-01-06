@@ -495,6 +495,20 @@ ENTRY(__switch_to_asm)
 	popq	%rbx
 	popq	%rbp
 
+	/*
+	 * When we switch from a shallower to a deeper call stack
+	 * the call stack will underflow in the kernel in the next task.
+	 * This could cause the CPU to fall back to indirect branch
+	 * prediction, which may be poisoned.
+	 *
+	 * To guard against that always fill the return stack with
+	 * known values.
+	 *
+	 * We do this in assembler because it needs to be before
+	 * any calls on the new stack, and this can be difficult to
+	 * ensure in a complex C function like __switch_to.
+	 */
+	FILL_RETURN_BUFFER %r8, RSB_FILL_LOOPS, X86_FEATURE_RETURN_UNDERFLOW
 	jmp	__switch_to
 END(__switch_to_asm)
 
