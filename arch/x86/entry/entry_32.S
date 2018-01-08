@@ -65,7 +65,6 @@
 # define preempt_stop(clobbers)	DISABLE_INTERRUPTS(clobbers); TRACE_IRQS_OFF
 #else
 # define preempt_stop(clobbers)
-# define resume_kernel		restore_all
 #endif
 
 .macro TRACE_IRQS_IRET
@@ -335,8 +334,18 @@ ENTRY(resume_userspace)
 	jmp	restore_all
 END(ret_from_exception)
 
-#ifdef CONFIG_PREEMPT
 ENTRY(resume_kernel)
+	/*
+	 * Interrupts/faults could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+	ALTERNATIVE "jmp 5f", "", X86_FEATURE_RETURN_UNDERFLOW
+	FILL_RETURN_BUFFER %eax, RSB_FILL_LOOPS, 1
+5:
+
+#ifdef CONFIG_PREEMPT
 	DISABLE_INTERRUPTS(CLBR_ANY)
 .Lneed_resched:
 	cmpl	$0, PER_CPU_VAR(__preempt_count)
@@ -345,8 +354,10 @@ ENTRY(resume_kernel)
 	jz	restore_all
 	call	preempt_schedule_irq
 	jmp	.Lneed_resched
-END(resume_kernel)
+#else
+	jmp	restore_all
 #endif
+END(resume_kernel)
 
 GLOBAL(__begin_SYSENTER_singlestep_region)
 /*
