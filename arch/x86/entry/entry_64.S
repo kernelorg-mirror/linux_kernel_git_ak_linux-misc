@@ -789,6 +789,14 @@ retint_kernel:
 	TRACE_IRQS_IRETQ
 
 GLOBAL(restore_regs_and_return_to_kernel)
+	/*
+	 * Interrupts/faults could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+	FILL_RETURN_BUFFER %rax, RSB_FILL_LOOPS, X86_FEATURE_RSB_UNDERFLOW
+
 #ifdef CONFIG_DEBUG_ENTRY
 	/* Assert that pt_regs indicates kernel mode. */
 	testb	$3, CS(%rsp)
@@ -1657,6 +1665,10 @@ nested_nmi:
 nested_nmi_out:
 	popq	%rdx
 
+	/*
+	 * No need to clear return buffer here because the outter NMI will do it,
+	 * and we assume two NMIs will not overflow the return buffer.
+	 */
 	/* We are returning to kernel mode, so this cannot result in a fault. */
 	iretq
 
@@ -1754,6 +1766,14 @@ end_repeat_nmi:
 nmi_swapgs:
 	SWAPGS_UNSAFE_STACK
 nmi_restore:
+	/*
+	 * NMI could cause the return buffer of the CPU
+	 * to overflow, which would lead to a underflow later,
+	 * which may lead to a uncontrolled indirect branch.
+	 * Fill the return buffer when returning to the kernel.
+	 */
+	FILL_RETURN_BUFFER %rax, RSB_FILL_LOOPS, X86_FEATURE_RSB_UNDERFLOW
+
 	POP_EXTRA_REGS
 	POP_C_REGS
 
