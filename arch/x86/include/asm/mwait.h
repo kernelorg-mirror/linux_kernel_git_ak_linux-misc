@@ -6,6 +6,7 @@
 #include <linux/sched/idle.h>
 
 #include <asm/cpufeature.h>
+#include <asm/nospec-branch.h>
 
 #define MWAIT_SUBSTATE_MASK		0xf
 #define MWAIT_CSTATE_MASK		0xf
@@ -107,8 +108,15 @@ static inline void mwait_idle_with_hints(unsigned long eax, unsigned long ecx)
 		}
 
 		__monitor((void *)&current_thread_info()->flags, 0, 0);
-		if (!need_resched())
+		if (!need_resched()) {
 			__mwait(eax, ecx);
+			/*
+			 * idle could have cleared the return buffer,
+			 * so fill it to prevent uncontrolled
+			 * speculation.
+			 */
+			fill_return_buffer();
+		}
 	}
 	current_clr_polling();
 }
