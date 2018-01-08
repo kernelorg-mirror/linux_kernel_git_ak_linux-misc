@@ -87,6 +87,8 @@ static inline void __sti_mwait(unsigned long eax, unsigned long ecx)
 		     :: "a" (eax), "c" (ecx));
 }
 
+extern __visible void fill_return_buffer(void);
+
 /*
  * This uses new MONITOR/MWAIT instructions on P4 processors with PNI,
  * which can obviate IPI to trigger checking of need_resched.
@@ -107,8 +109,15 @@ static inline void mwait_idle_with_hints(unsigned long eax, unsigned long ecx)
 		}
 
 		__monitor((void *)&current_thread_info()->flags, 0, 0);
-		if (!need_resched())
+		if (!need_resched()) {
 			__mwait(eax, ecx);
+			/*
+			 * idle could have cleared the return buffer,
+			 * so fill it to prevent uncontrolled
+			 * speculation.
+			 */
+			fill_return_buffer();
+		}
 	}
 	current_clr_polling();
 }

@@ -1831,3 +1831,11 @@ ENTRY(rewind_stack_do_exit)
 
 	call	do_exit
 END(rewind_stack_do_exit)
+
+ENTRY(fill_return_buffer)
+#ifdef CONFIG_RETPOLINE
+	ALTERNATIVE "ret", "", X86_FEATURE_RETPOLINE
+	FILL_RETURN_BUFFER
+#endif
+	ret
+END(fill_return_buffer)
