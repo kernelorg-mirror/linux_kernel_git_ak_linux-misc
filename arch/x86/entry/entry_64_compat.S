@@ -95,6 +95,8 @@ ENTRY(entry_SYSENTER_compat)
 	pushq   $0			/* pt_regs->r14 = 0 */
 	pushq   $0			/* pt_regs->r15 = 0 */
 	cld
+	/* Can clear all because arguments are passed through the stack */
+	CLEAR_ALL_REGS
 
 	/*
 	 * SYSENTER doesn't filter flags, so we need to clear NT and AC
@@ -223,6 +225,8 @@ GLOBAL(entry_SYSCALL_compat_after_hwframe)
 	pushq   $0			/* pt_regs->r13 = 0 */
 	pushq   $0			/* pt_regs->r14 = 0 */
 	pushq   $0			/* pt_regs->r15 = 0 */
+	/* Can clear all because arguments are passed through the stack */
+	CLEAR_ALL_REGS
 
 	/*
 	 * User mode is traced as though IRQs are on, and SYSENTER
@@ -348,6 +352,8 @@ ENTRY(entry_INT80_compat)
 	pushq   %r14                    /* pt_regs->r14 */
 	pushq   %r15                    /* pt_regs->r15 */
 	cld
+	/* Can clear all because arguments are passed through the stack */
+	CLEAR_ALL_REGS
 
 	/*
 	 * User mode is traced as though IRQs are on, and the interrupt
