@@ -1755,6 +1755,21 @@ nmi_restore:
 	iretq
 END(nmi)
 
+/*
+ * Clear all argument registers not used by a system call.
+ */
+
+.macro gen_arg_stub sym, num
+ENTRY(san_args_\sym)
+	CLEAR_ARGS \num
+	xor	  %eax, %eax
+	jmp	   \sym
+END(san_args_\sym)
+.endm
+
+#define __SYSCALL_64(nr, sym, qual, num) gen_arg_stub sym, num
+#include <asm/syscalls_64.h>
+
 ENTRY(ignore_sysret)
 	UNWIND_HINT_EMPTY
 	mov	$-ENOSYS, %eax

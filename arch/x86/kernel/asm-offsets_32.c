@@ -5,7 +5,7 @@
 
 #include <asm/ucontext.h>
 
-#define __SYSCALL_I386(nr, sym, qual) [nr] = 1,
+#define __SYSCALL_I386(nr, sym, qual, num) [nr] = 1,
 static char syscalls[] = {
 #include <asm/syscalls_32.h>
 };

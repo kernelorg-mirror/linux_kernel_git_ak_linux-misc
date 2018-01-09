@@ -200,6 +200,30 @@ For 32-bit we have the following conventions - kernel is built with
 #endif
 	.endm
 
+	/* Clear unused argument registers */
+
+.macro CLEAR_ARGS num
+	/* we leave EAX around because it has been already checked */
+	.if \num < 6
+	xorq	%r9, %r9	# arg6
+	.endif
+	.if \num < 5
+	xorq	%r8, %r8	# arg5
+	.endif
+	.if \num < 4
+	xorl	%ecx, %ecx	# arg4
+	.endif
+	.if \num < 3
+	xorl	%edx, %edx	# arg3
+	.endif
+	.if \num < 2
+	xorl	%esi, %esi	# arg2
+	.endif
+	.if \num < 1
+	xorl	%edi, %edi	# arg1
+	.endif
+.endm
+
 /*
  * This is a sneaky trick to help the unwinder find pt_regs on the stack.  The
  * frame pointer is replaced with an encoded pointer to pt_regs.  The encoding
