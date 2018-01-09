@@ -235,6 +235,14 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	pushq	%r10				/* pt_regs->r10 */
 	pushq	%r11				/* pt_regs->r11 */
 	PUSH_EXTRA_REGS
+	/* Sanitize registers against speculation attacks */
+	/* r10/r11 are handled later, arguments are handled in san_args* */
+	CLEAR_R12_TO_R15
+#ifndef CONFIG_FRAME_POINTER
+	xor	%ebp, %ebp
+#endif
+	xor	%ebx, %ebx
+	xor	%ecx, %ecx
 
 	/*
 	 * If we need to do entry work or if we guess we'll need to do
@@ -260,6 +268,7 @@ entry_SYSCALL_64_fastpath:
 #endif
 	ja	1f				/* return -ENOSYS (already in pt_regs->ax) */
 	movq	%r10, %rcx
+	xor	%r10, %r10
 
 #ifdef CONFIG_RETPOLINE
 	movq	sys_call_table(, %rax, 8), %rax
