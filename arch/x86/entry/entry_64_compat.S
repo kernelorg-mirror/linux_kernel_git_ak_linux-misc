@@ -95,7 +95,10 @@ ENTRY(entry_SYSENTER_compat)
 	pushq   $0			/* pt_regs->r14 = 0 */
 	pushq   $0			/* pt_regs->r15 = 0 */
 	cld
-	/* Can clear all because arguments are passed through the stack */
+	/*
+	 * Can clear all because arguments are passed through ptregs.
+	 * We sanitize the arguments later again in san_arg32_*
+	 */
 	CLEAR_ALL_REGS
 
 	/*
@@ -381,3 +384,20 @@ ENTRY(stub32_clone)
 	xchg	%r8, %rcx
 	jmp	sys_clone
 ENDPROC(stub32_clone)
+
+/*
+ * Clear all argument registers not used by a system call.
+ */
+
+.macro gen32_arg_stub sym, num
+	.ifndef san_args32_\sym
+ENTRY(san_args32_\sym)
+	CLEAR_ARGS \num
+	xor	  %eax, %eax
+	jmp	   \sym
+END(san_args32_\sym)
+	.endif
+.endm
+
+#define __SYSCALL_I386(nr, sym, qual, num) gen32_arg_stub sym, num
+#include <asm/syscalls_32.h>
