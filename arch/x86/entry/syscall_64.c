@@ -8,7 +8,7 @@
 #include <asm/syscall.h>
 
 #define __SYSCALL_64_QUAL_(sym) sym
-#define __SYSCALL_64_QUAL_ptregs(sym) ptregs_##sym
+#define __SYSCALL_64_QUAL_ptregs(sym) sym
 
 #define __SYSCALL_64(nr, sym, qual) extern asmlinkage long __SYSCALL_64_QUAL_##qual(sym)(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long);
 #include <asm/syscalls_64.h>
