@@ -8,6 +8,7 @@ syscall_macro() {
     abi="$1"
     nr="$2"
     entry="$3"
+    num="$4"
 
     # Entry can be either just a function name or "function/qualifier"
     real_entry="${entry%%/*}"
@@ -47,7 +48,11 @@ emit() {
 }
 
 grep '^[0-9]' "$in" | sort -n | (
-    while read nr abi name entry compat; do
+    while read nr abi name entry compat num; do
+	case "$compat" in
+	[0-9]*) num="$compat" ; compat="" ;
+	esac
+
 	abi=`echo "$abi" | tr '[a-z]' '[A-Z]'`
 	if [ "$abi" = "COMMON" -o "$abi" = "64" ]; then
 	    # COMMON is the same as 64, except that we don't expect X32
