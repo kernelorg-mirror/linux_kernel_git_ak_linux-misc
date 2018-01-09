@@ -182,6 +182,34 @@ For 32-bit we have the following conventions - kernel is built with
 	.byte 0xf1
 	.endm
 
+	.macro CLEAR_R12_TO_R15
+	xorq %r15, %r15
+	xorq %r14, %r14
+	xorq %r13, %r13
+	xorq %r12, %r12
+	.endm
+
+	.macro CLEAR_R8_TO_R15
+	CLEAR_R12_TO_R15
+	xorq %r11, %r11
+	xorq %r10, %r10
+	xorq %r9, %r9
+	xorq %r8, %r8
+	.endm
+
+	.macro CLEAR_ALL_REGS
+	CLEAR_R8_TO_R15
+	xorl %eax, %eax
+	xorl %ebx, %ebx
+	xorl %ecx, %ecx
+	xorl %edx, %edx
+	xorl %esi, %esi
+	xorl %edi, %edi
+#ifndef CONFIG_FRAME_POINTER
+	xorl %ebp, %ebp
+#endif
+	.endm
+
 /*
  * This is a sneaky trick to help the unwinder find pt_regs on the stack.  The
  * frame pointer is replaced with an encoded pointer to pt_regs.  The encoding
