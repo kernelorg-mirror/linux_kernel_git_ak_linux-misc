@@ -221,6 +221,18 @@
 	POP_GS_EX
 .endm
 
+.macro CLEAR_ALL_REGS
+#ifdef CONFIG_FRAME_POINTER
+	xorl	%ebp, %ebp
+#endif
+	xorl	%eax, %eax
+	xorl	%ebx, %ebx
+	xorl	%ecx, %ecx
+	xorl	%edx, %edx
+	xorl	%edi, %edi
+	xorl	%esi, %esi
+.endm
+
 /*
  * %eax: prev task
  * %edx: next task
@@ -428,6 +440,7 @@ ENTRY(entry_SYSENTER_32)
 	pushl	$0			/* pt_regs->ip = 0 (placeholder) */
 	pushl	%eax			/* pt_regs->orig_ax */
 	SAVE_ALL pt_regs_ax=$-ENOSYS	/* save rest */
+	CLEAR_ALL_REGS
 
 	/*
 	 * SYSENTER doesn't filter flags, so we need to clear NT, AC
@@ -539,6 +552,7 @@ ENTRY(entry_INT80_32)
 	ASM_CLAC
 	pushl	%eax			/* pt_regs->orig_ax */
 	SAVE_ALL pt_regs_ax=$-ENOSYS	/* save rest */
+	CLEAR_ALL_REGS
 
 	/*
 	 * User mode is traced as though IRQs are on, and the interrupt gate
@@ -673,6 +687,7 @@ common_interrupt:
 	ASM_CLAC
 	addl	$-0x80, (%esp)			/* Adjust vector into the [-256, -1] range */
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	TRACE_IRQS_OFF
 	movl	%esp, %eax
@@ -685,6 +700,7 @@ ENTRY(name)				\
 	ASM_CLAC;			\
 	pushl	$~(nr);			\
 	SAVE_ALL;			\
+	CLEAR_ALL_REGS;			\
 	ENCODE_FRAME_POINTER;		\
 	TRACE_IRQS_OFF			\
 	movl	%esp, %eax;		\
@@ -812,6 +828,7 @@ END(spurious_interrupt_bug)
 ENTRY(xen_hypervisor_callback)
 	pushl	$-1				/* orig_ax = -1 => not a system call */
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	TRACE_IRQS_OFF
 
@@ -867,6 +884,7 @@ ENTRY(xen_failsafe_callback)
 	jmp	iret_exc
 5:	pushl	$-1				/* orig_ax = -1 => not a system call */
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	jmp	ret_from_exception
 
@@ -921,6 +939,7 @@ common_exception:
 	pushl	%edx
 	pushl	%ecx
 	pushl	%ebx
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	cld
 	movl	$(__KERNEL_PERCPU), %ecx
@@ -954,6 +973,7 @@ ENTRY(debug)
 	ASM_CLAC
 	pushl	$-1				# mark this as an int
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	xorl	%edx, %edx			# error code 0
 	movl	%esp, %eax			# pt_regs pointer
@@ -998,6 +1018,7 @@ ENTRY(nmi)
 
 	pushl	%eax				# pt_regs->orig_ax
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	xorl	%edx, %edx			# zero error code
 	movl	%esp, %eax			# pt_regs pointer
@@ -1038,6 +1059,7 @@ ENTRY(nmi)
 	.endr
 	pushl	%eax
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	FIXUP_ESPFIX_STACK			# %eax == %esp
 	xorl	%edx, %edx			# zero error code
@@ -1052,6 +1074,7 @@ ENTRY(int3)
 	ASM_CLAC
 	pushl	$-1				# mark this as an int
 	SAVE_ALL
+	CLEAR_ALL_REGS
 	ENCODE_FRAME_POINTER
 	TRACE_IRQS_OFF
 	xorl	%edx, %edx			# zero error code
