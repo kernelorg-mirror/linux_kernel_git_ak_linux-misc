@@ -147,6 +147,16 @@ For 32-bit we have the following conventions - kernel is built with
 	UNWIND_HINT_REGS offset=\offset
 	.endm
 
+	.macro PUSH_EXTRA_REGS
+	pushq %rbx
+	pushq %rbp
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
+	UNWIND_HINT_REGS offset=0
+	.endm
+
 	.macro POP_EXTRA_REGS
 	popq %r15
 	popq %r14
