@@ -236,6 +236,14 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	pushq	%r11				/* pt_regs->r11 */
 	sub	$(6*8), %rsp
 	SAVE_EXTRA_REGS
+	/* Sanitize registers against speculation attacks */
+	/* r10 is cleared later, arguments are handled in san_args* */
+	CLEAR_R11_TO_R15
+#ifndef CONFIG_FRAME_POINTER
+	xor	%ebp, %ebp
+#endif
+	xor	%ebx, %ebx
+	xor	%ecx, %ecx
 
 	UNWIND_HINT_REGS extra=0
 
@@ -263,6 +271,7 @@ entry_SYSCALL_64_fastpath:
 #endif
 	ja	1f				/* return -ENOSYS (already in pt_regs->ax) */
 	movq	%r10, %rcx
+	xor	%r10, %r10
 
 #ifdef CONFIG_RETPOLINE
 	movq	sys_call_table(, %rax, 8), %rax
