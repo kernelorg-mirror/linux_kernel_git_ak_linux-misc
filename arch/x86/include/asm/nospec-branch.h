@@ -46,9 +46,8 @@
  */
 .macro JMP_NOSPEC reg:req
 #ifdef CONFIG_RETPOLINE
-	ALTERNATIVE_2 __stringify(jmp *\reg),				\
-		__stringify(RETPOLINE_JMP \reg), X86_FEATURE_RETPOLINE,	\
-		__stringify(lfence; jmp *\reg), X86_FEATURE_RETPOLINE_AMD
+	ALTERNATIVE "", "lfence", X86_FEATURE_RETPOLINE_AMD
+	ALTERNATIVE __stringify(jmp *\reg), __stringify(RETPOLINE_JMP \reg), X86_FEATURE_RETPOLINE_GENERIC
 #else
 	jmp	*\reg
 #endif
@@ -56,9 +55,8 @@
 
 .macro CALL_NOSPEC reg:req
 #ifdef CONFIG_RETPOLINE
-	ALTERNATIVE_2 __stringify(call *\reg),				\
-		__stringify(RETPOLINE_CALL \reg), X86_FEATURE_RETPOLINE,\
-		__stringify(lfence; call *\reg), X86_FEATURE_RETPOLINE_AMD
+	ALTERNATIVE "", "lfence", X86_FEATURE_RETPOLINE_AMD
+	ALTERNATIVE __stringify(call *\reg), __stringify(RETPOLINE_CALL \reg), X86_FEATURE_RETPOLINE_GENERIC
 #else
 	call	*\reg
 #endif
