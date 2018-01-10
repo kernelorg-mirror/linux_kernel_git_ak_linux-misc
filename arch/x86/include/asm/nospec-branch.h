@@ -116,7 +116,7 @@
 # define CALL_NOSPEC ALTERNATIVE(				\
 	"call *%[thunk_target]\n",				\
 	"call __x86_indirect_thunk_%V[thunk_target]\n",		\
-	X86_FEATURE_RETPOLINE)
+	X86_FEATURE_RETPOLINE_COMMON)
 # define THUNK_TARGET(addr) [thunk_target] "r" (addr)
 #elif defined(CONFIG_X86_32) && defined(CONFIG_RETPOLINE)
 /*
@@ -142,7 +142,7 @@
 	"       .align 16\n"					\
 	"do_call%=:\n"						\
 	"	call   do_retpoline%=;\n",			\
-	X86_FEATURE_RETPOLINE)
+	X86_FEATURE_RETPOLINE_COMMON)
 
 # define THUNK_TARGET(addr) [thunk_target] "rm" (addr)
 #else /* No retpoline */
