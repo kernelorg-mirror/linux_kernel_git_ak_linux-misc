@@ -501,7 +501,7 @@ ENTRY(__switch_to_asm)
 	 * any calls on the new stack, and this can be difficult to
 	 * ensure in a complex C function like __switch_to.
 	 */
-	ALTERNATIVE "", "FILL_RETURN_BUFFER %r12", X86_FEATURE_RETPOLINE
+	ALTERNATIVE "", "FILL_RETURN_BUFFER %r12", X86_FEATURE_RETPOLINE_GENERIC
 #endif
 
 	/* restore callee-saved registers */
