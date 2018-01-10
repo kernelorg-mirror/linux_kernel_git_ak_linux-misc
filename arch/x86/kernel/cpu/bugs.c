@@ -155,9 +155,9 @@ retpoline:
 	retpoline_generic:
 		spectre_v2_enabled = retp_compiler() ?
 			SPECTRE_V2_RETPOLINE_GENERIC : SPECTRE_V2_RETPOLINE_MINIMAL;
-		setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
+		setup_force_cpu_cap(X86_FEATURE_RETPOLINE_GENERIC);
 	}
-	setup_force_cpu_cap(X86_FEATURE_RETPOLINE_COMMON);
+	setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
 
 	return;
 #else
@@ -167,9 +167,9 @@ retpoline_generic:
 	pr_err("kernel not compiled with retpoline; no mitigation available!");
 #endif
 disable:
-	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE);
+	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE_GENERIC);
 	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE_AMD);
-	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE_COMMON);
+	setup_clear_cpu_cap(X86_FEATURE_RETPOLINE);
 	return;
 }
 
