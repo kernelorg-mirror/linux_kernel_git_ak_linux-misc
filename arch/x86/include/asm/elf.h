@@ -180,6 +180,7 @@ static inline void elf_common_init(struct thread_struct *t,
 	t->fsbase = t->gsbase = 0;
 	t->fsindex = t->gsindex = 0;
 	t->ds = t->es = ds;
+	set_thread_flag(TIF_FULL_RESTORE);
 }
 
 #define ELF_PLAT_INIT(_r, load_addr)			\

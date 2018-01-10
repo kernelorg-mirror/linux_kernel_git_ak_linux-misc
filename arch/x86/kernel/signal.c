@@ -640,6 +640,9 @@ asmlinkage long sys_rt_sigreturn(void)
 	sigset_t set;
 	unsigned long uc_flags;
 
+	/* Support restoring all registers */
+	set_thread_flag(TIF_FULL_RESTORE);
+
 	frame = (struct rt_sigframe __user *)(regs->sp - sizeof(long));
 	if (!access_ok(VERIFY_READ, frame, sizeof(*frame)))
 		goto badframe;
