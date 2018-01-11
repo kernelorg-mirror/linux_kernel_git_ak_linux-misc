@@ -236,8 +236,8 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	pushq	%r11				/* pt_regs->r11 */
 	PUSH_EXTRA_REGS
 	/* Sanitize registers against speculation attacks */
-	/* r10 is cleared later, arguments are handled in san_args* */
-	CLEAR_R11_TO_R15
+	/* r10/r11 are handled later, arguments are handled in san_args* */
+	CLEAR_R12_TO_R15
 #ifndef CONFIG_FRAME_POINTER
 	xor	%ebp, %ebp
 #endif
