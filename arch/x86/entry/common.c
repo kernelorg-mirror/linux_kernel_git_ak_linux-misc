@@ -210,7 +210,7 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	 */
 	current->thread.status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
 #endif
-	current->thread.status &= ~_TIF_FULL_RESTORE;
+	clear_thread_flag(TIF_FULL_RESTORE);
 
 	user_enter_irqoff();
 }
