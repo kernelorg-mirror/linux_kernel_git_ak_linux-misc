@@ -234,8 +234,7 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	pushq	%r9				/* pt_regs->r9 */
 	pushq	%r10				/* pt_regs->r10 */
 	pushq	%r11				/* pt_regs->r11 */
-	sub	$(6*8), %rsp
-	SAVE_EXTRA_REGS
+	PUSH_EXTRA_REGS
 	/* Sanitize registers against speculation attacks */
 	/* r10 is cleared later, arguments are handled in san_args* */
 	CLEAR_R11_TO_R15
@@ -244,8 +243,6 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 #endif
 	xor	%ebx, %ebx
 	xor	%ecx, %ecx
-
-	UNWIND_HINT_REGS extra=0
 
 	/*
 	 * If we need to do entry work or if we guess we'll need to do
