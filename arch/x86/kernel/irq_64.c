@@ -22,6 +22,7 @@
 
 int sysctl_panic_on_stackoverflow;
 
+#ifdef CONFIG_DEBUG_STACKOVERFLOW
 /*
  * Probabilistic stack overflow check:
  *
@@ -29,9 +30,8 @@ int sysctl_panic_on_stackoverflow;
  * runs on the big interrupt stacks. Checking reliably is too expensive,
  * so we just check from interrupts.
  */
-static inline void stack_overflow_check(struct pt_regs *regs)
+void stack_overflow_check(struct pt_regs *regs)
 {
-#ifdef CONFIG_DEBUG_STACKOVERFLOW
 #define STACK_TOP_MARGIN	128
 	struct orig_ist *oist;
 	u64 irq_stack_top, irq_stack_bottom;
@@ -64,8 +64,8 @@ static inline void stack_overflow_check(struct pt_regs *regs)
 
 	if (sysctl_panic_on_stackoverflow)
 		panic("low stack detected by irq handler - check messages\n");
-#endif
 }
+#endif
 
 bool handle_irq(struct irq_desc *desc, struct pt_regs *regs)
 {

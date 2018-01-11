@@ -1057,6 +1057,7 @@ __visible void __irq_entry smp_apic_timer_interrupt(struct pt_regs *regs)
 	local_apic_timer_interrupt();
 	trace_local_timer_exit(LOCAL_TIMER_VECTOR);
 	exiting_irq();
+	stack_overflow_check(regs);
 
 	set_irq_regs(old_regs);
 }

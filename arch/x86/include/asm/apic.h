@@ -646,4 +646,10 @@ static inline void exiting_ack_irq(void)
 
 extern void ioapic_zap_locks(void);
 
+#ifdef CONFIG_DEBUG_STACKOVERFLOW
+extern void stack_overflow_check(struct pt_regs *regs);
+#else
+static inline void stack_overflow_check(struct pt_regs *regs) {}
+#endif
+
 #endif /* _ASM_X86_APIC_H */
