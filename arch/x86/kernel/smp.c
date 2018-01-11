@@ -275,6 +275,7 @@ __visible void __irq_entry smp_reschedule_interrupt(struct pt_regs *regs)
 		return;
 	}
 	scheduler_ipi();
+	stack_overflow_check(regs);
 }
 
 __visible void __irq_entry smp_call_function_interrupt(struct pt_regs *regs)
@@ -283,6 +284,7 @@ __visible void __irq_entry smp_call_function_interrupt(struct pt_regs *regs)
 	trace_call_function_entry(CALL_FUNCTION_VECTOR);
 	inc_irq_stat(irq_call_count);
 	generic_smp_call_function_interrupt();
+	stack_overflow_check(regs);
 	trace_call_function_exit(CALL_FUNCTION_VECTOR);
 	exiting_irq();
 }
@@ -293,6 +295,7 @@ __visible void __irq_entry smp_call_function_single_interrupt(struct pt_regs *r)
 	trace_call_function_single_entry(CALL_FUNCTION_SINGLE_VECTOR);
 	inc_irq_stat(irq_call_count);
 	generic_smp_call_function_single_interrupt();
+	stack_overflow_check(r);
 	trace_call_function_single_exit(CALL_FUNCTION_SINGLE_VECTOR);
 	exiting_irq();
 }
