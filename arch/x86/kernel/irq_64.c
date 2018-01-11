@@ -19,8 +19,42 @@
 #include <linux/sched/task_stack.h>
 #include <asm/io_apic.h>
 #include <asm/apic.h>
+#include <asm/unwind.h>
 
 int sysctl_panic_on_stackoverflow;
+
+#ifdef CONFIG_DEBUG_STACK_DEPTH
+
+/*
+ * Check for too deep call nesting in the kernel that might
+ * overflow the 16 entry return stack buffer.
+ */
+
+#define MAX_CALL_DEPTH 16
+
+static void check_stack_depth(struct pt_regs *regs)
+{
+	struct unwind_state state;
+	int count = 0;
+	static int num_printed;
+
+	if (test_thread_flag(TIF_DEEP_STACK))
+		return;
+	/* System init code can have deep chains but that's fine */
+	if (system_state != SYSTEM_RUNNING)
+		return;
+
+	for (unwind_start(&state, current, regs, NULL);
+	     !unwind_done(&state) && unwind_get_return_address(&state);
+	     unwind_next_frame(&state))
+		count++;
+	if (count > MAX_CALL_DEPTH && num_printed < 10) {
+		WARN(1, "Call depth %d deeper than %d\n",
+				count, MAX_CALL_DEPTH);
+		num_printed++;
+	}
+}
+#endif
 
 #ifdef CONFIG_DEBUG_STACKOVERFLOW
 /*
@@ -40,6 +74,10 @@ void stack_overflow_check(struct pt_regs *regs)
 
 	if (user_mode(regs))
 		return;
+
+#ifdef CONFIG_DEBUG_STACK_DEPTH
+	check_stack_depth(regs);
+#endif
 
 	if (regs->sp >= curbase + sizeof(struct pt_regs) + STACK_TOP_MARGIN &&
 	    regs->sp <= curbase + THREAD_SIZE)

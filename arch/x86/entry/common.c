@@ -184,6 +184,10 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	struct thread_info *ti = current_thread_info();
 	u32 cached_flags;
 
+#ifdef CONFIG_DEBUG_STACK_DEPTH
+	clear_thread_flag(TIF_DEEP_STACK);
+#endif
+
 	addr_limit_user_check();
 
 	if (IS_ENABLED(CONFIG_PROVE_LOCKING) && WARN_ON(!irqs_disabled()))

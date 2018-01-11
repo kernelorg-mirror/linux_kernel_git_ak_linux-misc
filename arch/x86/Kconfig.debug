@@ -357,6 +357,16 @@ config PUNIT_ATOM_DEBUG
 	  The current power state can be read from
 	  /sys/kernel/debug/punit_atom/dev_power_state
 
+config DEBUG_STACK_DEPTH
+	bool "Debug stack depth for return buffer overflow"
+	depends on DEBUG_STACKOVERFLOW
+	depends on x86_64
+	---help---
+	  Warn once when the call chain depth in an interrupt
+	  exceeds the limits for the x86 return buffer. This
+	  might indicate code paths where a fill_return_buffer
+	  call needs to be added.
+
 choice
 	prompt "Choose kernel unwinder"
 	default UNWINDER_ORC if X86_64
