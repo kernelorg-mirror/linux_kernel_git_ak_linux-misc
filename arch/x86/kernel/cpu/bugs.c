@@ -309,6 +309,11 @@ retpoline_auto:
 		setup_force_cpu_cap(X86_FEATURE_USE_IBRS_FW);
 		pr_info("Enabling Restricted Speculation for firmware calls\n");
 	}
+
+	if (is_skylake_era()) {
+		setup_force_cpu_cap(X86_FEATURE_RSB_UNDERFLOW);
+		pr_info("Enabling return buffer underflow protections");
+	}
 }
 
 #undef pr_fmt
