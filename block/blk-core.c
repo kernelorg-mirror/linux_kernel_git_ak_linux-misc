@@ -34,6 +34,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/blk-cgroup.h>
 #include <linux/debugfs.h>
+#include <linux/deepstack.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
@@ -372,9 +373,11 @@ inline void __blk_run_queue_uncond(struct request_queue *q)
 	 * number of active request_fn invocations such that blk_drain_queue()
 	 * can wait until all these request_fn calls have finished.
 	 */
+	start_deep_call_chain();
 	q->request_fn_active++;
 	q->request_fn(q);
 	q->request_fn_active--;
+	end_deep_call_chain();
 }
 EXPORT_SYMBOL_GPL(__blk_run_queue_uncond);
 
@@ -2163,6 +2166,8 @@ blk_qc_t generic_make_request(struct bio *bio)
 	struct bio_list bio_list_on_stack[2];
 	blk_qc_t ret = BLK_QC_T_NONE;
 
+	start_deep_call_chain();
+
 	if (!generic_make_request_checks(bio))
 		goto out;
 
@@ -2237,6 +2242,7 @@ blk_qc_t generic_make_request(struct bio *bio)
 	current->bio_list = NULL; /* deactivate */
 
 out:
+	end_deep_call_chain();
 	return ret;
 }
 EXPORT_SYMBOL(generic_make_request);
