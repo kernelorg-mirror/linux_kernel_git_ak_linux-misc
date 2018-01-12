@@ -41,6 +41,7 @@
 #include <linux/pci.h>
 #include <linux/etherdevice.h>
 #include <linux/bpf.h>
+#include <linux/deepstack.h>
 
 #include <linux/uaccess.h>
 
@@ -4179,6 +4180,8 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 	if (kind != 2 && !netlink_net_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
+	start_deep_call_chain();
+
 	if (family >= ARRAY_SIZE(rtnl_msg_handlers))
 		family = PF_UNSPEC;
 
@@ -4222,7 +4225,7 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 			err = netlink_dump_start(rtnl, skb, nlh, &c);
 		}
 		refcount_dec(&rtnl_msg_handlers_ref[family]);
-		return err;
+		goto out_chain;
 	}
 
 	doit = READ_ONCE(handlers[type].doit);
@@ -4239,7 +4242,7 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 		if (doit)
 			err = doit(skb, nlh, extack);
 		refcount_dec(&rtnl_msg_handlers_ref[family]);
-		return err;
+		goto out_chain;
 	}
 
 	rcu_read_unlock();
@@ -4252,11 +4255,15 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh,
 			err = doit(skb, nlh, extack);
 	}
 	rtnl_unlock();
-	return err;
+	end_deep_call_chain();
+	goto out_chain;
 
 err_unlock:
 	rcu_read_unlock();
-	return -EOPNOTSUPP;
+	err = -EOPNOTSUPP;
+out_chain:
+	end_deep_call_chain();
+	return err;
 }
 
 static void rtnetlink_rcv(struct sk_buff *skb)
