@@ -181,6 +181,7 @@ enum spectre_v2_mitigation {
 	SPECTRE_V2_RETPOLINE_MINIMAL,
 	SPECTRE_V2_RETPOLINE_MINIMAL_AMD,
 	SPECTRE_V2_RETPOLINE_GENERIC,
+	SPECTRE_V2_RETPOLINE_UNDERFLOW,
 	SPECTRE_V2_RETPOLINE_AMD,
 	SPECTRE_V2_IBRS,
 };
@@ -205,5 +206,29 @@ static inline void vmexit_fill_RSB(void)
 		      : "r" (loops) : "memory" );
 #endif
 }
+
+/*
+ * Fill the return buffer to avoid return buffer overflow.
+ *
+ * This is different from the one above because it is controlled
+ * by a different feature bit. It should be used for any fixes
+ * for call chains deeper than 16, or the context switch.
+ */
+static inline void fill_return_buffer(void)
+{
+#ifdef CONFIG_RETPOLINE
+	unsigned long loops = RSB_CLEAR_LOOPS / 2;
+
+	asm volatile (ANNOTATE_NOSPEC_ALTERNATIVE
+		      ALTERNATIVE("jmp 910f",
+				  __stringify(__FILL_RETURN_BUFFER(%0, RSB_CLEAR_LOOPS, %1)),
+				  X86_FEATURE_RETURN_UNDERFLOW)
+		      "910:"
+		      : "=&r" (loops), ASM_CALL_CONSTRAINT
+		      : "r" (loops) : "memory" );
+#endif
+}
+
+
 #endif /* __ASSEMBLY__ */
 #endif /* __NOSPEC_BRANCH_H__ */

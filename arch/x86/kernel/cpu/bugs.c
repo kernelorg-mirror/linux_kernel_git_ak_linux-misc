@@ -23,6 +23,7 @@
 #include <asm/alternative.h>
 #include <asm/pgtable.h>
 #include <asm/set_memory.h>
+#include <asm/intel-family.h>
 
 static void __init spectre_v2_select_mitigation(void);
 
@@ -77,6 +78,7 @@ enum spectre_v2_mitigation_cmd {
 	SPECTRE_V2_CMD_FORCE,
 	SPECTRE_V2_CMD_RETPOLINE,
 	SPECTRE_V2_CMD_RETPOLINE_GENERIC,
+	SPECTRE_V2_CMD_RETPOLINE_UNDERFLOW,
 	SPECTRE_V2_CMD_RETPOLINE_AMD,
 };
 
@@ -86,6 +88,7 @@ static const char *spectre_v2_strings[] = {
 	[SPECTRE_V2_RETPOLINE_MINIMAL_AMD]	= "Vulnerable: Minimal AMD ASM retpoline",
 	[SPECTRE_V2_RETPOLINE_GENERIC]		= "Mitigation: Full generic retpoline",
 	[SPECTRE_V2_RETPOLINE_AMD]		= "Mitigation: Full AMD retpoline",
+	[SPECTRE_V2_RETPOLINE_UNDERFLOW]	= "Mitigation: Full generic retpoline with underflow",
 };
 
 #undef pr_fmt
@@ -117,6 +120,22 @@ static inline bool match_option(const char *arg, int arglen, const char *opt)
 	return len == arglen && !strncmp(arg, opt, len);
 }
 
+static bool cpu_needs_underflow_protection(void)
+{
+	if (boot_cpu_data.x86_vendor != X86_VENDOR_INTEL ||
+	    boot_cpu_data.x86 != 6)
+		return false;
+	switch (boot_cpu_data.x86_model) {
+	case INTEL_FAM6_SKYLAKE_MOBILE:
+	case INTEL_FAM6_SKYLAKE_DESKTOP:
+	case INTEL_FAM6_SKYLAKE_X:
+	case INTEL_FAM6_KABYLAKE_MOBILE:
+	case INTEL_FAM6_KABYLAKE_DESKTOP:
+		return true;
+	}
+	return false;
+}
+
 static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 {
 	char arg[20];
@@ -143,6 +162,9 @@ static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 		} else if (match_option(arg, ret, "retpoline,generic")) {
 			spec2_print_if_insecure("generic retpoline selected on command line.");
 			return SPECTRE_V2_CMD_RETPOLINE_GENERIC;
+		} else if (match_option(arg, ret, "retpoline,underflow")) {
+			spec2_print_if_insecure("generic retpoline with underflow protection selected on command line.");
+			return SPECTRE_V2_CMD_RETPOLINE_UNDERFLOW;
 		} else if (match_option(arg, ret, "auto")) {
 			return SPECTRE_V2_CMD_AUTO;
 		}
@@ -189,6 +211,9 @@ static void __init spectre_v2_select_mitigation(void)
 		if (IS_ENABLED(CONFIG_RETPOLINE))
 			goto retpoline_auto;
 		break;
+	case SPECTRE_V2_CMD_RETPOLINE_UNDERFLOW:
+		if (IS_ENABLED(CONFIG_RETPOLINE))
+			goto retpoline_generic;
 	}
 	pr_err("kernel not compiled with retpoline; no mitigation available!");
 	return;
@@ -209,6 +234,11 @@ retpoline_auto:
 		mode = retp_compiler() ? SPECTRE_V2_RETPOLINE_GENERIC :
 					 SPECTRE_V2_RETPOLINE_MINIMAL;
 		setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
+		if (mode == SPECTRE_V2_RETPOLINE_GENERIC &&
+			cpu_needs_underflow_protection()) {
+			mode = SPECTRE_V2_RETPOLINE_UNDERFLOW;
+			setup_force_cpu_cap(X86_FEATURE_RETURN_UNDERFLOW);
+		}
 	}
 
 	spectre_v2_enabled = mode;
