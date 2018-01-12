@@ -249,6 +249,11 @@ retpoline_auto:
 		setup_force_cpu_cap(X86_FEATURE_RSB_CTXSW);
 		pr_info("Filling RSB on context switch\n");
 	}
+
+	if (is_skylake_era()) {
+		setup_force_cpu_cap(X86_FEATURE_RSB_UNDERFLOW);
+		pr_info("Enabling return buffer underflow protections");
+	}
 }
 
 #undef pr_fmt
