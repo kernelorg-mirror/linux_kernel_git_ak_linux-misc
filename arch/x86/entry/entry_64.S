@@ -242,7 +242,6 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	xor	%ebp, %ebp
 #endif
 	xor	%ebx, %ebx
-	xor	%ecx, %ecx
 
 	/*
 	 * If we need to do entry work or if we guess we'll need to do
