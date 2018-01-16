@@ -32,7 +32,7 @@ int sysctl_panic_on_stackoverflow;
 
 #define MAX_CALL_DEPTH 16
 
-int deep_max_print = 50;
+static int deep_max_print = 50;
 
 static void check_stack_depth(struct pt_regs *regs)
 {
