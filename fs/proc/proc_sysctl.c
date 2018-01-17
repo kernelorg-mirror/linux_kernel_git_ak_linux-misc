@@ -13,6 +13,7 @@
 #include <linux/namei.h>
 #include <linux/mm.h>
 #include <linux/module.h>
+#include <linux/deepstack.h>
 #include "internal.h"
 
 static const struct dentry_operations proc_sys_dentry_operations;
@@ -610,7 +611,11 @@ static ssize_t proc_sys_read(struct file *filp, char __user *buf,
 static ssize_t proc_sys_write(struct file *filp, const char __user *buf,
 				size_t count, loff_t *ppos)
 {
-	return proc_sys_call_handler(filp, (void __user *)buf, count, ppos, 1);
+	int ret;
+	start_deep_call_chain();
+	ret = proc_sys_call_handler(filp, (void __user *)buf, count, ppos, 1);
+	end_deep_call_chain();
+	return ret;
 }
 
 static int proc_sys_open(struct inode *inode, struct file *filp)
