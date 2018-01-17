@@ -26,6 +26,7 @@
 #include <linux/smpboot.h>
 #include <linux/tick.h>
 #include <linux/irq.h>
+#include <linux/deepstack.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/irq.h>
@@ -264,6 +265,8 @@ asmlinkage __visible void __softirq_entry __do_softirq(void)
 restart:
 	/* Reset the pending bitmask before enabling irqs */
 	set_softirq_pending(0);
+
+	mark_deep_call_chain();
 
 	local_irq_enable();
 
