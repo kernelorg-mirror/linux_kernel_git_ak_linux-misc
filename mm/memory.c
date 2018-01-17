@@ -70,6 +70,7 @@
 #include <linux/userfaultfd_k.h>
 #include <linux/dax.h>
 #include <linux/oom.h>
+#include <linux/deepstack.h>
 
 #include <asm/io.h>
 #include <asm/mmu_context.h>
@@ -4058,6 +4059,8 @@ int handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
 					    flags & FAULT_FLAG_REMOTE))
 		return VM_FAULT_SIGSEGV;
 
+	start_deep_call_chain();
+
 	/*
 	 * Enable the memcg OOM handling for faults triggered in user
 	 * space.  Kernel faults are handled more gracefully.
@@ -4081,6 +4084,7 @@ int handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
 		if (task_in_memcg_oom(current) && !(ret & VM_FAULT_OOM))
 			mem_cgroup_oom_synchronize(false);
 	}
+	end_deep_call_chain();
 
 	return ret;
 }
