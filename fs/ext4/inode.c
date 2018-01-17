@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/bitops.h>
 #include <linux/iomap.h>
+#include <linux/deepstack.h>
 
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -4661,6 +4662,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 	if (!(inode->i_state & I_NEW))
 		return inode;
 
+	start_deep_call_chain();
+
 	ei = EXT4_I(inode);
 	iloc.bh = NULL;
 
@@ -4887,12 +4890,17 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 	ext4_set_inode_flags(inode);
 
 	unlock_new_inode(inode);
+
+out:
+	end_deep_call_chain();
 	return inode;
 
 bad_inode:
+	end_deep_call_chain();
 	brelse(iloc.bh);
 	iget_failed(inode);
-	return ERR_PTR(ret);
+	inode = ERR_PTR(ret);
+	goto out;
 }
 
 struct inode *ext4_iget_normal(struct super_block *sb, unsigned long ino)
