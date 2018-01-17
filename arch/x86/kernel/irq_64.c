@@ -50,10 +50,16 @@ static void check_stack_depth(struct pt_regs *regs)
 	     !unwind_done(&state) && unwind_get_return_address(&state);
 	     unwind_next_frame(&state))
 		count++;
-	if (count > MAX_CALL_DEPTH && num_printed < deep_max_print) {
-		WARN(1, "Call depth %d deeper than %d\n",
-				count, MAX_CALL_DEPTH);
-		num_printed++;
+	if (count > MAX_CALL_DEPTH) {
+		static DEFINE_SPINLOCK(print_lock);
+
+		spin_lock(&print_lock);
+		if (num_printed < deep_max_print) {
+			WARN(1, "Call depth %d deeper than %d\n",
+					count, MAX_CALL_DEPTH);
+			num_printed++;
+		}
+		spin_unlock(&print_lock);
 	}
 }
 #endif
