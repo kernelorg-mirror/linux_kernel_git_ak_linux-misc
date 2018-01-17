@@ -226,7 +226,7 @@ static inline void vmexit_fill_RSB(void)
 static inline void fill_return_buffer(void)
 {
 #ifdef CONFIG_RETPOLINE
-	unsigned long loops = RSB_CLEAR_LOOPS / 2;
+	unsigned long loops = RSB_FILL_LOOPS / 2;
 
 	asm volatile (ANNOTATE_NOSPEC_ALTERNATIVE
 		      ALTERNATIVE("jmp 910f",
