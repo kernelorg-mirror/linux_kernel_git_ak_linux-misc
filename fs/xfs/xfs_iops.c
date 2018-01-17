@@ -46,6 +46,7 @@
 #include <linux/security.h>
 #include <linux/iomap.h>
 #include <linux/slab.h>
+#include <linux/deepstack.h>
 
 /*
  * Directories have different lock order w.r.t. mmap_sem compared to regular
@@ -267,16 +268,24 @@ xfs_vn_lookup(
 	if (dentry->d_name.len >= MAXNAMELEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
+	start_deep_call_chain();
+
 	xfs_dentry_to_name(&name, dentry);
 	error = xfs_lookup(XFS_I(dir), &name, &cip, NULL);
 	if (unlikely(error)) {
+		dentry = ERR_PTR(error);
 		if (unlikely(error != -ENOENT))
-			return ERR_PTR(error);
+			goto out;
 		d_add(dentry, NULL);
-		return NULL;
+		dentry = NULL;
+		goto out;
 	}
 
-	return d_splice_alias(VFS_I(cip), dentry);
+	dentry = d_splice_alias(VFS_I(cip), dentry);
+
+out:
+	end_deep_call_chain();
+	return dentry;
 }
 
 STATIC struct dentry *
