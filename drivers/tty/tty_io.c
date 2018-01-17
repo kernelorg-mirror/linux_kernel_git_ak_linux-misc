@@ -96,6 +96,7 @@
 #include <linux/seq_file.h>
 #include <linux/serial.h>
 #include <linux/ratelimit.h>
+#include <linux/deepstack.h>
 
 #include <linux/uaccess.h>
 
@@ -1020,6 +1021,7 @@ static ssize_t tty_write(struct file *file, const char __user *buf,
 		return -EIO;
 	if (!tty || !tty->ops->write ||	tty_io_error(tty))
 			return -EIO;
+	start_deep_call_chain();
 	/* Short term debug to catch buggy drivers */
 	if (tty->ops->write_room == NULL)
 		tty_err(tty, "missing write_room method\n");
@@ -1031,6 +1033,7 @@ static ssize_t tty_write(struct file *file, const char __user *buf,
 	else
 		ret = do_tty_write(ld->ops->write, tty, file, buf, count);
 	tty_ldisc_deref(ld);
+	end_deep_call_chain();
 	return ret;
 }
 
@@ -1984,6 +1987,8 @@ retry_open:
 	if (retval)
 		return -ENOMEM;
 
+	start_deep_call_chain();
+
 	tty = tty_open_current_tty(device, filp);
 	if (!tty)
 		tty = tty_open_by_driver(device, inode, filp);
@@ -1992,7 +1997,7 @@ retry_open:
 		tty_free_file(filp);
 		retval = PTR_ERR(tty);
 		if (retval != -EAGAIN || signal_pending(current))
-			return retval;
+			goto out;
 		schedule();
 		goto retry_open;
 	}
@@ -2014,10 +2019,10 @@ retry_open:
 		tty_unlock(tty); /* need to call tty_release without BTM */
 		tty_release(inode, filp);
 		if (retval != -ERESTARTSYS)
-			return retval;
+			goto out;
 
 		if (signal_pending(current))
-			return retval;
+			goto out;
 
 		schedule();
 		/*
@@ -2037,7 +2042,10 @@ retry_open:
 	if (!noctty)
 		tty_open_proc_set_tty(filp, tty);
 	tty_unlock(tty);
-	return 0;
+	retval = 0;
+out:
+	end_deep_call_chain();
+	return retval;
 }
 
 
