@@ -273,9 +273,10 @@ xfs_vn_lookup(
 	xfs_dentry_to_name(&name, dentry);
 	error = xfs_lookup(XFS_I(dir), &name, &cip, NULL);
 	if (unlikely(error)) {
-		dentry = ERR_PTR(error);
-		if (unlikely(error != -ENOENT))
+		if (unlikely(error != -ENOENT)) {
+			dentry = ERR_PTR(error);
 			goto out;
+		}
 		d_add(dentry, NULL);
 		dentry = NULL;
 		goto out;
