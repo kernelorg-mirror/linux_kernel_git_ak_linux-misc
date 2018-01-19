@@ -34,6 +34,7 @@
  */
 #define __FILL_RETURN_BUFFER(reg, nr, sp)	\
 	mov	$(nr/2), reg;			\
+	.align  32;				\
 771:						\
 	call	772f;				\
 773:	/* speculation trap */			\
