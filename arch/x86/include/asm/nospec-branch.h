@@ -217,5 +217,22 @@ static inline void firmware_restrict_branch_speculation_end(void)
 			      X86_FEATURE_USE_IBRS_FW);
 }
 
+/*
+ * Fill the return buffer to avoid return buffer overflow.
+ *
+ * This is different from the one above because it is controlled
+ * by a different feature bit. It should be used for any fixes
+ * for call chains deeper than 16, or the context switch.
+ */
+static inline void fill_return_buffer(void)
+{
+#ifdef CONFIG_RETPOLINE
+	alternative_input("",
+			  "call __fill_rsb; " STUFF_ONE_RSB,
+			  X86_FEATURE_RETPOLINE,
+			  ASM_NO_INPUT_CLOBBER(_ASM_BX, "memory"));
+#endif
+}
+
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_X86_NOSPEC_BRANCH_H_ */
