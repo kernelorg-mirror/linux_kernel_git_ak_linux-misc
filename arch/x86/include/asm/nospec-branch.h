@@ -238,6 +238,28 @@ static inline void vmexit_fill_RSB(void)
 #endif
 }
 
+/*
+ * Fill the return buffer to avoid return buffer overflow.
+ *
+ * This is different from the one above because it is controlled
+ * by a different feature bit. It should be used for any fixes
+ * for call chains deeper than 16, or the context switch.
+ */
+static inline void fill_return_buffer(void)
+{
+#ifdef CONFIG_RETPOLINE
+	unsigned long loops;
+
+	asm volatile (ANNOTATE_NOSPEC_ALTERNATIVE
+		      ALTERNATIVE("jmp 810f",
+				  __stringify(__FILL_RETURN_BUFFER(%0, RSB_FILL_LOOPS, %1)),
+				  X86_FEATURE_RSB_UNDERFLOW)
+		      "810:"
+		      : "=r" (loops), ASM_CALL_CONSTRAINT
+		      : : "memory" );
+#endif
+}
+
 #define alternative_msr_write(_msr, _val, _feature)		\
 	asm volatile(ALTERNATIVE("",				\
 				 "movl %[msr], %%ecx\n\t"	\
