@@ -511,6 +511,8 @@ static void __init mm_init(void)
 	pti_init();
 }
 
+__init __weak void early_check_bugs(void) {}
+
 asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;
@@ -571,6 +573,9 @@ asmlinkage __visible void __init start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_init();
+
+	/* Must be before ftrace, but after arguments */
+	early_check_bugs();
 
 	ftrace_init();
 

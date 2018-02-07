@@ -27,6 +27,15 @@
 
 static void __init spectre_v2_select_mitigation(void);
 
+void __init early_check_bugs(void)
+{
+	/*
+	 * Select the proper spectre mitigation before patching alternatives
+	 * or initializing ftrace.
+	 */
+	spectre_v2_select_mitigation();
+}
+
 void __init check_bugs(void)
 {
 	identify_boot_cpu();
@@ -35,9 +44,6 @@ void __init check_bugs(void)
 		pr_info("CPU: ");
 		print_cpu_info(&boot_cpu_data);
 	}
-
-	/* Select the proper spectre mitigation before patching alternatives */
-	spectre_v2_select_mitigation();
 
 #ifdef CONFIG_X86_32
 	/*
