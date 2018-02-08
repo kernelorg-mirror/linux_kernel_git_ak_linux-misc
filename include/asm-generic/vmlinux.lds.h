@@ -111,6 +111,15 @@
 #define MCOUNT_REC()
 #endif
 
+#ifdef CONFIG_DEEP_CHAIN
+#define RETURN_REC()	. = ALIGN(8);				\
+			VMLINUX_SYMBOL(__start_return_loc) = .; \
+			*(__return_loc)				\
+			VMLINUX_SYMBOL(__end_return_loc) = .;
+#else
+#define RETURN_REC()
+#endif
+
 #ifdef CONFIG_TRACE_BRANCH_PROFILING
 #define LIKELY_PROFILE()	VMLINUX_SYMBOL(__start_annotated_branch_profile) = .; \
 				*(_ftrace_annotated_branch)			      \
@@ -573,6 +582,7 @@
 	MEM_DISCARD(init.data)						\
 	KERNEL_CTORS()							\
 	MCOUNT_REC()							\
+	RETURN_REC()							\
 	*(.init.rodata)							\
 	FTRACE_EVENTS()							\
 	TRACE_SYSCALLS()						\
