@@ -367,6 +367,9 @@ ENTRY(__switch_to_asm)
 	 */
 	/* Clobbers %rbx */
 	FILL_RETURN_BUFFER RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
+	ALTERNATIVE "", \
+		"movl $call_depth_init,%gs:__call_depth__", \
+		X86_FEATURE_RSB_UNDERFLOW
 #endif
 
 	/* restore callee-saved registers */
