@@ -975,6 +975,8 @@ bool xen_set_default_idle(void);
 #define xen_set_default_idle 0
 #endif
 
+DECLARE_PER_CPU(int, __call_depth__);
+
 void stop_this_cpu(void *dummy);
 void df_debug(struct pt_regs *regs, long error_code);
 void microcode_check(void);
