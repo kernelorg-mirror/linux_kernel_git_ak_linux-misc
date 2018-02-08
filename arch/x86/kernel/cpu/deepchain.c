@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/init.h>
+#include <linux/debugfs.h>
 #include <linux/deepchain.h>
 #include <asm/sections.h>
 #include <asm/text-patching.h>
@@ -52,6 +53,38 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 		text_poke_early_bp(insnp, call, 5, insnp + 5);
 	}
 }
+
+#ifdef CONFIG_DEBUG_FS
+static int call_depth_show(struct seq_file *m, void *private)
+{
+	int cpu;
+
+	for_each_possible_cpu (cpu)
+		seq_printf(m, "%d: %d\n", cpu, per_cpu(__call_depth__, cpu));
+	return 0;
+}
+
+static int call_depth_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, call_depth_show, inode->i_private);
+}
+
+static const struct file_operations call_depth_fops = {
+	.open = call_depth_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static __init int deepchain_debugfs_init(void)
+{
+	debugfs_create_file_unsafe("call_depth", 0644, arch_debugfs_dir, NULL,
+				 &call_depth_fops);
+	return 0;
+}
+
+fs_initcall(deepchain_debugfs_init);
+#endif
 
 __init void deepchain_init(void)
 {
