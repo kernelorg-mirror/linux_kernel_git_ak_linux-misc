@@ -64,6 +64,7 @@
 #include <linux/bsearch.h>
 #include <linux/dynamic_debug.h>
 #include <linux/audit.h>
+#include <linux/deepchain.h>
 #include <uapi/linux/module.h>
 #include "module-internal.h"
 
@@ -3134,6 +3135,11 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 					    sizeof(*mod->ei_funcs),
 					    &mod->num_ei_funcs);
 #endif
+#ifdef CONFIG_DEEP_CHAIN
+	mod->return_sites = section_objs(info, "__return_loc",
+					     sizeof(*mod->return_sites),
+					     &mod->num_return_sites);
+#endif
 	mod->extable = section_objs(info, "__ex_table",
 				    sizeof(*mod->extable), &mod->num_exentries);
 
@@ -3744,6 +3750,8 @@ static int load_module(struct load_info *info, const char __user *uargs,
 
 	/* Ftrace init must be called in the MODULE_STATE_UNFORMED state */
 	ftrace_module_init(mod);
+
+	deepchain_return_patch(mod->return_sites, mod->num_return_sites);
 
 	/* Finally it's fully formed, ready to start executing. */
 	err = complete_formation(mod, info);
