@@ -11,6 +11,7 @@
 #include <linux/init.h>
 #include <linux/utsname.h>
 #include <linux/cpu.h>
+#include <linux/deepchain.h>
 
 #include <asm/nospec-branch.h>
 #include <asm/cmdline.h>
@@ -265,6 +266,7 @@ retpoline_auto:
 	if (is_skylake_era()) {
 		setup_force_cpu_cap(X86_FEATURE_RSB_UNDERFLOW);
 		pr_info("Enabling return buffer underflow protections");
+		deepchain_init();
 	}
 }
 
