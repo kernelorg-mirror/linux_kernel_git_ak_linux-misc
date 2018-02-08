@@ -130,6 +130,8 @@ void __show_regs(struct pt_regs *regs, int all)
 
 	if (boot_cpu_has(X86_FEATURE_OSPKE))
 		printk(KERN_DEFAULT "PKRU: %08x\n", read_pkru());
+	if (boot_cpu_has(X86_FEATURE_RSB_UNDERFLOW))
+		printk(KERN_DEFAULT "call-depth %d\n", __this_cpu_read(__call_depth__));
 }
 
 void release_thread(struct task_struct *dead_task)
