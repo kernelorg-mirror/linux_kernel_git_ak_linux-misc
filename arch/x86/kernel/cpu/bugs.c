@@ -118,6 +118,8 @@ static inline bool match_option(const char *arg, int arglen, const char *opt)
 	return len == arglen && !strncmp(arg, opt, len);
 }
 
+static bool force_skylake;
+
 static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 {
 	char arg[20];
@@ -148,6 +150,8 @@ static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 			return SPECTRE_V2_CMD_AUTO;
 		}
 	}
+	if (cmdline_find_option_bool (boot_command_line, "spectre_skylake"))
+		force_skylake = true;
 
 	if (!cmdline_find_option_bool(boot_command_line, "nospectre_v2"))
 		return SPECTRE_V2_CMD_AUTO;
@@ -159,6 +163,8 @@ disable:
 /* Check for Skylake-like CPUs (for RSB handling) */
 static bool __init is_skylake_era(void)
 {
+	if (force_skylake)
+		return true;
 	if (boot_cpu_data.x86_vendor == X86_VENDOR_INTEL &&
 	    boot_cpu_data.x86 == 6) {
 		switch (boot_cpu_data.x86_model) {
