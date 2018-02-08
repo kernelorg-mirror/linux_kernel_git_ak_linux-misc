@@ -235,6 +235,9 @@ ifdef CONFIG_RETPOLINE
 ifneq ($(RETPOLINE_CFLAGS),)
   KBUILD_CFLAGS += $(RETPOLINE_CFLAGS) -DRETPOLINE
 endif
+    ifdef CONFIG_DEEP_CHAIN
+	KBUILD_CFLAGS += $(call cc-option,-minstrument-return=nop5 -mrecord-return)
+    endif
 endif
 
 archscripts: scripts_basic
