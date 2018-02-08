@@ -501,6 +501,9 @@ ENTRY(__switch_to_asm)
 	 * speculative execution to prevent attack.
 	 */
 	FILL_RETURN_BUFFER %r12, RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
+	ALTERNATIVE "", \
+		"movl $call_depth_init,%gs:__call_depth__", \
+		X86_FEATURE_RSB_UNDERFLOW
 #endif
 
 	/* restore callee-saved registers */
