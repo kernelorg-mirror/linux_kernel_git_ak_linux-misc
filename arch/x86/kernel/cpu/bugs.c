@@ -160,7 +160,7 @@ static const struct {
 	{ "auto",              SPECTRE_V2_CMD_AUTO,              false },
 };
 
-static bool force_skylake;
+static bool force_skylake = true;
 
 static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 {
