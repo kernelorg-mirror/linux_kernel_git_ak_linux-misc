@@ -135,18 +135,38 @@ ftrace_modify_code_direct(unsigned long ip, unsigned const char *old_code,
 	return 0;
 }
 
+static const char *ftrace_standard_code(unsigned long ip,
+					char *new_call)
+{
+#ifdef CONFIG_DEEP_CHAIN
+	/* Always call the calldepth stub instead of noping */
+	if (boot_cpu_has(X86_FEATURE_RSB_UNDERFLOW)) {
+		unsigned offset;
+
+		new_call[0] = 0xe8;
+		offset = ftrace_calc_offset(ip + 5,
+				(unsigned long)calldepth_hook);
+		memcpy(new_call + 1, &offset, 4);
+		return new_call;
+	}
+#endif
+	return ftrace_nop_replace();
+}
+
 int ftrace_make_nop(struct module *mod,
 		    struct dyn_ftrace *rec, unsigned long addr)
 {
 	unsigned const char *new, *old;
 	unsigned long ip = rec->ip;
+	char new_call[5];
 
 	old = ftrace_call_replace(ip, addr);
-	new = ftrace_nop_replace();
+	new = ftrace_standard_code(ip, new_call);
 
 	/*
 	 * On boot up, and when modules are loaded, the MCOUNT_ADDR
-	 * is converted to a nop, and will never become MCOUNT_ADDR
+	 * is converted to a nop or a call to the calldepth code,
+	 * and will never become MCOUNT_ADDR
 	 * again. This code is either running before SMP (on boot up)
 	 * or before the code will ever be executed (module load).
 	 * We do not want to use the breakpoint version in this case,
@@ -166,8 +186,9 @@ int ftrace_make_call(struct dyn_ftrace *rec, unsigned long addr)
 {
 	unsigned const char *new, *old;
 	unsigned long ip = rec->ip;
+	char new_call[5];
 
-	old = ftrace_nop_replace();
+	old = ftrace_standard_code(ip, new_call);
 	new = ftrace_call_replace(ip, addr);
 
 	/* Should only be called when module is loaded */
@@ -341,8 +362,9 @@ static int add_brk_on_call(struct dyn_ftrace *rec, unsigned long addr)
 static int add_brk_on_nop(struct dyn_ftrace *rec)
 {
 	unsigned const char *old;
+	char new_call[5];
 
-	old = ftrace_nop_replace();
+	old = ftrace_standard_code(rec->ip, new_call);
 
 	return add_break(rec->ip, old);
 }
@@ -387,6 +409,7 @@ static int remove_breakpoint(struct dyn_ftrace *rec)
 	const unsigned char *nop;
 	unsigned long ftrace_addr;
 	unsigned long ip = rec->ip;
+	char new_call[5];
 
 	/* If we fail the read, just give up */
 	if (probe_kernel_read(ins, (void *)ip, MCOUNT_INSN_SIZE))
@@ -396,7 +419,7 @@ static int remove_breakpoint(struct dyn_ftrace *rec)
 	if (ins[0] != brk)
 		return 0;
 
-	nop = ftrace_nop_replace();
+	nop = ftrace_standard_code(rec->ip, new_call);
 
 	/*
 	 * If the last 4 bytes of the instruction do not match
@@ -450,8 +473,9 @@ static int add_update_nop(struct dyn_ftrace *rec)
 {
 	unsigned long ip = rec->ip;
 	unsigned const char *new;
+	char new_call[5];
 
-	new = ftrace_nop_replace();
+	new = ftrace_standard_code(ip, new_call);
 	return add_update_code(ip, new);
 }
 
@@ -495,8 +519,9 @@ static int finish_update_nop(struct dyn_ftrace *rec)
 {
 	unsigned long ip = rec->ip;
 	unsigned const char *new;
+	char new_call[5];
 
-	new = ftrace_nop_replace();
+	new = ftrace_standard_code(ip, new_call);
 
 	return ftrace_write(ip, new, 1);
 }

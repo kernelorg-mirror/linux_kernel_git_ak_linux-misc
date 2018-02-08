@@ -358,3 +358,6 @@ ssize_t cpu_show_spectre_v2(struct device *dev, struct device_attribute *attr, c
 		       spectre_v2_module_string());
 }
 #endif
+
+__visible DEFINE_PER_CPU(int, __call_depth__) = CALL_DEPTH_INIT;
+EXPORT_PER_CPU_SYMBOL(__call_depth__);
