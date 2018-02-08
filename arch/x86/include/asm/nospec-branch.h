@@ -28,6 +28,14 @@
 #define RSB_FILL_LOOPS		16	/* To avoid underflow */
 
 /*
+ * 16 for skylake return buffer - 3x slack for __fentry__ and
+ * uninstrumented functions. The instrumentation keeps a per
+ * CPU counter in the range of 0...CALL_DEPTH_INIT.
+ * If it ever over- or underflows the return buffer is filled.
+ */
+#define CALL_DEPTH_INIT		13
+
+/*
  * Google experimented with loop-unrolling and this turned out to be
  * the optimal version — two calls, each with their own speculation
  * trap should their return address end up getting used, in a loop.
