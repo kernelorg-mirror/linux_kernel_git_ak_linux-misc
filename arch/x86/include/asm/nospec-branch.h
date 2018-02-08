@@ -7,6 +7,14 @@
 #include <asm/alternative-asm.h>
 #include <asm/cpufeatures.h>
 
+/*
+ * 16 for skylake return buffer - 3x slack for __fentry__ and
+ * uninstrumented functions. The instrumentation keeps a per
+ * CPU counter in the range of 0...CALL_DEPTH_INIT.
+ * If it ever over- or underflows the return buffer is filled.
+ */
+#define CALL_DEPTH_INIT		13
+
 #ifdef __ASSEMBLY__
 
 /*

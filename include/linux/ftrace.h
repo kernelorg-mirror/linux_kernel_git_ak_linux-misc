@@ -472,6 +472,7 @@ extern void ftrace_regs_caller(void);
 extern void ftrace_call(void);
 extern void ftrace_regs_call(void);
 extern void mcount_call(void);
+extern void calldepth_hook(void);
 
 void ftrace_modify_all_code(int command);
 
