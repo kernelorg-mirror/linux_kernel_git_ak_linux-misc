@@ -6,6 +6,7 @@
 #include <asm/alternative.h>
 #include <asm/alternative-asm.h>
 #include <asm/cpufeatures.h>
+#include <asm/percpu.h>
 
 /*
  * 16 for skylake return buffer - 3x slack for __fentry__ and
@@ -98,6 +99,29 @@
 #ifdef CONFIG_RETPOLINE
 	ALTERNATIVE "", "call __clear_rsb" , \ftr
 	ALTERNATIVE "", "STUFF_ONE_RSB", \ftr
+#endif
+.endm
+
+	/*
+	 * Maintain call-depth and fill return buffer if needed
+	 * to guard against Spectre-V2 attacks on the CPU
+	 * return buffer.
+	 * This version is only used when the function_hook does
+	 * something else too and falls through
+	 * Otherwise we use the optimized calldepth_hook
+	 */
+	.macro DEEP_CHAIN_FILL
+#ifdef CONFIG_DEEP_CHAIN
+	ALTERNATIVE "jmp 662f", "decl %gs:__call_depth__", X86_FEATURE_RSB_UNDERFLOW
+	jz	661f	/* optimized for static branch prediction */
+	jmp	662f
+661:
+	pushq	%rbx
+	call	__fill_rsb
+	STUFF_ONE_RSB
+	movl	$CALL_DEPTH_INIT, PER_CPU_VAR(__call_depth__)
+	popq	%rbx
+662:
 #endif
 .endm
 
