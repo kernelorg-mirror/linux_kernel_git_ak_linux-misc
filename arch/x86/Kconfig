@@ -447,6 +447,17 @@ config RETPOLINE
 	  code are eliminated. Since this includes the syscall entry path,
 	  it is not entirely pointless.
 
+config DEEP_CHAIN
+	bool "Avoid deep call chain return stack overflows"
+	depends on RETPOLINE && X86_64
+	# should force only the very small subset we need
+	select FTRACE
+	select FUNCTION_TRACER
+	help
+	  Compile kernel with additional protections against deep call
+	  chain overflow. This is intended for Intel Skylake CPUs.
+	  Requires a compiler with the -minstrument-return option.
+
 config INTEL_RDT
 	bool "Intel Resource Director Technology support"
 	default n
