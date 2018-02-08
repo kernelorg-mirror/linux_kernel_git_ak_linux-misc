@@ -449,7 +449,10 @@ struct module {
 	unsigned int num_ftrace_callsites;
 	unsigned long *ftrace_callsites;
 #endif
-
+#ifdef CONFIG_DEEP_CHAIN
+	unsigned int num_return_sites;
+	unsigned long *return_sites;
+#endif
 #ifdef CONFIG_LIVEPATCH
 	bool klp; /* Is this a livepatch module? */
 	bool klp_alive;
