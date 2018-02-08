@@ -212,6 +212,7 @@ ENTRY(entry_SYSCALL_64)
 	 */
 
 	swapgs
+	CALL_DEPTH_RESET
 	/*
 	 * This path is not taken when PAGE_TABLE_ISOLATION is disabled so it
 	 * is not required to switch CR3.
@@ -691,6 +692,7 @@ END(irq_entries_start)
 	 */
 	TRACE_IRQS_OFF
 
+	CALL_DEPTH_RESET
 	CALL_enter_from_user_mode
 
 1:
@@ -1204,6 +1206,7 @@ END(xen_do_hypervisor_callback)
  */
 ENTRY(xen_failsafe_callback)
 	UNWIND_HINT_EMPTY
+	CALL_DEPTH_RESET
 	movl	%ds, %ecx
 	cmpw	%cx, 0x10(%rsp)
 	jne	1f
@@ -1357,6 +1360,7 @@ ENTRY(error_entry)
 	 * (which can take locks).
 	 */
 	TRACE_IRQS_OFF
+	CALL_DEPTH_RESET
 	CALL_enter_from_user_mode
 	ret
 
@@ -1528,6 +1532,7 @@ ENTRY(nmi)
 	pushq	%r15		/* pt_regs->r15 */
 	UNWIND_HINT_REGS
 	ENCODE_FRAME_POINTER
+	CALL_DEPTH_RESET
 
 	/*
 	 * At this point we no longer need to worry about stack damage
