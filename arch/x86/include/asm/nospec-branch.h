@@ -177,6 +177,25 @@
 	popq	%rax
 662:
 #endif
+	.endm
+
+	.set call_depth_init, CALL_DEPTH_INIT
+
+/*
+ * Reset call chain counter when entering from user space because
+ * we cannot guarantee the state of the return buffer.
+ *
+ * However we will match call/returns at this point (before
+ * doing a context switch), so there is no need to fill the RSB
+ * at this point.
+ *
+ * Must be after swapgs
+ */
+.macro CALL_DEPTH_RESET
+#ifdef CONFIG_DEEP_CHAIN
+	ALTERNATIVE "", "movl $call_depth_init, %gs:__call_depth__", \
+		    X86_FEATURE_RSB_UNDERFLOW
+#endif
 .endm
 
 #else /* __ASSEMBLY__ */
