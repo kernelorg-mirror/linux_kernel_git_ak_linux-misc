@@ -22,3 +22,31 @@ ENTRY(calldepth_hook)
 	popq	%rbx
 	ret
 END(calldepth_hook)
+
+/*
+ * Return hook to maintain call depth count.
+ *
+ * When we context switch and return 16 times
+ * we would underflow. So check for underflow too
+ * and fill then.
+ *
+ * This is only done at the first underflow to avoid
+ * always filling on the first return.
+ */
+ENTRY(__return__)
+	incl	PER_CPU_VAR(__call_depth__)
+	cmpl	$CALL_DEPTH_INIT+1, PER_CPU_VAR(__call_depth__)
+	je	1f
+	ret
+1:
+	pushq	%rbx
+	call	__fill_rsb
+	/*
+	 * Set to half so that the next return will not underflow
+	 * again. Drawback is that the next deep nesting will
+	 * overflow earlier.
+	 */
+	movl	$CALL_DEPTH_INIT/2, PER_CPU_VAR(__call_depth__)
+	popq	%rbx
+	ret
+END(__return__)
