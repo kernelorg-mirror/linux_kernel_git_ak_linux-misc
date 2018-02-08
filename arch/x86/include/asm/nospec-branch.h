@@ -267,6 +267,16 @@ enum spectre_v2_mitigation {
 extern char __indirect_thunk_start[];
 extern char __indirect_thunk_end[];
 
+static inline void reset_call_depth(void)
+{
+#ifdef CONFIG_DEEP_CHAIN
+	asm volatile(ALTERNATIVE("",
+				"movl %0,%%gs:__call_depth__",
+				X86_FEATURE_RSB_UNDERFLOW)
+		    :: "i" (CALL_DEPTH_INIT) : "memory");
+#endif
+}
+
 /*
  * On VMEXIT we must ensure that no RSB predictions learned in the guest
  * can be followed in the host, by overwriting the RSB completely. Both
@@ -285,6 +295,7 @@ static inline void vmexit_fill_RSB(void)
 		      "910:"
 		      : "=r" (loops), ASM_CALL_CONSTRAINT
 		      : : "memory" );
+	reset_call_depth();
 #endif
 }
 
@@ -307,6 +318,7 @@ static inline void fill_return_buffer(void)
 		      "810:"
 		      : "=r" (loops), ASM_CALL_CONSTRAINT
 		      : : "memory" );
+	reset_call_depth();
 #endif
 }
 
