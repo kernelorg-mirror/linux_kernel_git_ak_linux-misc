@@ -191,6 +191,8 @@ WEAK(ftrace_stub)
 ENDPROC(ftrace_caller)
 
 ENTRY(ftrace_regs_caller)
+	DEEP_CHAIN_FILL
+
 	/* Save the current flags before any operations that can change them */
 	pushfq
 
@@ -265,6 +267,8 @@ ENDPROC(ftrace_regs_caller)
 #else /* ! CONFIG_DYNAMIC_FTRACE */
 
 ENTRY(function_hook)
+	DEEP_CHAIN_FILL
+
 	cmpq $ftrace_stub, ftrace_trace_function
 	jnz trace
 
