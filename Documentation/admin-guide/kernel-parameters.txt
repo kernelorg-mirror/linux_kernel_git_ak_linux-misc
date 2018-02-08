@@ -3997,6 +3997,9 @@
 			Not specifying this option is equivalent to
 			spectre_v2=auto.
 
+	spectre_skylake	[X86] Force Spectre Skylake workarounds, even
+			when the system does not look like a Skylake.
+
 	spia_io_base=	[HW,MTD]
 	spia_fio_base=
 	spia_pedr=
