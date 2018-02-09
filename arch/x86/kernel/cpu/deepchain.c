@@ -51,7 +51,7 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 				insnp[4]);
 			continue;
 		}
-		call[0] = 0xe8;	/* call */
+		call[0] = 0xe9;	/* jmp */
 		offset = (unsigned long)__return__ - (unsigned long)insnp - 5;
 		memcpy(call + 1, &offset, 4);
 		memcpy(insnp, call, 5);
