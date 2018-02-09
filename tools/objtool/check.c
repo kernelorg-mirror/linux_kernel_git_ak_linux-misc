@@ -1744,6 +1744,9 @@ static int validate_branch(struct objtool_file *file, struct instruction *first,
 			return 0;
 
 		case INSN_CALL:
+			if (!insn->call_dest)
+				break;
+
 			if (is_fentry_call(insn))
 				break;
 
@@ -1851,12 +1854,14 @@ static int validate_unwind_hints(struct objtool_file *file)
 static bool is_kasan_insn(struct instruction *insn)
 {
 	return (insn->type == INSN_CALL &&
+		insn->call_dest &&
 		!strcmp(insn->call_dest->name, "__asan_handle_no_return"));
 }
 
 static bool is_ubsan_insn(struct instruction *insn)
 {
 	return (insn->type == INSN_CALL &&
+		insn->call_dest &&
 		!strcmp(insn->call_dest->name,
 			"__ubsan_handle_builtin_unreachable"));
 }
