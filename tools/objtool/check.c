@@ -544,7 +544,8 @@ static int add_call_destinations(struct objtool_file *file)
 			insn->call_dest = find_symbol_by_offset(insn->sec,
 								dest_off);
 
-			if (!insn->call_dest && !insn->ignore) {
+			if (!insn->call_dest && !insn->ignore &&
+			    strcmp(insn->sec->name, ".altinstr_replacement")) {
 				WARN_FUNC("unsupported intra-function call",
 					  insn->sec, insn->offset);
 				WARN("If this is a retpoline, please patch it in with alternatives and annotate it with ANNOTATE_NOSPEC_ALTERNATIVE.");
