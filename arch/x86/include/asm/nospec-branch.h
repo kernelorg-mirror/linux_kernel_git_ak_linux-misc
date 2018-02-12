@@ -77,10 +77,19 @@
 #endif
 .endm
 
+.macro STUFF_ONE_RSB
+#ifdef CONFIG_RETPOLINE
+	call 581f
+	pause ; lfence
+581:	add  $(BITS_PER_LONG/8), %_ASM_SP
+#endif
+.endm
+
 /* This clobbers the BX register */
 .macro FILL_RETURN_BUFFER nr:req ftr:req
 #ifdef CONFIG_RETPOLINE
-	ALTERNATIVE "", "call __clear_rsb", \ftr
+	ALTERNATIVE "", "call __clear_rsb" , \ftr
+	ALTERNATIVE "", "STUFF_ONE_RSB", \ftr
 #endif
 .endm
 
@@ -133,6 +142,20 @@
 # define THUNK_TARGET(addr) [thunk_target] "rm" (addr)
 #endif
 
+#ifdef CONFIG_X86_64
+#define STUFF_ONE_RSB	\
+	"	call 881f\n"					\
+	"	pause;lfence\n"					\
+	"881:\n"						\
+	"	addq $8,%%rsp\n"
+#else
+#define STUFF_ONE_RSB	\
+	"	call 881f\n"					\
+	"	pause;lfence\n"					\
+	"881:\n"						\
+	"	addl $4,%%esp\n"
+#endif
+
 /* The Spectre V2 mitigation variants */
 enum spectre_v2_mitigation {
 	SPECTRE_V2_NONE,
@@ -156,7 +179,7 @@ static inline void vmexit_fill_RSB(void)
 {
 #ifdef CONFIG_RETPOLINE
 	alternative_input("",
-			  "call __fill_rsb",
+			  "call __fill_rsb;" STUFF_ONE_RSB,
 			  X86_FEATURE_RETPOLINE,
 			  ASM_NO_INPUT_CLOBBER(_ASM_BX, "memory"));
 #endif
