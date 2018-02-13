@@ -4,8 +4,9 @@
 #
 
 ifdef CONFIG_FUNCTION_TRACER
-ORIG_CFLAGS := $(KBUILD_CFLAGS)
-KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+#ORIG_CFLAGS := $(KBUILD_CFLAGS)
+#KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+KBUILD_CFLAGS += -mfentry-name=calldepth_hook
 endif
 
 # These files are disabled because they produce lots of non-interesting and/or

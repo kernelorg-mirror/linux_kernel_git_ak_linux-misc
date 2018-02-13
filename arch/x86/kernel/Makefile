@@ -13,11 +13,19 @@ CPPFLAGS_vmlinux.lds += -U$(UTS_MACHINE)
 
 ifdef CONFIG_FUNCTION_TRACER
 # Do not profile debug and lowlevel utilities
+ifeq (1,1)
+CFLAGS_tsc.o += -mfentry-name=calldepth_hook
+CFLAGS_paravirt-spinlocks.o += -mfentry-name=calldepth_hook
+CFLAGS_pvclock.o += -mfentry-name=calldepth_hook
+CFLAGS_kvmclock.o += -mfentry-name=calldepth_hook
+CFLAGS_ftrace.o += -mfentry-name=calldepth_hook
+else
 CFLAGS_REMOVE_tsc.o = -pg
 CFLAGS_REMOVE_paravirt-spinlocks.o = -pg
 CFLAGS_REMOVE_pvclock.o = -pg
 CFLAGS_REMOVE_kvmclock.o = -pg
 CFLAGS_REMOVE_ftrace.o = -pg
+endif
 CFLAGS_REMOVE_early_printk.o = -pg
 CFLAGS_REMOVE_head64.o = -pg
 endif

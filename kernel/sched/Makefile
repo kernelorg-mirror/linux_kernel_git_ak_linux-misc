@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 ifdef CONFIG_FUNCTION_TRACER
+ifeq (0,0)
+CFLAGS_clock.o += -mfentry-name=calldepth_hook
+else
 CFLAGS_REMOVE_clock.o = $(CC_FLAGS_FTRACE)
+endif
 endif
 
 # These files are disabled because they produce non-interesting flaky coverage

@@ -6,10 +6,17 @@ KCOV_INSTRUMENT		:= n
 obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o
 
 ifdef CONFIG_FUNCTION_TRACER
+ifeq (0,0)
+CFLAGS_lockdep.o += -mfentry-name=calldepth_hook
+CFLAGS_lockdep_proc.o = -mfentry-name=calldepth_hook
+CFLAGS_mutex-debug.o = -mfentry-name=calldepth_hook
+CFLAGS_rtmutex-debug.o = -mfentry-name=calldepth_hook
+else
 CFLAGS_REMOVE_lockdep.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_lockdep_proc.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_mutex-debug.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_rtmutex-debug.o = $(CC_FLAGS_FTRACE)
+endif
 endif
 
 obj-$(CONFIG_DEBUG_MUTEXES) += mutex-debug.o
