@@ -5,7 +5,12 @@
 #include <linux/stringify.h>
 
 #undef notrace
+#if defined(FENTRYNAME) && defined(CONFIG_DEEP_CHAIN)
+#define notrace __attribute__((fentry_name("nop"), \
+				fentry_section("__entry_loc")))
+#else
 #define notrace __attribute__((no_instrument_function))
+#endif
 
 #ifdef CONFIG_X86_32
 #define asmlinkage CPP_ASMLINKAGE __attribute__((regparm(0)))

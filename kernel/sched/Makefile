@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 ifdef CONFIG_FUNCTION_TRACER
+ifneq ($(DISABLE_FTRACE),)
+CFLAGS_clock.o += $(DISABLE_FTRACE)
+else
 CFLAGS_REMOVE_clock.o = $(CC_FLAGS_FTRACE)
+endif
 endif
 
 # These files are disabled because they produce non-interesting flaky coverage
