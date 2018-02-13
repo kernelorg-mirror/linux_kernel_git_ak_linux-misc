@@ -4,8 +4,12 @@
 #
 
 ifdef CONFIG_FUNCTION_TRACER
-ORIG_CFLAGS := $(KBUILD_CFLAGS)
-KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+ifneq ($(DISABLE_FTRACE),)
+    KBUILD_CFLAGS += $(DISABLE_FTRACE)
+else
+    ORIG_CFLAGS := $(KBUILD_CFLAGS)
+    KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+endif
 endif
 
 # These files are disabled because they produce lots of non-interesting and/or

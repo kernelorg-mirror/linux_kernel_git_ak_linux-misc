@@ -116,6 +116,10 @@
 			VMLINUX_SYMBOL(__start_return_loc) = .; \
 			*(__return_loc)				\
 			VMLINUX_SYMBOL(__end_return_loc) = .;
+#define ENTRY_REC()	. = ALIGN(8);				\
+			VMLINUX_SYMBOL(__start_entry_loc) = .; \
+			*(__entry_loc)				\
+			VMLINUX_SYMBOL(__end_entry_loc) = .;
 #else
 #define RETURN_REC()
 #endif
@@ -583,6 +587,7 @@
 	KERNEL_CTORS()							\
 	MCOUNT_REC()							\
 	RETURN_REC()							\
+	ENTRY_REC()							\
 	*(.init.rodata)							\
 	FTRACE_EVENTS()							\
 	TRACE_SYSCALLS()						\

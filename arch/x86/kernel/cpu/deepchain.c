@@ -26,8 +26,9 @@ asm("nop5_insn:\n"
 extern char nop5_insn[];
 
 extern void __visible __return__(void);
+extern void __visible calldepth_hook(void);
 
-void deepchain_return_patch(unsigned long *entries, unsigned num)
+static void deepchain_patch(unsigned long *entries, unsigned num, void *func)
 {
 	unsigned i;
 
@@ -38,7 +39,7 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 		int offset;
 
 		if (memcmp(insnp, nop5_insn, 5)) {
-			pr_warn("Unexpected return entry at %pF: %02x %02x %02x %02x %02x\n",
+			pr_warn("Unexpected return entry at %p: %02x %02x %02x %02x %02x\n",
 				insnp,
 				insnp[0],
 				insnp[1],
@@ -47,11 +48,29 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 				insnp[4]);
 			continue;
 		}
-		call[0] = 0xe8;
-		offset = (unsigned long)__return__ - (unsigned long)insnp - 5;
+		/*
+		 * When the hook is followed by RET then we can
+		 * use a JMP, saving one return. Otherwise it has to be
+		 * a call.
+		 */
+		if (insnp[5] == 0xc3)
+			call[0] = 0xe9; /* JMP */
+		else
+			call[0] = 0xe8; /* CALL */
+		offset = (unsigned long)func - (unsigned long)insnp - 5;
 		memcpy(call + 1, &offset, 4);
 		text_poke_early_bp(insnp, call, 5, insnp + 5);
 	}
+}
+
+void deepchain_return_patch(unsigned long *entries, unsigned num)
+{
+	deepchain_patch(entries, num, __return__);
+}
+
+void deepchain_entry_patch(unsigned long *entries, unsigned num)
+{
+	deepchain_patch(entries, num, calldepth_hook);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -89,4 +108,5 @@ fs_initcall(deepchain_debugfs_init);
 __init void deepchain_init(void)
 {
 	deepchain_return_patch(__start_return_loc, __end_return_loc - __start_return_loc);
+	deepchain_entry_patch(__start_entry_loc, __end_entry_loc - __start_entry_loc);
 }

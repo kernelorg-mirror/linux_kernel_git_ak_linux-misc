@@ -58,11 +58,22 @@ extern void __chk_io_ptr(const volatile void __iomem *);
 #include <linux/compiler-gcc.h>
 #endif
 
+#if defined(FENTRYNAME) && defined(CONFIG_DEEP_CHAIN)
+#define enable_call_depth __attribute__((fentry_name("nop"), \
+				fentry_section("__entry_loc")))
+#else
+#define enable_call_depth
+#endif
+
 #if defined(CC_USING_HOTPATCH) && !defined(__CHECKER__)
-#define notrace __attribute__((hotpatch(0,0)))
+#define notrace __attribute__((hotpatch(0,0))) enable_call_depth
+#elif defined(FENTRYNAME) && defined(CONFIG_DEEP_CHAIN)
+#define notrace enable_call_depth
 #else
 #define notrace __attribute__((no_instrument_function))
 #endif
+
+#define force_notrace __attribute__((no_instrument_function))
 
 /* Intel compiler defines __GNUC__. So we will overwrite implementations
  * coming from above header files here

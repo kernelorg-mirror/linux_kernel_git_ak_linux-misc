@@ -6,10 +6,17 @@ KCOV_INSTRUMENT		:= n
 obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o
 
 ifdef CONFIG_FUNCTION_TRACER
+ifneq ($(DISABLE_FTRACE),)
+CFLAGS_lockdep.o += $(DISABLE_FTRACE)
+CFLAGS_lockdep_proc.o += $(DISABLE_FTRACE)
+CFLAGS_mutex-debug.o += $(DISABLE_FTRACE)
+CFLAGS_rtmutex-debug.o += $(DISABLE_FTRACE)
+else
 CFLAGS_REMOVE_lockdep.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_lockdep_proc.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_mutex-debug.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_rtmutex-debug.o = $(CC_FLAGS_FTRACE)
+endif
 endif
 
 obj-$(CONFIG_DEBUG_MUTEXES) += mutex-debug.o
