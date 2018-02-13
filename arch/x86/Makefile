@@ -237,6 +237,18 @@ ifneq ($(RETPOLINE_CFLAGS),)
 endif
     ifdef CONFIG_DEEP_CHAIN
 	KBUILD_CFLAGS += $(call cc-option,-minstrument-return=nop5 -mrecord-return)
+	FENTRY_NAME_SUPPORTED = $(call cc-option,-mfentry-name=foo -mfentry-section=__entry_loc)
+	ifneq ($(FENTRY_NAME_SUPPORTED),)
+	    KBUILD_CFLAGS += -DFENTRYNAME=1
+	    # instead of just disabling ftrace add entry nops and
+	    # put them into a special __entry_loc section
+	    # for the deep chain fix. this also enables
+	    # the return instrumentation.
+	    # we don't rely on record-mcount here, but let the compiler
+	    # generate the __entry_loc patch section
+	    DISABLE_FTRACE += -mfentry-name=nop -mfentry-section=__entry_loc -mrecord-mcount
+	    export DISABLE_FTRACE
+	endif
     endif
 endif
 

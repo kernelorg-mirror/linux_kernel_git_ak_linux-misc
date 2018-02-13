@@ -3139,6 +3139,9 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	mod->return_sites = section_objs(info, "__return_loc",
 					     sizeof(*mod->return_sites),
 					     &mod->num_return_sites);
+	mod->entry_sites = section_objs(info, "__entry_loc",
+					     sizeof(*mod->entry_sites),
+					     &mod->num_entry_sites);
 #endif
 	mod->extable = section_objs(info, "__ex_table",
 				    sizeof(*mod->extable), &mod->num_exentries);
@@ -3752,6 +3755,7 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	ftrace_module_init(mod);
 
 	deepchain_return_patch(mod->return_sites, mod->num_return_sites);
+	deepchain_entry_patch(mod->entry_sites, mod->num_entry_sites);
 
 	/* Finally it's fully formed, ready to start executing. */
 	err = complete_formation(mod, info);

@@ -4,9 +4,15 @@ OBJECT_FILES_NON_STANDARD_xen-pvh.o := y
 
 ifdef CONFIG_FUNCTION_TRACER
 # Do not profile debug and lowlevel utilities
+ifneq ($(DISABLE_FTRACE),)
+CFLAGS_spinlock.o += $(DISABLE_FTRACE)
+CFLAGS_time.o += $(DISABLE_FTRACE)
+CFLAGS_irq.o += $(DISABLE_FTRACE)
+else
 CFLAGS_REMOVE_spinlock.o = -pg
 CFLAGS_REMOVE_time.o = -pg
 CFLAGS_REMOVE_irq.o = -pg
+endif
 endif
 
 # Make sure early boot has no stackprotector

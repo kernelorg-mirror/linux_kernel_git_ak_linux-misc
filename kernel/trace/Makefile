@@ -3,8 +3,13 @@
 # Do not instrument the tracer itself:
 
 ifdef CONFIG_FUNCTION_TRACER
-ORIG_CFLAGS := $(KBUILD_CFLAGS)
-KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+
+ifneq ($(DISABLE_FTRACE),)
+    KBUILD_CFLAGS += $(DISABLE_FTRACE)
+else
+    ORIG_CFLAGS := $(KBUILD_CFLAGS)
+    KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+endif
 
 ifdef CONFIG_FTRACE_SELFTEST
 # selftest needs instrumentation
