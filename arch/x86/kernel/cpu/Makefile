@@ -5,8 +5,13 @@
 
 # Don't trace early stages of a secondary CPU boot
 ifdef CONFIG_FUNCTION_TRACER
-CFLAGS_REMOVE_common.o = -pg
-CFLAGS_REMOVE_perf_event.o = -pg
+    ifneq ($(DISABLE_FTRACE),)
+        CFLAGS_common.o += $(DISABLE_FTRACE)
+        CFLAGS_perf_event.o += $(DISABLE_FTRACE)
+    else
+        CFLAGS_REMOVE_common.o = -pg
+        CFLAGS_REMOVE_perf_event.o = -pg
+    endif
 endif
 
 # If these files are instrumented, boot hangs during the first second.

@@ -142,7 +142,7 @@ static inline unsigned long long native_read_msr_safe(unsigned int msr,
 }
 
 /* Can be uninlined because referenced by paravirt */
-static inline void notrace
+static inline void force_notrace
 native_write_msr(unsigned int msr, u32 low, u32 high)
 {
 	__wrmsr(msr, low, high);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #include <linux/linkage.h>
 #include <linux/compiler.h>
+#include <asm/export.h>
 #include <asm/nospec-branch.h>
 #include <asm/types.h>
 
@@ -22,6 +23,7 @@ ENTRY(calldepth_hook)
 	popq	%rax
 	ret
 END(calldepth_hook)
+EXPORT_SYMBOL(calldepth_hook)
 
 /*
  * Return hook to maintain call depth count.

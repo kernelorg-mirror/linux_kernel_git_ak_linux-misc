@@ -534,7 +534,7 @@ EXPORT_SYMBOL_GPL(load_fixmap_gdt);
  * Current gdt points %fs at the "master" per-cpu area: after this,
  * it's on the real one.
  */
-void switch_to_new_gdt(int cpu)
+force_notrace void switch_to_new_gdt(int cpu)
 {
 	/* Load the original GDT */
 	load_direct_gdt(cpu);

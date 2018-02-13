@@ -239,6 +239,11 @@ ifdef CONFIG_RETPOLINE
 
     ifdef CONFIG_DEEP_CHAIN
 	KBUILD_CFLAGS += $(call cc-option,-minstrument-return=nop5 -mrecord-return)
+	FENTRY_NAME_SUPPORTED = $(call cc-option,-mfentry-name=foo)
+	ifneq ($(FENTRY_NAME_SUPPORTED),)
+	    KBUILD_CFLAGS += -DFENTRYNAME=1
+	    DISABLE_FTRACE += -mfentry-name=calldepth_hook
+	endif
     endif
 endif
 

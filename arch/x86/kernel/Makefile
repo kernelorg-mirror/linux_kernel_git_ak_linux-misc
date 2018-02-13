@@ -13,11 +13,19 @@ CPPFLAGS_vmlinux.lds += -U$(UTS_MACHINE)
 
 ifdef CONFIG_FUNCTION_TRACER
 # Do not profile debug and lowlevel utilities
+ifneq ($(DISABLE_FTRACE),)
+CFLAGS_tsc.o += $(DISABLE_FTRACE)
+CFLAGS_paravirt-spinlocks.o += $(DISABLE_FTRACE)
+CFLAGS_pvclock.o += $(DISABLE_FTRACE)
+CFLAGS_kvmclock.o += $(DISABLE_FTRACE)
+CFLAGS_ftrace.o += $(DISABLE_FTRACE)
+else
 CFLAGS_REMOVE_tsc.o = -pg
 CFLAGS_REMOVE_paravirt-spinlocks.o = -pg
 CFLAGS_REMOVE_pvclock.o = -pg
 CFLAGS_REMOVE_kvmclock.o = -pg
 CFLAGS_REMOVE_ftrace.o = -pg
+endif
 CFLAGS_REMOVE_early_printk.o = -pg
 CFLAGS_REMOVE_head64.o = -pg
 endif

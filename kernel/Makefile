@@ -16,8 +16,12 @@ obj-$(CONFIG_MODULES) += kmod.o
 obj-$(CONFIG_MULTIUSER) += groups.o
 
 ifdef CONFIG_FUNCTION_TRACER
-# Do not trace internal ftrace files
-CFLAGS_REMOVE_irq_work.o = $(CC_FLAGS_FTRACE)
+    # Do not trace internal ftrace files
+    ifneq ($(DISABLE_FTRACE),)
+        CFLAGS_irq_work.o += $(DISABLE_FTRACE)
+    else
+        CFLAGS_REMOVE_irq_work.o = $(CC_FLAGS_FTRACE)
+    endif
 endif
 
 # Prevents flicker of uninteresting __do_softirq()/__local_bh_disable_ip()
