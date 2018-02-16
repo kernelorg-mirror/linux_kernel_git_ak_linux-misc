@@ -5,8 +5,7 @@
 extern void deepchain_return_patch(unsigned long *entries, unsigned num);
 extern void deepchain_init(void);
 #else
-static inline void deepchain_return_patch(unsigned long *entries, unsigned num)
-{}
+#define deepchain_return_patch(entries, num) do {} while(0)
 static inline void deepchain_init(void) {}
 #endif
 
