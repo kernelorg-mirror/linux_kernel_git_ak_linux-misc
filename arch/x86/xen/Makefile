@@ -4,7 +4,7 @@ OBJECT_FILES_NON_STANDARD_xen-pvh.o := y
 
 ifdef CONFIG_FUNCTION_TRACER
 # Do not profile debug and lowlevel utilities
-ifneq($(DISABLE_FTRACE),)
+ifneq ($(DISABLE_FTRACE),)
 CFLAGS_spinlock.o += $(DISABLE_FTRACE)
 CFLAGS_time.o += $(DISABLE_FTRACE)
 CFLAGS_irq.o += $(DISABLE_FTRACE)
