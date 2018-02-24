@@ -3,7 +3,7 @@ KASAN_SANITIZE := n
 UBSAN_SANITIZE_kasan.o := n
 KCOV_INSTRUMENT := n
 
-ifneq($(DISABLE_FTRACE),)
+ifneq ($(DISABLE_FTRACE),)
     CFLAGS_kasan.o += $(DISABLE_FTRACE)
 else
     CFLAGS_REMOVE_kasan.o = -pg
