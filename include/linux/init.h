@@ -76,7 +76,7 @@
 #define __exit	  __section(.exit.text) __exitused __cold force_notrace
 
 /* Used for MEMORY_HOTPLUG */
-#define __meminit        __section(.meminit.text) __cold notrace \
+#define __meminit	__section(.meminit.text) __cold force_notrace \
 						  __latent_entropy
 #define __meminitdata    __section(.meminit.data)
 #define __meminitconst   __section(.meminit.rodata)

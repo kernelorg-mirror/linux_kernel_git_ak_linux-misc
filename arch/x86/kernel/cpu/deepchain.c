@@ -30,8 +30,9 @@ __visible DEFINE_PER_CPU(int, __call_depth__) = CALL_DEPTH_INIT;
 EXPORT_PER_CPU_SYMBOL(__call_depth__);
 
 extern void __visible __return__(void);
+extern void __visible calldepth_hook(void);
 
-void deepchain_return_patch(unsigned long *entries, unsigned num)
+void deepchain_patch(unsigned long *entries, unsigned num, void *func, u8 opc)
 {
 	unsigned i;
 
@@ -42,7 +43,7 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 		int offset;
 
 		if (memcmp(insnp, nop5_insn, 5)) {
-			pr_warn("Unexpected return entry at %p: %02x %02x %02x %02x %02x\n",
+			pr_warn("Unexpected return entry at %pF: %02x %02x %02x %02x %02x\n",
 				insnp,
 				insnp[0],
 				insnp[1],
@@ -51,11 +52,29 @@ void deepchain_return_patch(unsigned long *entries, unsigned num)
 				insnp[4]);
 			continue;
 		}
-		call[0] = 0xe9;	/* jmp */
-		offset = (unsigned long)__return__ - (unsigned long)insnp - 5;
+		call[0] = opc;
+		offset = (unsigned long)func - (unsigned long)insnp - 5;
 		memcpy(call + 1, &offset, 4);
+
+		if (start || end) {
+			if (!(i >= start && i <= end))
+				continue;
+		}
+
+		if (verbose && func != __return__)
+			pr_debug("%d patching %pF %llx\n", i, insnp, (unsigned long long)insnp);
 		text_poke_early(insnp, call, 5);
 	}
+}
+
+void deepchain_return_patch(unsigned long *entries, unsigned num)
+{
+	deepchain_patch(entries, num, __return__, 0xe9);
+}
+
+void deepchain_entry_patch(unsigned long *entries, unsigned num)
+{
+	deepchain_patch(entries, num, calldepth_hook, 0xe8);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -93,4 +112,5 @@ fs_initcall(deepchain_debugfs_init);
 __init void deepchain_init(void)
 {
 	deepchain_return_patch(__start_return_loc, __end_return_loc - __start_return_loc);
+	deepchain_entry_patch(__start_entry_loc, __end_entry_loc - __start_entry_loc);
 }

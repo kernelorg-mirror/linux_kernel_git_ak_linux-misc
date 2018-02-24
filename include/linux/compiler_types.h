@@ -59,7 +59,8 @@ extern void __chk_io_ptr(const volatile void __iomem *);
 #endif
 
 #if defined(FENTRYNAME) && defined(CONFIG_DEEP_CHAIN)
-#define enable_call_depth __attribute__((fentry_name("calldepth_hook")))
+#define enable_call_depth __attribute__((fentry_name("nop"), \
+				fentry_section("__entry_loc")))
 #else
 #define enable_call_depth
 #endif

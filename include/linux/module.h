@@ -452,6 +452,8 @@ struct module {
 #ifdef CONFIG_DEEP_CHAIN
 	unsigned int num_return_sites;
 	unsigned long *return_sites;
+	unsigned int num_entry_sites;
+	unsigned long *entry_sites;
 #endif
 #ifdef CONFIG_LIVEPATCH
 	bool klp; /* Is this a livepatch module? */
