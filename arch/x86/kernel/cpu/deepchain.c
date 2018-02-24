@@ -8,6 +8,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0
  */
+#define DEBUG 1
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/string.h>
@@ -32,11 +33,18 @@ EXPORT_PER_CPU_SYMBOL(__call_depth__);
 extern void __visible __return__(void);
 extern void __visible calldepth_hook(void);
 
+#include <linux/moduleparam.h>
+int start, end, verbose;
+module_param(start, uint, 0600);
+module_param(end, uint, 0600);
+module_param(verbose, uint, 0600);
+
 void deepchain_patch(unsigned long *entries, unsigned num, void *func, u8 opc)
 {
 	unsigned i;
 
-	pr_debug("deep-chain: patching %u returns\n", num);
+	pr_debug("deep-chain: patching %u entries to %pF\n", num, func);
+	printk("start %d end %d\n", start, end);
 	for (i = 0; i < num; i++) {
 		char *insnp = (char *)entries[i];
 		char call[5];
