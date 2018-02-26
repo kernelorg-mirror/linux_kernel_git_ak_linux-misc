@@ -123,6 +123,16 @@ static inline const char *spectre_v2_module_string(void)
 static inline const char *spectre_v2_module_string(void) { return ""; }
 #endif
 
+#ifdef FENTRYNAME
+static inline const char *deepchain_string(void)
+{
+	return boot_cpu_has(X86_FEATURE_RSB_UNDERFLOW) ?
+		" - deep chain mitigation active" : "";
+}
+#else
+static inline const char *deepchain_string(void) { return ""; }
+#endif
+
 static void __init spec2_print_if_insecure(const char *reason)
 {
 	if (boot_cpu_has_bug(X86_BUG_SPECTRE_V2))
@@ -354,10 +364,11 @@ ssize_t cpu_show_spectre_v2(struct device *dev, struct device_attribute *attr, c
 	if (!boot_cpu_has_bug(X86_BUG_SPECTRE_V2))
 		return sprintf(buf, "Not affected\n");
 
-	return sprintf(buf, "%s%s%s%s\n", spectre_v2_strings[spectre_v2_enabled],
+	return sprintf(buf, "%s%s%s%s%s\n", spectre_v2_strings[spectre_v2_enabled],
 		       boot_cpu_has(X86_FEATURE_USE_IBPB) ? ", IBPB" : "",
 		       boot_cpu_has(X86_FEATURE_USE_IBRS_FW) ? ", IBRS_FW" : "",
-		       spectre_v2_module_string());
+		       spectre_v2_module_string(),
+		       deepchain_string());
 }
 #endif
 
