@@ -28,7 +28,8 @@ extern char nop5_insn[];
 extern void __visible __return__(void);
 extern void __visible calldepth_hook(void);
 
-void deepchain_patch(unsigned long *entries, unsigned num, void *func, u8 opc)
+static void deepchain_patch(unsigned long *entries, unsigned num, void *func,
+			    u8 opc)
 {
 	unsigned i;
 
