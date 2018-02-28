@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #include <linux/linkage.h>
+#include <linux/types.h>
 #include <linux/compiler.h>
 #include <asm/nospec-branch.h>
 #include <asm/types.h>
@@ -20,15 +21,14 @@ ENTRY(calldepth_hook)
 	pushq	%rax
 	/*
 	 * This function is only patched in on demand when we need RSB
-	 * stuffing, so an alternative doesn't make sense here. It would
-	 * seem dumb to add an completely unnecessary alternative here
-	 * just to shut up objfool.
+	 * stuffing, so an alternative doesn't make sense here. But we
+	 * have to use it anyways just to shut up objfool.
 	 */
-	__FILL_RETURN_BUFFER(%rax, RSB_FILL_LOOPS , %rsp)
+	FILL_RETURN_BUFFER %rax, RSB_FILL_LOOPS, X86_FEATURE_RSB_UNDERFLOW
 	movl	$CALL_DEPTH_INIT, PER_CPU_VAR(__call_depth__)
 	popq	%rax
 	ret
-END(calldepth_hook)
+ENDPROC(calldepth_hook)
 
 /*
  * Return hook to maintain call depth count.
