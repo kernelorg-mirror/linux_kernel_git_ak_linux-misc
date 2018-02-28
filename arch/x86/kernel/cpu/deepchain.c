@@ -28,8 +28,7 @@ extern char nop5_insn[];
 extern void __visible __return__(void);
 extern void __visible calldepth_hook(void);
 
-static void deepchain_patch(unsigned long *entries, unsigned num, void *func,
-			    u8 opc)
+static void deepchain_patch(unsigned long *entries, unsigned num, void *func)
 {
 	unsigned i;
 
@@ -49,7 +48,15 @@ static void deepchain_patch(unsigned long *entries, unsigned num, void *func,
 				insnp[4]);
 			continue;
 		}
-		call[0] = opc;
+		/*
+		 * When the hook is followed by RET then we can
+		 * use a JMP, saving one return. Otherwise it has to be
+		 * a call.
+		 */
+		if (insnp[5] == 0xc3)
+			call[0] = 0xe9; /* JMP */
+		else
+			call[0] = 0xe8; /* CALL */
 		offset = (unsigned long)func - (unsigned long)insnp - 5;
 		memcpy(call + 1, &offset, 4);
 		text_poke_early_bp(insnp, call, 5, insnp + 5);
@@ -58,17 +65,12 @@ static void deepchain_patch(unsigned long *entries, unsigned num, void *func,
 
 void deepchain_return_patch(unsigned long *entries, unsigned num)
 {
-	/*
-	 * Use CALL. Could in theory be 0xe9 (JMP) for return
-	 * to save one RET, but that causes very mysterious
-	 * random boot failures with specific kernel configs.
-	 */
-	deepchain_patch(entries, num, __return__, 0xe8);
+	deepchain_patch(entries, num, __return__);
 }
 
 void deepchain_entry_patch(unsigned long *entries, unsigned num)
 {
-	deepchain_patch(entries, num, calldepth_hook, 0xe8);
+	deepchain_patch(entries, num, calldepth_hook);
 }
 
 #ifdef CONFIG_DEBUG_FS
