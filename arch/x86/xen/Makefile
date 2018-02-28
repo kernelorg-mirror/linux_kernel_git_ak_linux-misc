@@ -13,6 +13,7 @@ CFLAGS_REMOVE_spinlock.o = -pg
 CFLAGS_REMOVE_time.o = -pg
 CFLAGS_REMOVE_irq.o = -pg
 endif
+CFLAGS_REMOVE_enlighten_pv.o = -pg
 endif
 
 # Make sure early boot has no stackprotector
