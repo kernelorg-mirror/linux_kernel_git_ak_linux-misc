@@ -49,11 +49,10 @@ ENTRY(__return__)
 	pushq	%rax
 	/*
 	 * This function is only patched in on demand when we need RSB
-	 * stuffing, so an alternative doesn't make sense here. It would
-	 * seem dumb to add an completely unnecessary alternative here
-	 * just to shut up objfool.
+	 * stuffing, so an alternative doesn't make sense here. But we
+	 * have to use it anyways just to shut up objfool.
 	 */
-	__FILL_RETURN_BUFFER(%rax, RSB_FILL_LOOPS, %rsp)
+	FILL_RETURN_BUFFER %rax, RSB_FILL_LOOPS, X86_FEATURE_RSB_UNDERFLOW
 	/*
 	 * Set to half so that the next return will not underflow
 	 * again. Drawback is that the next deep nesting will
@@ -62,4 +61,4 @@ ENTRY(__return__)
 	movl	$CALL_DEPTH_INIT/2, PER_CPU_VAR(__call_depth__)
 	popq	%rax
 	ret
-END(__return__)
+ENDPROC(__return__)
