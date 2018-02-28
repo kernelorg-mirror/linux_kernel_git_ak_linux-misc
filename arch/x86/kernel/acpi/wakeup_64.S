@@ -27,6 +27,11 @@ ENTRY(wakeup_long64)
 	movw	%ax, %gs
 	movq	saved_rsp, %rsp
 
+	movl    $MSR_GS_BASE, %ecx
+	movl    saved_gs_base(%rip), %eax
+	movl    saved_gs_base+4(%rip), %edx
+	wrmsr
+
 	movq	saved_rbx, %rbx
 	movq	saved_rdi, %rdi
 	movq	saved_rsi, %rsi
@@ -44,6 +49,11 @@ ENTRY(do_suspend_lowlevel)
 	subq	$8, %rsp
 	xorl	%eax, %eax
 	call	save_processor_state
+
+	movl    $MSR_GS_BASE, %ecx
+	rdmsr
+	movl    %eax, saved_gs_base(%rip)
+	movl    %edx, saved_gs_base+4(%rip)
 
 	movq	$saved_context, %rax
 	movq	%rsp, pt_regs_sp(%rax)
@@ -132,5 +142,6 @@ ENTRY(saved_rbx)	.quad	0
 
 ENTRY(saved_rip)	.quad	0
 ENTRY(saved_rsp)	.quad	0
+ENTRY(saved_gs_base)	.quad	0
 
 ENTRY(saved_magic)	.quad	0
