@@ -45,6 +45,8 @@ static __always_inline void *__memcpy(void *to, const void *from, size_t n)
 	return to;
 }
 
+#define __inline_memcpy __memcpy
+
 /*
  * This looks ugly, but the compiler can optimize it totally,
  * as the count is constant.
