@@ -19,6 +19,8 @@ static inline void apply_paravirt(struct paravirt_patch_site *start,
 #endif
 
 extern void *text_poke_early(void *addr, const void *opcode, size_t len);
+extern void text_poke_early_bp(void *addr, const void *opcode, size_t len,
+	void *handler);
 
 /*
  * Clear and restore the kernel write-protection flag on the local CPU.

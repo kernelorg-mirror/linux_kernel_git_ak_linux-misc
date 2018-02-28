@@ -821,3 +821,28 @@ void *text_poke_bp(void *addr, const void *opcode, size_t len, void *handler)
 	return addr;
 }
 
+/*
+ * text_poke during early execution with a single CPU only,
+ * but the patched code could in theory be executed
+ * (e.g. as part of a machine check handler)
+ */
+
+void __init_or_module text_poke_early_bp(void *addr, const void *opcode,
+				       size_t len,
+				       void *handler)
+{
+	unsigned long flags;
+	unsigned char int3 = 0xcc;
+
+	bp_int3_handler = handler;
+	bp_int3_addr = (u8 *)addr + sizeof(int3);
+	bp_patching_in_progress = true;
+
+	local_irq_save(flags);
+	__inline_memcpy(addr, &int3, 1);
+	__inline_memcpy(addr + 1, opcode + 1, len - 1);
+	__inline_memcpy(addr, opcode, 1);
+	local_irq_restore(flags);
+
+	bp_patching_in_progress = false;
+}
