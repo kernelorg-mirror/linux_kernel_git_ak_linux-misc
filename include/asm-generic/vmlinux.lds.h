@@ -122,6 +122,7 @@
 			VMLINUX_SYMBOL(__end_entry_loc) = .;
 #else
 #define RETURN_REC()
+#define ENTRY_REC()
 #endif
 
 #ifdef CONFIG_TRACE_BRANCH_PROFILING
