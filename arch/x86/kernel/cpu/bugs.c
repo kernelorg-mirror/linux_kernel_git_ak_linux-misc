@@ -170,7 +170,11 @@ static const struct {
 	{ "auto",              SPECTRE_V2_CMD_AUTO,              false },
 };
 
+#ifdef CONFIG_DEEP_CHAIN_FORCE
 static bool force_skylake = true;
+#else
+static bool force_skylake;
+#endif
 
 static enum spectre_v2_mitigation_cmd __init spectre_v2_parse_cmdline(void)
 {

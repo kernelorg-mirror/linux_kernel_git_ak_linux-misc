@@ -458,6 +458,10 @@ config DEEP_CHAIN
 	  chain overflow. This is intended for Intel Skylake CPUs.
 	  Requires a compiler with the -minstrument-return option.
 
+config DEEP_CHAIN_FORCE
+	bool "Force deep chain mitigation for testing"
+	depends on DEEP_CHAIN
+
 config INTEL_RDT
 	bool "Intel Resource Director Technology support"
 	default n
