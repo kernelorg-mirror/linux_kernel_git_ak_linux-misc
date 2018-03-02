@@ -39,7 +39,7 @@ static void deepchain_patch(unsigned long *entries, unsigned num, void *func)
 		int offset;
 
 		if (memcmp(insnp, nop5_insn, 5)) {
-			pr_warn("Unexpected return entry at %p: %02x %02x %02x %02x %02x\n",
+			pr_warn("Unexpected return entry at %pF: %02x %02x %02x %02x %02x\n",
 				insnp,
 				insnp[0],
 				insnp[1],
