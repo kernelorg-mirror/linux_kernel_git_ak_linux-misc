@@ -462,6 +462,13 @@ config DEEP_CHAIN_FORCE
 	bool "Force deep chain mitigation for testing"
 	depends on DEEP_CHAIN
 
+config DEEP_CHAIN_PT
+	bool "Trace deep chain counts with PTWRITE"
+	depends on DEEP_CHAIN
+	help
+	  Trace deepchain transitions with PTWRITE. Requires
+	  new enough binutils that support PTWRITE.
+
 config INTEL_RDT
 	bool "Intel Resource Director Technology support"
 	default n

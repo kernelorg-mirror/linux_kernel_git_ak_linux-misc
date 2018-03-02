@@ -15,6 +15,10 @@
 
 ENTRY(calldepth_hook)
 	decl	PER_CPU_VAR(__call_depth__)
+#ifdef CONFIG_DEEP_CHAIN_PT
+	ALTERNATIVE "", __stringify(ptwritel PER_CPU_VAR(__call_depth__)), \
+		    X86_FEATURE_PTWRITE
+#endif
 	jz	1f
 	ret
 1:
@@ -42,6 +46,10 @@ ENDPROC(calldepth_hook)
  */
 ENTRY(__return__)
 	incl	PER_CPU_VAR(__call_depth__)
+#ifdef CONFIG_DEEP_CHAIN_PT
+	ALTERNATIVE "", __stringify(ptwritel PER_CPU_VAR(__call_depth__)), \
+		    X86_FEATURE_PTWRITE
+#endif
 	cmpl	$CALL_DEPTH_INIT+1, PER_CPU_VAR(__call_depth__)
 	je	1f
 	ret

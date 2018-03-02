@@ -676,6 +676,18 @@ static void init_intel(struct cpuinfo_x86 *c)
 	init_intel_energy_perf(c);
 
 	init_intel_misc_features(c);
+
+	/*
+	 * Normally reported through the pt pmu capabilities.
+	 * but set as a feature flag so that ALTERNATIVE works
+	 * for it.
+	 */
+	if (c->cpuid_level >= 0x14) {
+		unsigned eax, ebx, ecx, edx;
+		cpuid_count(0x14, 0, &eax, &ebx, &ecx, &edx);
+		if (ebx & BIT(4))
+			set_cpu_cap(c, X86_FEATURE_PTWRITE);
+	}
 }
 
 #ifdef CONFIG_X86_32
