@@ -1,0 +1,11 @@
+
+For --xed the xed tool is needed. Here is how to install it:
+
+> git clone https://github.com/intelxed/mbuild.git mbuild                                                                                        
+> git clone https://github.com/intelxed/xed                                                                                                      
+> cd xed                                                                                                                                         
+> mkdir obj                                                                                                                                      
+> cd obj                                                                                                                                         
+> ../mfile.py                                                                                                                                    
+> sudo ../mfile.py --prefix=/usr/local install    
+
