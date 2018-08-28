@@ -2497,6 +2497,8 @@ parse:
 						output[j].fields &= ~all_output_options[i].field;
 					else
 						output[j].fields |= all_output_options[i].field;
+					output[j].user_set = true;
+					output[j].wildcard_set = true;
 				}
 			}
 		} else {
@@ -2507,7 +2509,8 @@ parse:
 				rc = -EINVAL;
 				goto out;
 			}
-			output[type].fields |= all_output_options[i].field;
+			output[j].user_set = true;
+			output[j].wildcard_set = true;
 		}
 	}
 
