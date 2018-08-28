@@ -2509,6 +2509,10 @@ parse:
 				rc = -EINVAL;
 				goto out;
 			}
+			if (change == REMOVE)
+				output[j].fields &= ~all_output_options[i].field;
+			else
+				output[type].fields |= all_output_options[i].field;
 			output[j].user_set = true;
 			output[j].wildcard_set = true;
 		}
