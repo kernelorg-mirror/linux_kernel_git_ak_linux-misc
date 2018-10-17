@@ -21,6 +21,7 @@
  *
  *#define DEBUG
  */
+#define DEBUG
 #define pr_fmt(fmt) "microcode: " fmt
 
 #include <linux/earlycpio.h>
@@ -93,7 +94,7 @@ static int find_matching_signature(void *mc, unsigned int csig, int cpf)
 /*
  * Returns 1 if update has been found, 0 otherwise.
  */
-static int has_newer_microcode(void *mc, unsigned int csig, int cpf, int new_rev)
+static int has_newer_microcode(void *mc, unsigned int csig, int cpf, unsigned new_rev)
 {
 	struct microcode_header_intel *mc_hdr = mc;
 
