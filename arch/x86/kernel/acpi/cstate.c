@@ -14,6 +14,7 @@
 #include <acpi/processor.h>
 #include <asm/mwait.h>
 #include <asm/special_insns.h>
+#include <asm/clearcpu.h>
 
 /*
  * Initialize bm_flags based on the CPU cache properties
@@ -157,6 +158,7 @@ void __cpuidle acpi_processor_ffh_cstate_enter(struct acpi_processor_cx *cx)
 	unsigned int cpu = smp_processor_id();
 	struct cstate_entry *percpu_entry;
 
+	clear_cpu_idle();
 	percpu_entry = per_cpu_ptr(cpu_cstate_entry, cpu);
 	mwait_idle_with_hints(percpu_entry->states[cx->index].eax,
 	                      percpu_entry->states[cx->index].ecx);
