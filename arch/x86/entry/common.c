@@ -29,6 +29,7 @@
 #include <asm/desc.h>
 #include <asm/traps.h>
 #include <asm/vdso.h>
+#include <asm/clearcpu.h>
 #include <linux/uaccess.h>
 #include <asm/cpufeature.h>
 
@@ -210,6 +211,8 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	 */
 	ti->status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
 #endif
+
+	clear_cpu();
 
 	user_enter_irqoff();
 }
