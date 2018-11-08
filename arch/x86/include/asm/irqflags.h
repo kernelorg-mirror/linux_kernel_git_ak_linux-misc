@@ -3,6 +3,7 @@
 #define _X86_IRQFLAGS_H_
 
 #include <asm/processor-flags.h>
+#include <asm/nospec-branch.h>
 
 #ifndef __ASSEMBLY__
 
@@ -96,6 +97,7 @@ static inline notrace void arch_local_irq_enable(void)
  */
 static inline __cpuidle void arch_safe_halt(void)
 {
+	clear_cpu_buffers_idle();
 	native_safe_halt();
 }
 
@@ -105,6 +107,7 @@ static inline __cpuidle void arch_safe_halt(void)
  */
 static inline __cpuidle void halt(void)
 {
+	clear_cpu_buffers_idle();
 	native_halt();
 }
 

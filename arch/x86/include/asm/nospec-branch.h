@@ -9,6 +9,7 @@
 #include <asm/alternative-asm.h>
 #include <asm/cpufeatures.h>
 #include <asm/msr-index.h>
+#include <asm/segment.h>
 
 /*
  * Fill the CPU return stack buffer.
@@ -384,6 +385,10 @@ do {								\
 #  define RETPOLINE_EDX_BPF_JIT()				\
 	EMIT2(0xFF, 0xE2)        /* jmp *%edx */
 # endif
+#endif
+
+#ifndef __ASSEMBLY__
+void clear_cpu_buffers_idle(void);
 #endif
 
 #endif /* _ASM_X86_NOSPEC_BRANCH_H_ */
