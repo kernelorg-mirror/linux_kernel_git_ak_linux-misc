@@ -33,6 +33,7 @@
 #include <linux/cpuidle.h>
 #include <linux/cpu.h>
 #include <acpi/processor.h>
+#include <asm/clearcpu.h>
 
 /*
  * Include the apic definitions for x86 to have the APIC timer related defines
@@ -121,6 +122,7 @@ static const struct dmi_system_id processor_power_dmi_table[] = {
 static void __cpuidle acpi_safe_halt(void)
 {
 	if (!tif_need_resched()) {
+		clear_cpu_idle();
 		safe_halt();
 		local_irq_disable();
 	}
@@ -681,6 +683,7 @@ static int acpi_idle_play_dead(struct cpuidle_device *dev, int index)
 
 	ACPI_FLUSH_CPU_CACHE();
 
+	clear_cpu_idle();
 	while (1) {
 
 		if (cx->entry_method == ACPI_CSTATE_HALT)

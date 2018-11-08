@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <asm/mwait.h>
+#include <asm/clearcpu.h>
 #include <xen/xen.h>
 
 #define ACPI_PROCESSOR_AGGREGATOR_CLASS	"acpi_pad"
@@ -175,6 +176,7 @@ static int power_saving_thread(void *data)
 			tick_broadcast_enable();
 			tick_broadcast_enter();
 			stop_critical_timings();
+			clear_cpu_idle();
 
 			mwait_idle_with_hints(power_saving_mwait_eax, 1);
 
