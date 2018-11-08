@@ -159,6 +159,7 @@ void kvm_async_pf_task_wait(u32 token, int interrupt_kernel)
 			/*
 			 * We cannot reschedule. So halt.
 			 */
+			clear_cpu_idle();
 			native_safe_halt();
 			local_irq_disable();
 		}
@@ -787,6 +788,8 @@ static void kvm_wait(u8 *ptr, u8 val)
 
 	if (READ_ONCE(*ptr) != val)
 		goto out;
+
+	clear_cpu_idle();
 
 	/*
 	 * halt until it's our turn and kicked. Note that we do safe halt
