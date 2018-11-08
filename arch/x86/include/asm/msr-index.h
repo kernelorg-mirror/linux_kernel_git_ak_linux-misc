@@ -77,6 +77,7 @@
 						    * attack, so no Speculative Store Bypass
 						    * control required.
 						    */
+#define ARCH_CAP_MDS_NO			(1 << 5)   /* No Microarchitectural data sampling */
 
 #define MSR_IA32_FLUSH_CMD		0x0000010b
 #define L1D_FLUSH			(1 << 0)   /*
