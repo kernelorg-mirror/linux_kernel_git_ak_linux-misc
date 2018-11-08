@@ -29,6 +29,7 @@
 #include <asm/desc.h>
 #include <asm/traps.h>
 #include <asm/vdso.h>
+#include <asm/clearcpu.h>
 #include <linux/uaccess.h>
 #include <asm/cpufeature.h>
 
@@ -132,7 +133,7 @@ static long syscall_trace_enter(struct pt_regs *regs)
 }
 
 #define EXIT_TO_USERMODE_LOOP_FLAGS				\
-	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE |	\
+	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE | _TIF_CLEAR_CPU |\
 	 _TIF_NEED_RESCHED | _TIF_USER_RETURN_NOTIFY | _TIF_PATCH_PENDING)
 
 static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
@@ -169,6 +170,11 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 
 		if (cached_flags & _TIF_USER_RETURN_NOTIFY)
 			fire_user_return_notifiers();
+
+		if (cached_flags & _TIF_CLEAR_CPU) {
+			clear_thread_flag(TIF_CLEAR_CPU);
+			clear_cpu();
+		}
 
 		/* Disable IRQs and retry */
 		local_irq_disable();
