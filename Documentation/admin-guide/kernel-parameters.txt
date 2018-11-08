@@ -2341,6 +2341,9 @@
 			Format: <first>,<last>
 			Specifies range of consoles to be captured by the MDA.
 
+	mds=off		[X86, Intel]
+			Disable workarounds for Micro-architectural Data Sampling.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.
