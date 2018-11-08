@@ -997,6 +997,14 @@ static const __initconst struct x86_cpu_id cpu_no_l1tf[] = {
 	{}
 };
 
+static const __initconst struct x86_cpu_id cpu_no_mds[] = {
+	/* in addition to cpu_no_speculation */
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_GOLDMONT	},
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_DENVERTON	},
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_GEMINI_LAKE	},
+	{}
+};
+
 static void __init cpu_set_bug_bits(struct cpuinfo_x86 *c)
 {
 	u64 ia32_cap = 0;
@@ -1017,6 +1025,12 @@ static void __init cpu_set_bug_bits(struct cpuinfo_x86 *c)
 
 	if (ia32_cap & ARCH_CAP_IBRS_ALL)
 		setup_force_cpu_cap(X86_FEATURE_IBRS_ENHANCED);
+
+	if ((boot_cpu_data.x86_vendor == X86_VENDOR_INTEL &&
+	    !x86_match_cpu(cpu_no_mds)) &&
+	    !(ia32_cap & ARCH_CAP_MBS_NO) &&
+	    !(ia32_cap & ARCH_CAP_RDCL_NO))
+		setup_force_cpu_bug(X86_BUG_MDS);
 
 	if (x86_match_cpu(cpu_no_meltdown))
 		return;
