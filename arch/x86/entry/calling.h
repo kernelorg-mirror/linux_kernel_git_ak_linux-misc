@@ -1,4 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+#include <linux/stringify.h>
+#include <asm/segment.h>
 #include <linux/jump_label.h>
 #include <asm/unwind_hints.h>
 #include <asm/cpufeatures.h>
@@ -328,6 +330,12 @@ For 32-bit we have the following conventions - kernel is built with
 .endm
 
 #endif
+
+.macro EXIT_MDS
+	/* Clear CPU buffers that could leak. Instruction must be in memory form. */
+	ALTERNATIVE "", __stringify(pushq $__USER_DS ; verw (%rsp) ; addq $8, %rsp),\
+		 X86_FEATURE_MB_CLEAR
+.endm
 
 #endif /* CONFIG_X86_64 */
 

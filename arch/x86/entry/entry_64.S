@@ -325,6 +325,8 @@ syscall_return_via_sysret:
 	pushq	RSP-RDI(%rdi)	/* RSP */
 	pushq	(%rdi)		/* RDI */
 
+	EXIT_MDS
+
 	/*
 	 * We are on the trampoline stack.  All regs except RDI are live.
 	 * We can do future final exit work right here.
@@ -684,6 +686,8 @@ GLOBAL(swapgs_restore_regs_and_return_to_usermode)
 	/* Push user RDI on the trampoline stack. */
 	pushq	(%rdi)
 
+	EXIT_MDS
+
 	/*
 	 * We are on the trampoline stack.  All regs except RDI are live.
 	 * We can do future final exit work right here.
@@ -806,6 +810,7 @@ native_irq_return_ldt:
 	orq	PER_CPU_VAR(espfix_stack), %rax
 
 	SWITCH_TO_USER_CR3_STACK scratch_reg=%rdi
+	EXIT_MDS
 	SWAPGS					/* to user GS */
 	popq	%rdi				/* Restore user RDI */
 
@@ -1645,6 +1650,7 @@ end_repeat_nmi:
 	jnz	nmi_restore
 nmi_swapgs:
 	SWAPGS_UNSAFE_STACK
+	EXIT_MDS
 nmi_restore:
 	POP_REGS
 
