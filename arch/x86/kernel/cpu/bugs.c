@@ -1157,6 +1157,16 @@ static ssize_t cpu_show_common(struct device *dev, struct device_attribute *attr
 		if (boot_cpu_has(X86_FEATURE_L1TF_PTEINV))
 			return l1tf_show_state(buf);
 		break;
+
+	case X86_BUG_MDS:
+		/* Assumes Hypervisor exposed HT state to us if in guest */
+		if (boot_cpu_has(X86_FEATURE_MB_CLEAR)) {
+			if (cpu_smt_control != CPU_SMT_ENABLED)
+				return sprintf(buf, "Mitigation: microcode\n");
+			return sprintf(buf, "Mitigation: microcode, HT vulnerable\n");
+		}
+		return sprintf(buf, "Vulnerable\n");
+
 	default:
 		break;
 	}
@@ -1188,4 +1198,10 @@ ssize_t cpu_show_l1tf(struct device *dev, struct device_attribute *attr, char *b
 {
 	return cpu_show_common(dev, attr, buf, X86_BUG_L1TF);
 }
+
+ssize_t cpu_show_mds(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return cpu_show_common(dev, attr, buf, X86_BUG_MDS);
+}
+
 #endif
