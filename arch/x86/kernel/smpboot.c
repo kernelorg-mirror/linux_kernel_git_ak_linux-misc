@@ -81,6 +81,7 @@
 #include <asm/cpu_device_id.h>
 #include <asm/spec-ctrl.h>
 #include <asm/hw_irq.h>
+#include <asm/clearcpu.h>
 
 /* representing HT siblings of each logical CPU */
 DEFINE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_sibling_map);
@@ -1635,6 +1636,7 @@ static inline void mwait_play_dead(void)
 	wbinvd();
 
 	while (1) {
+		clear_cpu_idle();
 		/*
 		 * The CLFLUSH is a workaround for erratum AAI65 for
 		 * the Xeon 7400 series.  It's not clear it is actually
@@ -1662,6 +1664,7 @@ void hlt_play_dead(void)
 		wbinvd();
 
 	while (1) {
+		clear_cpu_idle();
 		native_halt();
 		/*
 		 * If NMI wants to wake up CPU0, start CPU0.

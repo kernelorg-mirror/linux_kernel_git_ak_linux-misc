@@ -23,6 +23,25 @@ static inline void clear_cpu(void)
 		[kernelds] "m" (kernel_ds));
 }
 
+/*
+ * Clear CPU buffers before going idle, so that no state is leaked to SMT
+ * siblings taking over thread resources.
+ * Out of line to avoid include hell.
+ *
+ * Assumes that interrupts are disabled and only get reenabled
+ * before idle, otherwise the data from a racing interrupt might not
+ * get cleared. There are some callers who violate this,
+ * but they are only used in unattackable cases.
+ */
+
+static inline void clear_cpu_idle(void)
+{
+	if (sched_smt_active()) {
+		clear_thread_flag(TIF_CLEAR_CPU);
+		clear_cpu();
+	}
+}
+
 DECLARE_STATIC_KEY_FALSE(force_cpu_clear);
 
 #endif
