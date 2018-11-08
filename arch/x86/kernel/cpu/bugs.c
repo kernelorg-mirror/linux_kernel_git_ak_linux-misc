@@ -785,6 +785,24 @@ static void mds_select_mitigation(void)
 		setup_clear_cpu_cap(X86_FEATURE_MB_CLEAR);
 }
 
+/*
+ * Clear CPU buffers before going idle, so that no state is leaked to SMT
+ * siblings taking over thread resources.
+ * Out of line to avoid include hell.
+ */
+void clear_cpu_buffers_idle(void)
+{
+	if (cpu_smt_control != CPU_SMT_ENABLED)
+		return;
+	/* Has to be memory form, don't modify to use an register */
+	alternative_input("",
+		"pushq %[kernelds]; verw (%%rsp) ; addq $8,%%rsp \n",
+		X86_FEATURE_MB_CLEAR,
+		[kernelds] "i" (__KERNEL_DS));
+}
+
+EXPORT_SYMBOL(clear_cpu_buffers_idle);
+
 #ifdef CONFIG_SYSFS
 
 #define L1TF_DEFAULT_MSG "Mitigation: PTE Inversion"

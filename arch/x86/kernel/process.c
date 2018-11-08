@@ -523,6 +523,8 @@ void stop_this_cpu(void *dummy)
 	disable_local_APIC();
 	mcheck_cpu_clear(this_cpu_ptr(&cpu_info));
 
+	clear_cpu_buffers_idle();
+
 	/*
 	 * Use wbinvd on processors that support SME. This provides support
 	 * for performing a successful kexec when going from SME inactive
@@ -608,6 +610,8 @@ static __cpuidle void mwait_idle(void)
 			clflush((void *)&current_thread_info()->flags);
 			mb(); /* quirk */
 		}
+
+		clear_cpu_buffers_idle();
 
 		__monitor((void *)&current_thread_info()->flags, 0, 0);
 		if (!need_resched())

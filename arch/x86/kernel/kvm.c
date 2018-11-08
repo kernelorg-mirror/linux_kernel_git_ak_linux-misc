@@ -159,6 +159,7 @@ void kvm_async_pf_task_wait(u32 token, int interrupt_kernel)
 			/*
 			 * We cannot reschedule. So halt.
 			 */
+			clear_cpu_buffers_idle();
 			native_safe_halt();
 			local_irq_disable();
 		}

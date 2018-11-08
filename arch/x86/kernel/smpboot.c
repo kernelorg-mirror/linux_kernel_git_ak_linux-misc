@@ -1660,6 +1660,7 @@ void hlt_play_dead(void)
 		wbinvd();
 
 	while (1) {
+		clear_cpu_buffers_idle();
 		native_halt();
 		/*
 		 * If NMI wants to wake up CPU0, start CPU0.
