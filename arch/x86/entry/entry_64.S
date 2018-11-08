@@ -248,6 +248,9 @@ GLOBAL(entry_SYSCALL_64_after_hwframe)
 	 * perf profiles. Nothing jumps here.
 	 */
 syscall_return_via_sysret:
+
+	EXIT_MDS
+
 	/* rcx and r11 are already restored (see code above) */
 	UNWIND_HINT_EMPTY
 	POP_REGS pop_rdi=0 skip_r11rcx=1
@@ -604,6 +607,8 @@ GLOBAL(swapgs_restore_regs_and_return_to_usermode)
 	ud2
 1:
 #endif
+	EXIT_MDS
+
 	POP_REGS pop_rdi=0
 
 	/*
@@ -622,6 +627,7 @@ GLOBAL(swapgs_restore_regs_and_return_to_usermode)
 
 	/* Push user RDI on the trampoline stack. */
 	pushq	(%rdi)
+
 
 	/*
 	 * We are on the trampoline stack.  All regs except RDI are live.
@@ -1615,6 +1621,8 @@ end_repeat_nmi:
 	movq	%rsp, %rdi
 	movq	$-1, %rsi
 	call	do_nmi
+
+	EXIT_MDS
 
 	/* Always restore stashed CR3 value (see paranoid_entry) */
 	RESTORE_CR3 scratch_reg=%r15 save_reg=%r14

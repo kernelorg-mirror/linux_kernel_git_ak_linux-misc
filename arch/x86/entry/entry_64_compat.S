@@ -276,6 +276,7 @@ sysret32_from_system_call:
 	popq	%rdx			/* Skip pt_regs->cx */
 	popq	%rdx			/* pt_regs->dx */
 	popq	%rsi			/* pt_regs->si */
+	EXIT_MDS
 	popq	%rdi			/* pt_regs->di */
 
         /*

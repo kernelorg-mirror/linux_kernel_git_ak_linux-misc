@@ -150,6 +150,14 @@
 #endif
 .endm
 
+.macro EXIT_MDS
+	/* Clear CPU buffers that could leak. Instruction must be in memory form. */
+	ALTERNATIVE_2 "", __stringify(push $__USER_DS ; verw (% _ASM_SP ) ; add $8, % _ASM_SP ),\
+		X86_FEATURE_MB_CLEAR, \
+		"call do_clear_cpu", \
+		X86_BUG_MDS_CLEAR_CPU
+.endm
+
 #else /* __ASSEMBLY__ */
 
 #define ANNOTATE_NOSPEC_ALTERNATIVE				\
