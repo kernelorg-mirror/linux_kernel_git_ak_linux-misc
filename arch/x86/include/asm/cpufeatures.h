@@ -381,5 +381,7 @@
 #define X86_BUG_SPEC_STORE_BYPASS	X86_BUG(17) /* CPU is affected by speculative store bypass attack */
 #define X86_BUG_L1TF			X86_BUG(18) /* CPU is affected by L1 Terminal Fault */
 #define X86_BUG_MDS			X86_BUG(19) /* CPU is affected by Microarchitectural data sampling */
+#define X86_BUG_MDS_CLEAR_CPU		X86_BUG(20) /* CPU needs call to clear_cpu on kernel exit/idle for MDS */
+#define X86_BUG_MDS_CLEAR_CPU_HSW	X86_BUG(21) /* CPU needs Haswell version of clear cpu */
 
 #endif /* _ASM_X86_CPUFEATURES_H */

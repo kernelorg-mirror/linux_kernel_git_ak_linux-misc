@@ -2349,6 +2349,21 @@
 			Normally the kernel decides dynamically when flushing is
 			needed or not.
 
+	mds=swclear	[X86, Intel]
+			Force using software sequence for clearing data that
+			could be exploited by Micro-architectural Data Sampling.
+			Normally automatically enabled when needed. This
+			option might be useful if running inside a virtual machine
+			that does not expose the correct model number. This
+			option requires a CPU with at SSE support.
+
+	mds=swclearhsw	[X86, Intel]
+			Use Haswell/Broadwell specific sequence for clearing
+			data that could be exploited by Micro-architectural Data
+			Sampling. Normally automatically enabled when needed.
+			This option might be useful if running inside a virtual machine
+			that does not expose the correct model number.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.

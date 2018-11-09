@@ -31,6 +31,7 @@
 #include <asm/intel-family.h>
 #include <asm/e820/api.h>
 #include <asm/hypervisor.h>
+#include <asm/cpu_device_id.h>
 
 static void __init spectre_v2_select_mitigation(void);
 static void __init ssb_select_mitigation(void);
@@ -1044,14 +1045,61 @@ early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
 
+static const __initconst struct x86_cpu_id cpu_mds_clear_cpu[] = {
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM_G	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM_EP	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM_EX	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_WESTMERE	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_WESTMERE_EP	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_WESTMERE_EX	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_SANDYBRIDGE	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_SANDYBRIDGE_X },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_IVYBRIDGE	 },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_IVYBRIDGE_X	 },
+	{}
+};
+
+static const __initconst struct x86_cpu_id cpu_mds_clear_cpu_hsw[] = {
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_HASWELL_CORE	    },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_HASWELL_X	    },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_HASWELL_ULT	    },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_HASWELL_GT3E	    },
+
+	/* Have MB_CLEAR with microcode update, but list just in case: */
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_BROADWELL_CORE   },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_BROADWELL_GT3E   },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_BROADWELL_X	    },
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_BROADWELL_XEON_D },
+	{}
+};
+
 DEFINE_STATIC_KEY_FALSE(force_cpu_clear);
+
+/* Export here to avoid warnings */
+extern __visible void do_clear_cpu(void);
+EXPORT_SYMBOL(do_clear_cpu);
 
 static void mds_select_mitigation(void)
 {
 	if (cmdline_find_option_bool(boot_command_line, "mds=off") ||
 	    !boot_cpu_has_bug(X86_BUG_MDS)) {
 		setup_clear_cpu_cap(X86_FEATURE_MB_CLEAR);
+		setup_clear_cpu_cap(X86_BUG_MDS_CLEAR_CPU_HSW);
+		setup_clear_cpu_cap(X86_BUG_MDS_CLEAR_CPU);
+		return;
+	}
 
+	if ((!boot_cpu_has(X86_FEATURE_MB_CLEAR) &&
+		x86_match_cpu(cpu_mds_clear_cpu)) ||
+		cmdline_find_option_bool(boot_command_line, "mds=swclear"))
+		setup_force_cpu_cap(X86_BUG_MDS_CLEAR_CPU);
+	if ((!boot_cpu_has(X86_FEATURE_MB_CLEAR) &&
+		x86_match_cpu(cpu_mds_clear_cpu_hsw)) ||
+		cmdline_find_option_bool(boot_command_line, "mds=swclearhsw")) {
+		setup_force_cpu_cap(X86_BUG_MDS_CLEAR_CPU);
+		setup_force_cpu_cap(X86_BUG_MDS_CLEAR_CPU_HSW);
+	}
 	if (cmdline_find_option_bool(boot_command_line, "mds=full"))
 		static_branch_enable(&force_cpu_clear);
 }
@@ -1164,6 +1212,11 @@ static ssize_t cpu_show_common(struct device *dev, struct device_attribute *attr
 			if (cpu_smt_control != CPU_SMT_ENABLED)
 				return sprintf(buf, "Mitigation: microcode\n");
 			return sprintf(buf, "Mitigation: microcode, HT vulnerable\n");
+		}
+		if (boot_cpu_has_bug(X86_BUG_MDS_CLEAR_CPU)) {
+			if (cpu_smt_control != CPU_SMT_ENABLED)
+				return sprintf(buf, "Mitigation: software buffer clearing\n");
+			return sprintf(buf, "Mitigation: software buffer clearing, HT vulnerable\n");
 		}
 		return sprintf(buf, "Vulnerable\n");
 
