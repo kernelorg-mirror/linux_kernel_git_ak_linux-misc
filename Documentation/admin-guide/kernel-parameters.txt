@@ -2344,6 +2344,16 @@
 	mds_disable	[X86]
 			Disable workarounds for Micro-architectural Data Sampling.
 
+	mds=swclear	[X86]
+			Force using software sequence for clearing data that
+			could be exploited by Micro-architectural Data Sampling.
+			Normally automatically enabled when needed.
+
+	mds=swclearhsw	[X86]
+			Use Haswell/Broadwell specific sequence for clearing
+			data that could be exploited by Micro-architectural Data
+			Sampling. Normally automatically enabled when needed.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.
