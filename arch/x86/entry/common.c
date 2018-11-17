@@ -174,12 +174,23 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 		if (cached_flags & _TIF_CLEAR_CPU) {
 			clear_thread_flag(TIF_CLEAR_CPU);
 			/* Don't do it twice if forced */
-			if (!static_key_enabled(&force_cpu_clear))
+			if (!static_key_enabled(&force_cpu_clear) &&
+			    !static_cpu_has(X86_BUG_MDS_CLEAR_CPU))
 				clear_cpu();
 		}
 
 		/* Disable IRQs and retry */
 		local_irq_disable();
+
+		/*
+		 * Software sequences can be interrupted, so we have
+		 * to do them with interrupts off. NMIs etc.
+		 * make sure to always clear even when returning
+		 * to the kernel.
+		 */
+		if (static_cpu_has(X86_BUG_MDS_CLEAR_CPU) &&
+			(cached_flags & _TIF_CLEAR_CPU))
+			clear_cpu();
 
 		cached_flags = READ_ONCE(current_thread_info()->flags);
 
