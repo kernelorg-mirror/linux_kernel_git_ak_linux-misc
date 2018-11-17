@@ -1211,6 +1211,14 @@ ENTRY(paranoid_exit)
 	jmp	.Lparanoid_exit_restore
 .Lparanoid_exit_no_swapgs:
 	TRACE_IRQS_IRETQ_DEBUG
+	/*
+	 * Always do MDS clear in case we're racing with a MDS clear
+	 * software sequence on kernel exit.
+	 * Only needed if MB_CLEAR is not available, because VERW is atomic.
+	 */
+	ALTERNATIVE "", "jmp 1f", X86_FEATURE_MB_CLEAR
+	EXIT_MDS
+1:
 	/* Always restore stashed CR3 value (see paranoid_entry) */
 	RESTORE_CR3	scratch_reg=%rbx save_reg=%r14
 .Lparanoid_exit_restore:
