@@ -41,6 +41,7 @@
 
 #include <asm/asm.h>
 #include <asm/cpu.h>
+#include <asm/clearcpu.h>
 #include <asm/io.h>
 #include <asm/desc.h>
 #include <asm/vmx.h>
@@ -10679,6 +10680,15 @@ static void vmx_l1d_flush(struct kvm_vcpu *vcpu)
 	}
 
 	vcpu->stat.l1d_flush++;
+
+	/*
+	 * When the CPU has MB_CLEAR the cpu buffers flush is done implicitely
+	 * by the L1D_FLUSH below. But if software sequences are used
+	 * we need to call them explicitely.
+	 */
+	if (static_cpu_has(X86_BUG_MDS) &&
+	    !static_cpu_has(X86_FEATURE_MB_CLEAR))
+		clear_cpu();
 
 	if (static_cpu_has(X86_FEATURE_FLUSH_L1D)) {
 		wrmsrl(MSR_IA32_FLUSH_CMD, L1D_FLUSH);
