@@ -389,6 +389,7 @@ do {								\
 
 #ifndef __ASSEMBLY__
 void clear_cpu_buffers_idle(void);
+void clear_cpu_buffers(void);
 #endif
 
 #endif /* _ASM_X86_NOSPEC_BRANCH_H_ */

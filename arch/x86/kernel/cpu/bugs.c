@@ -1107,10 +1107,8 @@ static void mds_select_mitigation(void)
  * get cleared. There are some callers who violate this,
  * but they only in very uncommon cases.
  */
-void clear_cpu_buffers_idle(void)
+void clear_cpu_buffers(void)
 {
-	if (cpu_smt_control != CPU_SMT_ENABLED)
-		return;
 	/* Has to be memory form, don't modify to use an register */
 	alternative_input_2("",
 		"push %[kernelds]; verw (%%" _ASM_SP ") ; add $8,%%" _ASM_SP "\n",
@@ -1118,6 +1116,15 @@ void clear_cpu_buffers_idle(void)
 		"call do_clear_cpu",
 		X86_BUG_MDS_CLEAR_CPU,
 		[kernelds] "i" (__KERNEL_DS));
+}
+
+EXPORT_SYMBOL(clear_cpu_buffers);
+
+void clear_cpu_buffers_idle(void)
+{
+	if (cpu_smt_control != CPU_SMT_ENABLED)
+		return;
+	clear_cpu_buffers();
 }
 
 EXPORT_SYMBOL(clear_cpu_buffers_idle);
