@@ -45,6 +45,7 @@
 #include <asm/smap.h>
 #include <asm/frame.h>
 #include <asm/nospec-branch.h>
+#include <asm/clearcpu.h>
 
 #include "calling.h"
 
@@ -1446,6 +1447,12 @@ ENTRY(nmi)
 	movl	%ebx, %esp
 
 .Lnmi_return:
+	/*
+	 * Only needed when returning to kernel with sw sequences
+	 * or if it's forced. But for now do it unconditionally.
+	 */
+	CLEAR_CPU
+.Lno_clear_cpu:
 	CHECK_AND_APPLY_ESPFIX
 	RESTORE_ALL_NMI cr3_reg=%edi pop=4
 	jmp	.Lirq_return
