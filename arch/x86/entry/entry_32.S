@@ -921,6 +921,8 @@ ENTRY(entry_SYSENTER_32)
 	popl	%edi			/* pt_regs->di */
 	popl	%ebp			/* pt_regs->bp */
 
+	EXIT_MDS
+
 	/* Switch to entry stack */
 	movl	%eax, %esp
 
@@ -1006,10 +1008,12 @@ ENTRY(entry_INT80_32)
 
 restore_all:
 	TRACE_IRQS_IRET
+	EXIT_MDS
 	SWITCH_TO_ENTRY_STACK
 .Lrestore_all_notrace:
 	CHECK_AND_APPLY_ESPFIX
 .Lrestore_nocheck:
+
 	/* Switch back to user CR3 */
 	SWITCH_TO_USER_CR3 scratch_reg=%eax
 
@@ -1028,6 +1032,7 @@ restore_all:
 restore_all_kernel:
 	TRACE_IRQS_IRET
 	PARANOID_EXIT_TO_KERNEL_MODE
+	EXIT_MDS
 	BUG_IF_WRONG_CR3
 	RESTORE_REGS 4
 	jmp	.Lirq_return
