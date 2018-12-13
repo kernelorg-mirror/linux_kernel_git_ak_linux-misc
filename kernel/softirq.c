@@ -26,6 +26,7 @@
 #include <linux/smpboot.h>
 #include <linux/tick.h>
 #include <linux/irq.h>
+#include <linux/clearcpu.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/irq.h>
@@ -522,6 +523,8 @@ static void tasklet_action_common(struct softirq_action *a,
 					BUG();
 				t->func(t->data);
 				tasklet_unlock(t);
+				if (t->state & TASKLET_USER_DATA)
+					lazy_clear_cpu();
 				continue;
 			}
 			tasklet_unlock(t);
@@ -546,14 +549,22 @@ static __latent_entropy void tasklet_hi_action(struct softirq_action *a)
 	tasklet_action_common(a, this_cpu_ptr(&tasklet_hi_vec), HI_SOFTIRQ);
 }
 
-void tasklet_init(struct tasklet_struct *t,
-		  void (*func)(unsigned long), unsigned long data)
+void tasklet_init_flags(struct tasklet_struct *t,
+		  void (*func)(unsigned long), unsigned long data,
+		  unsigned flags)
 {
 	t->next = NULL;
-	t->state = 0;
+	t->state = flags;
 	atomic_set(&t->count, 0);
 	t->func = func;
 	t->data = data;
+}
+EXPORT_SYMBOL(tasklet_init_flags);
+
+void tasklet_init(struct tasklet_struct *t,
+		  void (*func)(unsigned long), unsigned long data)
+{
+	tasklet_init_flags(t, func, data, 0);
 }
 EXPORT_SYMBOL(tasklet_init);
 
@@ -609,7 +620,8 @@ static void __tasklet_hrtimer_trampoline(unsigned long data)
  * @ttimer:	 tasklet_hrtimer which is initialized
  * @function:	 hrtimer callback function which gets called from softirq context
  * @which_clock: clock id (CLOCK_MONOTONIC/CLOCK_REALTIME)
- * @mode:	 hrtimer mode (HRTIMER_MODE_ABS/HRTIMER_MODE_REL)
+ * @mode:	 hrtimer mode (HRTIMER_MODE_ABS/HRTIMER_MODE_REL),
+ *		 HRTIMER_MODE_NO_USER
  */
 void tasklet_hrtimer_init(struct tasklet_hrtimer *ttimer,
 			  enum hrtimer_restart (*function)(struct hrtimer *),
@@ -617,8 +629,9 @@ void tasklet_hrtimer_init(struct tasklet_hrtimer *ttimer,
 {
 	hrtimer_init(&ttimer->timer, which_clock, mode);
 	ttimer->timer.function = __hrtimer_tasklet_trampoline;
-	tasklet_init(&ttimer->tasklet, __tasklet_hrtimer_trampoline,
-		     (unsigned long)ttimer);
+	tasklet_init_flags(&ttimer->tasklet, __tasklet_hrtimer_trampoline,
+		     (unsigned long)ttimer,
+		     (mode & HRTIMER_MODE_USER_DATA) ? TASKLET_USER_DATA : 0);
 	ttimer->function = function;
 }
 EXPORT_SYMBOL_GPL(tasklet_hrtimer_init);

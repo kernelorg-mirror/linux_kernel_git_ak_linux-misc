@@ -572,11 +572,22 @@ struct tasklet_struct name = { NULL, 0, ATOMIC_INIT(0), func, data }
 #define DECLARE_TASKLET_DISABLED(name, func, data) \
 struct tasklet_struct name = { NULL, 0, ATOMIC_INIT(1), func, data }
 
+#define DECLARE_TASKLET_USERDATA(name, func, data) \
+struct tasklet_struct name = { NULL, TASKLET_USER_DATA, ATOMIC_INIT(0), func, data }
+
+#define DECLARE_TASKLET_USERDATA_DISABLED(name, func, data) \
+struct tasklet_struct name = { NULL, TASKLET_USER_DATA, ATOMIC_INIT(1), func, data }
 
 enum
 {
 	TASKLET_STATE_SCHED,	/* Tasklet is scheduled for execution */
-	TASKLET_STATE_RUN	/* Tasklet is running (SMP only) */
+	TASKLET_STATE_RUN,	/* Tasklet is running (SMP only) */
+
+	/*
+	 * Set this flag when the tasklet is known to touch user data,
+	 * so needs extra CPU state clearing.
+	 */
+	TASKLET_USER_DATA	= 1 << 5,
 };
 
 #ifdef CONFIG_SMP
@@ -640,6 +651,9 @@ extern void tasklet_kill(struct tasklet_struct *t);
 extern void tasklet_kill_immediate(struct tasklet_struct *t, unsigned int cpu);
 extern void tasklet_init(struct tasklet_struct *t,
 			 void (*func)(unsigned long), unsigned long data);
+extern void tasklet_init_flags(struct tasklet_struct *t,
+			 void (*func)(unsigned long), unsigned long data,
+			 unsigned flags);
 
 struct tasklet_hrtimer {
 	struct hrtimer		timer;
