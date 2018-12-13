@@ -1551,6 +1551,9 @@ EXPORT_SYMBOL(krealloc);
  * Note: this function zeroes the whole allocated buffer which can be a good
  * deal bigger than the requested buffer size passed to kmalloc(). So be
  * careful when using this function in performance sensitive code.
+ *
+ * As a side effect this may also clear CPU state later before the
+ * next kernel exit to avoid side channels.
  */
 void kzfree(const void *p)
 {
@@ -1560,7 +1563,7 @@ void kzfree(const void *p)
 	if (unlikely(ZERO_OR_NULL_PTR(mem)))
 		return;
 	ks = ksize(mem);
-	memset(mem, 0, ks);
+	memzero_explicit(mem, ks);
 	kfree(mem);
 }
 EXPORT_SYMBOL(kzfree);
