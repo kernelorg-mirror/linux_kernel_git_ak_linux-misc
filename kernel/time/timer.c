@@ -44,6 +44,7 @@
 #include <linux/sched/debug.h>
 #include <linux/slab.h>
 #include <linux/compat.h>
+#include <linux/clearcpu.h>
 
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
@@ -1339,6 +1340,13 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(struct timer_list
 		 */
 		preempt_count_set(count);
 	}
+
+	/*
+	 * The timer might have touched user data. Schedule
+	 * a cpu clear on the next kernel exit.
+	 */
+	if (!(timer->flags & TIMER_NO_USER))
+		lazy_clear_cpu();
 }
 
 static void expire_timers(struct timer_base *base, struct hlist_head *head)

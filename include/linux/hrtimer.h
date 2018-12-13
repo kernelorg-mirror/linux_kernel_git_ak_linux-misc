@@ -35,6 +35,7 @@ struct hrtimer_cpu_base;
  *				  when starting the timer)
  * HRTIMER_MODE_SOFT		- Timer callback function will be executed in
  *				  soft irq context
+ * HRTIMER_MODE_NO_USER		- Handler does not touch user data.
  */
 enum hrtimer_mode {
 	HRTIMER_MODE_ABS	= 0x00,
@@ -51,6 +52,7 @@ enum hrtimer_mode {
 	HRTIMER_MODE_ABS_PINNED_SOFT = HRTIMER_MODE_ABS_PINNED | HRTIMER_MODE_SOFT,
 	HRTIMER_MODE_REL_PINNED_SOFT = HRTIMER_MODE_REL_PINNED | HRTIMER_MODE_SOFT,
 
+	HRTIMER_MODE_NO_USER	= 0x08,
 };
 
 /*
@@ -104,6 +106,7 @@ enum hrtimer_restart {
  * @state:	state information (See bit values above)
  * @is_rel:	Set if the timer was armed relative
  * @is_soft:	Set if hrtimer will be expired in soft interrupt context.
+ * @no_user:	function does not touch user data.
  *
  * The hrtimer structure must be initialized by hrtimer_init()
  */
@@ -115,6 +118,7 @@ struct hrtimer {
 	u8				state;
 	u8				is_rel;
 	u8				is_soft;
+	u8				no_user;
 };
 
 /**
