@@ -430,6 +430,8 @@ void ahci_set_em_messages(struct ahci_host_priv *hpriv,
 int ahci_reset_em(struct ata_host *host);
 void ahci_print_info(struct ata_host *host, const char *scc_s);
 int ahci_host_activate(struct ata_host *host, struct scsi_host_template *sht);
+int ahci_host_activate_irqflags(struct ata_host *host, struct scsi_host_template *sht,
+				int irqflags);
 void ahci_error_handler(struct ata_port *ap);
 u32 ahci_handle_port_intr(struct ata_host *host, u32 irq_masked);
 
