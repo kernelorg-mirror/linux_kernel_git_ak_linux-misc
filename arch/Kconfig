@@ -802,6 +802,9 @@ config VMAP_STACK
 	  the stack to map directly to the KASAN shadow map using a formula
 	  that is incorrect if the stack is in vmalloc space.
 
+config ARCH_HAS_CLEAR_CPU
+	def_bool n
+
 config ARCH_OPTIONAL_KERNEL_RWX
 	def_bool n
 

@@ -46,6 +46,11 @@ static inline void clear_cpu_idle(void)
 	}
 }
 
+static inline void lazy_clear_cpu(void)
+{
+	set_thread_flag(TIF_CLEAR_CPU);
+}
+
 DECLARE_STATIC_KEY_FALSE(force_cpu_clear);
 
 #else
