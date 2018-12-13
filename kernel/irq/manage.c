@@ -1793,6 +1793,7 @@ EXPORT_SYMBOL(free_irq);
  *
  *	IRQF_SHARED		Interrupt is shared
  *	IRQF_TRIGGER_*		Specify active edge(s) or level
+ *	IRQF_NOUSER		Does not touch user data.
  *
  */
 int request_threaded_irq(unsigned int irq, irq_handler_t handler,
