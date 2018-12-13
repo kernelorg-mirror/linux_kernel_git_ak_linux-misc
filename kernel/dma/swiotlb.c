@@ -34,6 +34,7 @@
 #include <linux/scatterlist.h>
 #include <linux/mem_encrypt.h>
 #include <linux/set_memory.h>
+#include <linux/clearcpu.h>
 
 #include <asm/io.h>
 #include <asm/dma.h>
@@ -422,6 +423,7 @@ static void swiotlb_bounce(phys_addr_t orig_addr, phys_addr_t tlb_addr,
 	} else {
 		memcpy(phys_to_virt(orig_addr), vaddr, size);
 	}
+	lazy_clear_cpu_interrupt();
 }
 
 phys_addr_t swiotlb_tbl_map_single(struct device *hwdev,
