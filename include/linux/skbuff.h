@@ -40,6 +40,7 @@
 #include <linux/in6.h>
 #include <linux/if_packet.h>
 #include <net/flow.h>
+#include <linux/clearcpu.h>
 
 /* The interface for checksum offload between the stack and networking drivers
  * is as follows...
@@ -2077,6 +2078,7 @@ static inline void *__skb_put(struct sk_buff *skb, unsigned int len)
 	SKB_LINEAR_ASSERT(skb);
 	skb->tail += len;
 	skb->len  += len;
+	lazy_clear_cpu_interrupt();
 	return tmp;
 }
 

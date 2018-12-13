@@ -1184,6 +1184,9 @@ int skb_copy_ubufs(struct sk_buff *skb, gfp_t gfp_mask)
 	if (!num_frags)
 		goto release;
 
+	/* Likely to copy user data */
+	lazy_clear_cpu_interrupt();
+
 	new_frags = (__skb_pagelen(skb) + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	for (i = 0; i < new_frags; i++) {
 		page = alloc_page(gfp_mask);
@@ -1347,6 +1350,9 @@ struct sk_buff *skb_copy(const struct sk_buff *skb, gfp_t gfp_mask)
 
 	if (!n)
 		return NULL;
+
+	/* Copies user data */
+	lazy_clear_cpu_interrupt();
 
 	/* Set the data pointer */
 	skb_reserve(n, headerlen);
@@ -1583,6 +1589,9 @@ struct sk_buff *skb_copy_expand(const struct sk_buff *skb,
 	if (!n)
 		return NULL;
 
+	/* May copy user data */
+	lazy_clear_cpu_interrupt();
+
 	skb_reserve(n, newheadroom);
 
 	/* Set the tail pointer and length */
@@ -1671,6 +1680,8 @@ EXPORT_SYMBOL(__skb_pad);
 
 void *pskb_put(struct sk_buff *skb, struct sk_buff *tail, int len)
 {
+	/* Likely to be followed by a user data copy */
+	lazy_clear_cpu_interrupt();
 	if (tail != skb) {
 		skb->data_len += len;
 		skb->len += len;
@@ -1696,6 +1707,8 @@ void *skb_put(struct sk_buff *skb, unsigned int len)
 	skb->len  += len;
 	if (unlikely(skb->tail > skb->end))
 		skb_over_panic(skb, len, __builtin_return_address(0));
+	/* Likely to be followed by a user data copy */
+	lazy_clear_cpu_interrupt();
 	return tmp;
 }
 EXPORT_SYMBOL(skb_put);
@@ -1715,6 +1728,7 @@ void *skb_push(struct sk_buff *skb, unsigned int len)
 	skb->len  += len;
 	if (unlikely(skb->data < skb->head))
 		skb_under_panic(skb, len, __builtin_return_address(0));
+	/* No clear cpu, assume this is only header data */
 	return skb->data;
 }
 EXPORT_SYMBOL(skb_push);
@@ -2022,6 +2036,9 @@ int skb_copy_bits(const struct sk_buff *skb, int offset, void *to, int len)
 	int start = skb_headlen(skb);
 	struct sk_buff *frag_iter;
 	int i, copy;
+
+	/* Copies user data */
+	lazy_clear_cpu_interrupt();
 
 	if (offset > (int)skb->len - len)
 		goto fault;
@@ -2397,6 +2414,9 @@ int skb_store_bits(struct sk_buff *skb, int offset, const void *from, int len)
 	struct sk_buff *frag_iter;
 	int i, copy;
 
+	/* Copies user data */
+	lazy_clear_cpu_interrupt();
+
 	if (offset > (int)skb->len - len)
 		goto fault;
 
@@ -2476,6 +2496,9 @@ __wsum __skb_checksum(const struct sk_buff *skb, int offset, int len,
 	int i, copy = start - offset;
 	struct sk_buff *frag_iter;
 	int pos = 0;
+
+	/* Reads packet data */
+	lazy_clear_cpu_interrupt();
 
 	/* Checksum header. */
 	if (copy > 0) {
@@ -2568,6 +2591,9 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
 	int i, copy = start - offset;
 	struct sk_buff *frag_iter;
 	int pos = 0;
+
+	/* Reads packet data */
+	lazy_clear_cpu_interrupt();
 
 	/* Copy header. */
 	if (copy > 0) {
