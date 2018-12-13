@@ -2,6 +2,7 @@
 //
 // Code shared between 32 and 64 bit
 
+#include <linux/clearcpu.h>
 #include <asm/spec-ctrl.h>
 
 void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p);

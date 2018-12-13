@@ -343,6 +343,13 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 			cpumask_set_cpu(cpu, mm_cpumask(next));
 
 		/*
+		 * We switched through a kernel thread, so schedule
+		 * a cpu clear to protect the thread.
+		 */
+		if (static_cpu_has_bug(X86_BUG_MDS) && was_lazy)
+			lazy_clear_cpu();
+
+		/*
 		 * If the CPU is not in lazy TLB mode, we are just switching
 		 * from one thread in a process to another thread in the same
 		 * process. No TLB flush required.
@@ -375,6 +382,13 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 		 * one process from doing Spectre-v2 attacks on another.
 		 */
 		cond_ibpb(tsk);
+
+		/*
+		 * We're switching to a different process, so schedule
+		 * a cpu clear.
+		 */
+		if (static_cpu_has_bug(X86_BUG_MDS))
+			lazy_clear_cpu();
 
 		if (IS_ENABLED(CONFIG_VMAP_STACK)) {
 			/*
