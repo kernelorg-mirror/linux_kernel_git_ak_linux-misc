@@ -14,6 +14,7 @@
 #include <asm/page.h> /* I/O is all done through memory accesses */
 #include <linux/string.h> /* for memset() and memcpy() */
 #include <linux/types.h>
+#include <linux/clearcpu.h>
 
 #ifdef CONFIG_GENERIC_IOMAP
 #include <asm-generic/iomap.h>
@@ -1115,6 +1116,7 @@ static inline void memcpy_fromio(void *buffer,
 				 size_t size)
 {
 	memcpy(buffer, __io_virt(addr), size);
+	lazy_clear_cpu_interrupt();
 }
 #endif
 
@@ -1132,6 +1134,7 @@ static inline void memcpy_toio(volatile void __iomem *addr, const void *buffer,
 			       size_t size)
 {
 	memcpy(__io_virt(addr), buffer, size);
+	lazy_clear_cpu_interrupt();
 }
 #endif
 
