@@ -2548,7 +2548,8 @@ void ahci_set_em_messages(struct ahci_host_priv *hpriv,
 EXPORT_SYMBOL_GPL(ahci_set_em_messages);
 
 static int ahci_host_activate_multi_irqs(struct ata_host *host,
-					 struct scsi_host_template *sht)
+					 struct scsi_host_template *sht,
+					 int irqflags)
 {
 	struct ahci_host_priv *hpriv = host->private_data;
 	int i, rc;
@@ -2571,7 +2572,7 @@ static int ahci_host_activate_multi_irqs(struct ata_host *host,
 		}
 
 		rc = devm_request_irq(host->dev, irq, ahci_multi_irqs_intr_hard,
-				0, pp->irq_desc, host->ports[i]);
+				irqflags, pp->irq_desc, host->ports[i]);
 
 		if (rc)
 			return rc;
@@ -2581,18 +2582,8 @@ static int ahci_host_activate_multi_irqs(struct ata_host *host,
 	return ata_host_register(host, sht);
 }
 
-/**
- *	ahci_host_activate - start AHCI host, request IRQs and register it
- *	@host: target ATA host
- *	@sht: scsi_host_template to use when registering the host
- *
- *	LOCKING:
- *	Inherited from calling layer (may sleep).
- *
- *	RETURNS:
- *	0 on success, -errno otherwise.
- */
-int ahci_host_activate(struct ata_host *host, struct scsi_host_template *sht)
+int ahci_host_activate_irqflags(struct ata_host *host, struct scsi_host_template *sht,
+				int irqflags)
 {
 	struct ahci_host_priv *hpriv = host->private_data;
 	int irq = hpriv->irq;
@@ -2608,14 +2599,31 @@ int ahci_host_activate(struct ata_host *host, struct scsi_host_template *sht)
 			return -EIO;
 		}
 
-		rc = ahci_host_activate_multi_irqs(host, sht);
+		rc = ahci_host_activate_multi_irqs(host, sht, irqflags);
 	} else {
 		rc = ata_host_activate(host, irq, hpriv->irq_handler,
-				       IRQF_SHARED, sht);
+				       irqflags|IRQF_SHARED, sht);
 	}
 
 
 	return rc;
+}
+EXPORT_SYMBOL_GPL(ahci_host_activate_irqflags);
+
+/**
+ *	ahci_host_activate - start AHCI host, request IRQs and register it
+ *	@host: target ATA host
+ *	@sht: scsi_host_template to use when registering the host
+ *
+ *	LOCKING:
+ *	Inherited from calling layer (may sleep).
+ *
+ *	RETURNS:
+ *	0 on success, -errno otherwise.
+ */
+int ahci_host_activate(struct ata_host *host, struct scsi_host_template *sht)
+{
+	return ahci_host_activate_irqflags(host, sht, 0);
 }
 EXPORT_SYMBOL_GPL(ahci_host_activate);
 
