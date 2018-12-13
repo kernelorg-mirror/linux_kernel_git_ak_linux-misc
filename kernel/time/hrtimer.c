@@ -42,6 +42,7 @@
 #include <linux/timer.h>
 #include <linux/freezer.h>
 #include <linux/compat.h>
+#include <linux/clearcpu.h>
 
 #include <linux/uaccess.h>
 
@@ -1276,6 +1277,7 @@ static void __hrtimer_init(struct hrtimer *timer, clockid_t clock_id,
 		clock_id = CLOCK_MONOTONIC;
 
 	base += hrtimer_clockid_to_base(clock_id);
+	timer->no_user = !!(mode & HRTIMER_MODE_NO_USER);
 	timer->is_soft = softtimer;
 	timer->base = &cpu_base->clock_base[base];
 	timerqueue_init(&timer->node);
@@ -1389,6 +1391,9 @@ static void __run_hrtimer(struct hrtimer_cpu_base *cpu_base,
 	restart = fn(timer);
 	trace_hrtimer_expire_exit(timer);
 	raw_spin_lock_irq(&cpu_base->lock);
+
+	if (!timer->no_user)
+		lazy_clear_cpu();
 
 	/*
 	 * Note: We clear the running state after enqueue_hrtimer and
