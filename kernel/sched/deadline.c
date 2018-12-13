@@ -1054,7 +1054,8 @@ void init_dl_task_timer(struct sched_dl_entity *dl_se)
 {
 	struct hrtimer *timer = &dl_se->dl_timer;
 
-	hrtimer_init(timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL|HRTIMER_MODE_NO_USER);
 	timer->function = dl_task_timer;
 }
 
@@ -1293,7 +1294,8 @@ void init_dl_inactive_task_timer(struct sched_dl_entity *dl_se)
 {
 	struct hrtimer *timer = &dl_se->inactive_timer;
 
-	hrtimer_init(timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL|HRTIMER_MODE_NO_USER);
 	timer->function = inactive_task_timer;
 }
 
