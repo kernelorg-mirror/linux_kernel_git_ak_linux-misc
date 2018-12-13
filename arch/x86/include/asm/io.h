@@ -40,6 +40,7 @@
 
 #include <linux/string.h>
 #include <linux/compiler.h>
+#include <linux/clearcpu.h>
 #include <asm/page.h>
 #include <asm/early_ioremap.h>
 #include <asm/pgtable_types.h>
@@ -321,6 +322,7 @@ static inline void outs##bwl(int port, const void *addr, unsigned long count) \
 			     : "+S"(addr), "+c"(count)			\
 			     : "d"(port) : "memory");			\
 	}								\
+	lazy_clear_cpu_interrupt();					\
 }									\
 									\
 static inline void ins##bwl(int port, void *addr, unsigned long count)	\
@@ -337,6 +339,7 @@ static inline void ins##bwl(int port, void *addr, unsigned long count)	\
 			     : "+D"(addr), "+c"(count)			\
 			     : "d"(port) : "memory");			\
 	}								\
+	lazy_clear_cpu_interrupt();					\
 }
 
 BUILDIO(b, b, char)
