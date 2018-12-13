@@ -903,9 +903,10 @@ void __init tcp_tasklet_init(void)
 		struct tsq_tasklet *tsq = &per_cpu(tsq_tasklet, i);
 
 		INIT_LIST_HEAD(&tsq->head);
-		tasklet_init(&tsq->tasklet,
+		tasklet_init_flags(&tsq->tasklet,
 			     tcp_tasklet_func,
-			     (unsigned long)tsq);
+			     (unsigned long)tsq,
+			     TASKLET_NO_USER);
 	}
 }
 
