@@ -5,7 +5,8 @@
 #include <linux/jump_label.h>
 #include <linux/sched/smt.h>
 #include <asm/alternative.h>
-#include <linux/thread_info.h>
+
+DECLARE_PER_CPU(bool, clear_cpu_flag);
 
 /*
  * Clear CPU buffers to avoid side channels.
@@ -34,8 +35,15 @@ static inline void clear_cpu(void)
 
 static inline void clear_cpu_idle(void)
 {
-	if (sched_smt_active())
+	if (sched_smt_active()) {
+		__this_cpu_write(clear_cpu_flag, false);
 		clear_cpu();
+	}
+}
+
+static inline void lazy_clear_cpu(void)
+{
+	__this_cpu_write(clear_cpu_flag, true);
 }
 
 #endif

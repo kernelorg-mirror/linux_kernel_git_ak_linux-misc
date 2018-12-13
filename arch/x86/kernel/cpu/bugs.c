@@ -1061,6 +1061,9 @@ early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
 
+DEFINE_PER_CPU(bool, clear_cpu_flag);
+EXPORT_PER_CPU_SYMBOL(clear_cpu_flag);
+
 static void mds_select_mitigation(void)
 {
 	if (!boot_cpu_has(X86_BUG_MDS))
