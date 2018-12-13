@@ -1865,7 +1865,7 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_set_master(pdev);
 
-	rc = ahci_host_activate(host, &ahci_sht);
+	rc = ahci_host_activate_irqflags(host, &ahci_sht, IRQF_NO_USER);
 	if (rc)
 		return rc;
 
