@@ -488,7 +488,8 @@ static void release_posix_timer(struct k_itimer *tmr, int it_id_set)
 
 static int common_timer_create(struct k_itimer *new_timer)
 {
-	hrtimer_init(&new_timer->it.real.timer, new_timer->it_clock, 0);
+	hrtimer_init(&new_timer->it.real.timer, new_timer->it_clock,
+		HRTIMER_MODE_NO_USER);
 	return 0;
 }
 
@@ -813,7 +814,8 @@ static void common_hrtimer_arm(struct k_itimer *timr, ktime_t expires,
 	if (timr->it_clock == CLOCK_REALTIME)
 		timr->kclock = absolute ? &clock_realtime : &clock_monotonic;
 
-	hrtimer_init(&timr->it.real.timer, timr->it_clock, mode);
+	hrtimer_init(&timr->it.real.timer, timr->it_clock,
+		     mode|HRTIMER_MODE_NO_USER);
 	timr->it.real.timer.function = posix_timer_fn;
 
 	if (!absolute)

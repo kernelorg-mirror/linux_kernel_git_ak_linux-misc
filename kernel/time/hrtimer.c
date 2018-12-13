@@ -1722,7 +1722,7 @@ static long __sched hrtimer_nanosleep_restart(struct restart_block *restart)
 	int ret;
 
 	hrtimer_init_on_stack(&t.timer, restart->nanosleep.clockid,
-				HRTIMER_MODE_ABS);
+				HRTIMER_MODE_ABS|HRTIMER_MODE_NO_USER);
 	hrtimer_set_expires_tv64(&t.timer, restart->nanosleep.expires);
 
 	ret = do_nanosleep(&t, HRTIMER_MODE_ABS);
@@ -1742,7 +1742,7 @@ long hrtimer_nanosleep(const struct timespec64 *rqtp,
 	if (dl_task(current) || rt_task(current))
 		slack = 0;
 
-	hrtimer_init_on_stack(&t.timer, clockid, mode);
+	hrtimer_init_on_stack(&t.timer, clockid, mode|HRTIMER_MODE_NO_USER);
 	hrtimer_set_expires_range_ns(&t.timer, timespec64_to_ktime(*rqtp), slack);
 	ret = do_nanosleep(&t, mode);
 	if (ret != -ERESTART_RESTARTBLOCK)
@@ -1941,7 +1941,7 @@ schedule_hrtimeout_range_clock(ktime_t *expires, u64 delta,
 		return -EINTR;
 	}
 
-	hrtimer_init_on_stack(&t.timer, clock_id, mode);
+	hrtimer_init_on_stack(&t.timer, clock_id, mode|HRTIMER_MODE_NO_USER);
 	hrtimer_set_expires_range_ns(&t.timer, *expires, delta);
 
 	hrtimer_init_sleeper(&t, current);
