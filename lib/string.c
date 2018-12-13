@@ -28,6 +28,7 @@
 #include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
+#include <linux/clearcpu.h>
 
 #include <asm/byteorder.h>
 #include <asm/word-at-a-time.h>
@@ -715,12 +716,17 @@ EXPORT_SYMBOL(memset);
  * necessary, memzero_explicit() should be used instead in
  * order to prevent the compiler from optimising away zeroing.
  *
+ * As a side effect this may also trigger extra cleaning
+ * of CPU state before the next kernel exit to avoid
+ * side channels.
+ *
  * memzero_explicit() doesn't need an arch-specific version as
  * it just invokes the one of memset() implicitly.
  */
 void memzero_explicit(void *s, size_t count)
 {
 	memset(s, 0, count);
+	lazy_clear_cpu();
 	barrier_data(s);
 }
 EXPORT_SYMBOL(memzero_explicit);
