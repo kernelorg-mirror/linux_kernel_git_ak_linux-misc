@@ -1061,6 +1061,23 @@ early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
 
+#define CREATE_TRACE_POINTS
+#include <asm/trace/clearcpu.h>
+
+void do_trace_clear_cpu(void)
+{
+	trace_clear_cpu(0);
+}
+EXPORT_SYMBOL(do_trace_clear_cpu);
+EXPORT_TRACEPOINT_SYMBOL(clear_cpu);
+
+void do_trace_lazy_clear_cpu(void)
+{
+	trace_lazy_clear_cpu(0);
+}
+EXPORT_SYMBOL(do_trace_lazy_clear_cpu);
+EXPORT_TRACEPOINT_SYMBOL(lazy_clear_cpu);
+
 DEFINE_STATIC_KEY_FALSE(force_cpu_clear);
 
 static void mds_select_mitigation(void)

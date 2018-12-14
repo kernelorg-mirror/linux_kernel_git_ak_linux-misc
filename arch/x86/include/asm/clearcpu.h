@@ -10,16 +10,46 @@
 #include <linux/thread_info.h>
 
 /*
+ * We cannot directly include the trace point header here
+ * because it leads to include loops with other trace point
+ * files pulling this one in. Define the static
+ * key manually here, which handles noping the fast path,
+ * and the actual tracing is done out of line.
+ */
+#ifdef CONFIG_TRACEPOINTS
+#include <asm/atomic.h>
+#include <linux/tracepoint-defs.h>
+
+extern struct tracepoint __tracepoint_clear_cpu;
+extern struct tracepoint __tracepoint_lazy_clear_cpu;
+#define cc_tracepoint_active(t) static_key_false(&(t).key)
+
+extern void do_trace_clear_cpu(void);
+extern void do_trace_lazy_clear_cpu(void);
+#else
+#define cc_tracepoint_active(t) false
+static inline void do_trace_clear_cpu(void) {}
+static inline void do_trace_lazy_clear_cpu(void) {}
+#endif
+
+/*
  * Clear CPU buffers to avoid side channels.
  * We use microcode as a side effect of the obsolete VERW instruction
  */
 
-static inline void clear_cpu(void)
+static inline void __clear_cpu(void)
 {
 	unsigned kernel_ds = __KERNEL_DS;
 	/* Has to be memory form, don't modify to use an register */
 	alternative_input("verw %[kernelds]", "", X86_FEATURE_NO_VERW,
 		[kernelds] "m" (kernel_ds));
+}
+
+static inline void clear_cpu(void)
+{
+	if (cc_tracepoint_active(__tracepoint_clear_cpu))
+		do_trace_clear_cpu();
+	__clear_cpu();
 }
 
 /*
@@ -37,12 +67,14 @@ static inline void clear_cpu_idle(void)
 {
 	if (sched_smt_active()) {
 		clear_thread_flag(TIF_CLEAR_CPU);
-		clear_cpu();
+		__clear_cpu();
 	}
 }
 
 static inline void lazy_clear_cpu(void)
 {
+	if (cc_tracepoint_active(__tracepoint_lazy_clear_cpu))
+		do_trace_lazy_clear_cpu();
 	set_thread_flag(TIF_CLEAR_CPU);
 }
 
