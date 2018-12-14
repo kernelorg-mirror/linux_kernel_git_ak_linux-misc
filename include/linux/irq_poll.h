@@ -15,6 +15,8 @@ struct irq_poll {
 enum {
 	IRQ_POLL_F_SCHED	= 0,
 	IRQ_POLL_F_DISABLE	= 1,
+
+	IRQ_POLL_F_NO_USER	= 1<<4,
 };
 
 extern void irq_poll_sched(struct irq_poll *);
