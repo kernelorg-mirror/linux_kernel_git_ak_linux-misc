@@ -1045,6 +1045,23 @@ early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
 
+#define CREATE_TRACE_POINTS
+#include <asm/trace/clearcpu.h>
+
+void do_trace_clear_cpu(void)
+{
+	trace_clear_cpu(0);
+}
+EXPORT_SYMBOL(do_trace_clear_cpu);
+EXPORT_TRACEPOINT_SYMBOL(clear_cpu);
+
+void do_trace_lazy_clear_cpu(void)
+{
+	trace_lazy_clear_cpu(0);
+}
+EXPORT_SYMBOL(do_trace_lazy_clear_cpu);
+EXPORT_TRACEPOINT_SYMBOL(lazy_clear_cpu);
+
 static const __initconst struct x86_cpu_id cpu_mds_clear_cpu[] = {
 	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM	 },
 	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_NEHALEM_G	 },
