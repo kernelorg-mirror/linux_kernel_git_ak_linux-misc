@@ -1,0 +1,179 @@
+
+Security model for Microarchitectural Data Sampling
+===================================================
+
+Some CPUs can leave read or written data in internal buffers,
+which then later might be sampled through side effects.
+For more details see CVE-2018-12126 CVE-2018-12130 CVE-2018-12127
+
+This can be avoided by explicitely clearing the CPU state.
+
+We trying to avoid leaking data between different processes,
+and also some sensitive data, like cryptographic data,
+or user data from other processes.
+
+We support three modes:
+
+(1) mitigation off (mds=off)
+(2) clear only when needed (default)
+(3) clear on every kernel exit, or guest entry (mds=full)
+
+(1) and (3) are trivial, the rest of the document discusses (2)
+
+Basic requirements and assumptions
+----------------------------------
+
+Kernel addresses and kernel temporary data are not sensitive.
+
+User data is sensitive, but only for other processes.
+
+Kernel data is sensitive when it is cryptographic keys.
+
+Guidance for driver/subsystem developers
+----------------------------------------
+
+When you touch user supplied data of *other* processes in system call
+context add lazy_clear_cpu().
+
+For the cases below we care only about data from other processes.
+Touching non cryptographic data from the current process is always allowed.
+
+Touching only pointers to user data is always allowed.
+
+When your interrupt does not touch user data directly consider marking
+it with IRQF_NO_USER.
+
+When your tasklet does not touch user data directly consider marking
+it with TASKLET_NO_USER using tasklet_init_flags/or
+DECLARE_TASKLET*_NOUSER.
+
+When your timer does not touch user data mark it with TIMER_NO_USER.
+If it is a hrtimer mark it with HRTIMER_MODE_NO_USER.
+
+When your irq poll handler does not touch user data, mark it
+with IRQ_POLL_F_NO_USER through irq_poll_init_flags.
+
+For networking code make sure to only touch user data through
+skb_push/put/copy [add more], unless it is data from the current
+process. If that is not ensured add lazy_clear_cpu or
+lazy_clear_cpu_interrupt. When the non skb data access is only in a
+hardware interrupt controlled by the driver, it can rely on not
+setting IRQF_NO_USER for that interrupt.
+
+Any cryptographic code touching key data should use memzero_explicit
+or kzfree.
+
+If your RCU callback touches user data add lazy_clear_cpu().
+
+These steps are currently only needed for code that runs on MDS affected
+CPUs, which is currently only x86. But might be worth being prepared
+if other architectures become affected too.
+
+Implementation details/assumptions
+----------------------------------
+
+If a system call touches data it is for its own process, so does not
+need to be cleared, because it has already access to it.
+
+When context switching we clear data, unless the context switch
+is inside a process, or from/to idle. We also clear after any
+context switches from kernel threads.
+
+Idle does not have sensitive data, except for in interrupts, which
+are handled separately.
+
+Cryptographic keys inside the kernel should be protected.
+We assume they use kzfree() or memzero_explicit() to clear
+state, so these functions trigger a cpu clear.
+
+Hard interrupts, tasklets, timers which can run asynchronous are
+assumed to touch random user data, unless they have been audited, and
+marked with NO_USER flags.
+
+Most interrupt handlers for modern devices should not touch
+user data because they rely on DMA and only manipulate
+pointers. This needs auditing to confirm though.
+
+For softirqs we assume that if they touch user data they use
+lazy_clear_cpu()/lazy_clear_interrupt() as needed.
+Networking is handled through skb_* below.
+Timer and Tasklets and IRQ poll are handled through opt-in.
+
+Scheduler softirq is assumed to not touch user data.
+
+Block softirq done callbacks are assumed to not touch user data.
+
+For networking code, any skb functions that are likely
+touching non header packet data schedule a clear cpu at next
+kernel exit. This includes skb_copy and related, skb_put/push,
+checksum functions.  We assume that any networking code touching
+packet data uses these functions.
+
+[In principle packet data should be encrypted anyways for the wire,
+but we try to avoid leaking it anyways]
+
+Some IO related functions like string PIO and memcpy_from/to_io, or
+the software pci dma bounce function, which touch data, schedule a
+buffer clear.
+
+We assume NMI/machine check code does not touch other
+processes' data.
+
+Any buffer clearing is done lazily on next kernel exit, so can be
+triggered in fast paths.
+
+Sandboxes
+---------
+
+We don't do anything special for seccomp processes
+
+If there is a sandbox inside the process the process should take care
+itself of clearing its own sensitive data before running sandbox
+code. This would include data touched by system calls.
+
+BPF
+---
+
+Assume BPF execution does not touch other user's data, so does
+not need to schedule a clear for itself.
+
+BPF could attack the rest of the kernel if it can successfully
+measure side channel side effects.
+
+When the BPF program was loaded unprivileged, always clear the CPU
+to prevent any exploits written in BPF using side channels to read
+data leaked from other kernel code
+
+We only do this when running in an interrupt, or if an clear cpu is
+already scheduled (which means for example there was a context
+switch, or crypto operation before)
+
+In process context we assume the code only accesses data of the
+current user and check that the BPF running was loaded by the
+same user so even if data leaked it would not cross privilege
+boundaries.
+
+Technically we would only need to do this if the BPF program
+contains conditional branches and loads dominated by them, but
+let's assume that near all do.
+
+This could be further optimized by allowing callers that do
+a lot of individual BPF runs and are sure they don't touch
+other user's data inbetween to do the clear only once
+at the beginning. We can add such optimizations later based on
+profile data.
+
+Virtualization
+--------------
+
+When entering a guest in KVM we clear to avoid any leakage to a guest.
+Normally this is done implicitely as part of the L1TF mitigation.
+It relies on this being enabled. It also uses the "fast exit"
+optimization that only clears if an interrupt or context switch
+happened.
+
+There's an exception that if we don't expose MB_CLEAR to the guest it
+may be using software sequences. Unlike VERW, the software sequences
+are not atomic, and can be interrupted by the hypervisor, and not
+clear the data correctly. To avoid this we unconditionally clear when
+entering if MB_CLEAR is not exposed.
