@@ -11,6 +11,7 @@
 #include <linux/cpu.h>
 #include <linux/irq_poll.h>
 #include <linux/delay.h>
+#include <linux/clearcpu.h>
 
 static unsigned int irq_poll_budget __read_mostly = 256;
 
@@ -111,6 +112,9 @@ static void __latent_entropy irq_poll_softirq(struct softirq_action *h)
 
 		budget -= work;
 
+		if (!(iop->state & IRQ_POLL_F_NO_USER))
+			lazy_clear_cpu();
+
 		local_irq_disable();
 
 		/*
@@ -168,21 +172,31 @@ void irq_poll_enable(struct irq_poll *iop)
 EXPORT_SYMBOL(irq_poll_enable);
 
 /**
- * irq_poll_init - Initialize this @iop
+ * irq_poll_init_flags - Initialize this @iop
  * @iop:      The parent iopoll structure
  * @weight:   The default weight (or command completion budget)
  * @poll_fn:  The handler to invoke
+ * @flags:    IRQ_POLL_F_NO_USER if callback does not touch user data.
  *
  * Description:
  *     Initialize and enable this irq_poll structure.
  **/
-void irq_poll_init(struct irq_poll *iop, int weight, irq_poll_fn *poll_fn)
+void irq_poll_init_flags(struct irq_poll *iop, int weight, irq_poll_fn *poll_fn,
+			 int flags)
 {
 	memset(iop, 0, sizeof(*iop));
 	INIT_LIST_HEAD(&iop->list);
 	iop->weight = weight;
 	iop->poll = poll_fn;
+	iop->state = flags;
 }
+EXPORT_SYMBOL(irq_poll_init_flags);
+
+void irq_poll_init(struct irq_poll *iop, int weight, irq_poll_fn *poll_fn)
+{
+	return irq_poll_init_flags(iop, weight, poll_fn, 0);
+}
+
 EXPORT_SYMBOL(irq_poll_init);
 
 static int irq_poll_cpu_dead(unsigned int cpu)
