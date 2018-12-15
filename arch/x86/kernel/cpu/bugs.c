@@ -1061,10 +1061,14 @@ early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
 
+DEFINE_STATIC_KEY_FALSE(force_cpu_clear);
+
 static void mds_select_mitigation(void)
 {
 	if (cmdline_find_option_bool(boot_command_line, "mds=off"))
 		setup_force_cpu_cap(X86_FEATURE_NO_VERW);
+	if (cmdline_find_option_bool(boot_command_line, "mds=full"))
+		static_branch_enable(&force_cpu_clear);
 }
 
 #ifdef CONFIG_SYSFS

@@ -2360,6 +2360,11 @@
 	mds=off		[X86, Intel]
 			Disable workarounds for Micro-architectural Data Sampling.
 
+	mds=full	[X86, Intel]
+			Always flush cpu buffers when exiting kernel for MDS.
+			Normally the kernel decides dynamically when flushing is
+			needed or not.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.
