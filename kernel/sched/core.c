@@ -11,6 +11,8 @@
 
 #include <linux/kcov.h>
 
+#include <linux/clearcpu.h>
+
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 
@@ -3631,6 +3633,13 @@ asmlinkage __visible void __sched notrace preempt_schedule(void)
 	 */
 	if (likely(!preemptible()))
 		return;
+
+	/*
+	 * For kernel preemption we need to force a cpu clear
+	 * because it could happen before the code has a chance
+	 * to set TIF_CLEAR_CPU.
+	 */
+	lazy_clear_cpu();
 
 	preempt_schedule_common();
 }
