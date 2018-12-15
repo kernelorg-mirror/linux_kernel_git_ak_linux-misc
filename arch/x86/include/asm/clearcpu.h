@@ -20,4 +20,6 @@ static inline void clear_cpu(void)
 		[kernelds] "m" (kernel_ds));
 }
 
+DECLARE_STATIC_KEY_FALSE(force_cpu_clear);
+
 #endif

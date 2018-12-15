@@ -173,7 +173,9 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 
 		if (cached_flags & _TIF_CLEAR_CPU) {
 			clear_thread_flag(TIF_CLEAR_CPU);
-			clear_cpu();
+			/* Don't do it twice if forced */
+			if (!static_key_enabled(&force_cpu_clear))
+				clear_cpu();
 		}
 
 		/* Disable IRQs and retry */
@@ -216,6 +218,9 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	 */
 	ti->status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
 #endif
+
+	if (static_key_enabled(&force_cpu_clear))
+		clear_cpu();
 
 	user_enter_irqoff();
 }
