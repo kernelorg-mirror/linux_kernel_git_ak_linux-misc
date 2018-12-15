@@ -2,6 +2,8 @@
 #ifndef _ASM_CLEARCPU_H
 #define _ASM_CLEARCPU_H 1
 
+#ifndef __ASSEMBLY__
+
 #include <linux/jump_label.h>
 #include <linux/sched/smt.h>
 #include <asm/alternative.h>
@@ -40,5 +42,14 @@ static inline void clear_cpu_idle(void)
 }
 
 DECLARE_STATIC_KEY_FALSE(force_cpu_clear);
+
+#else
+
+.macro CLEAR_CPU
+	ALTERNATIVE __stringify(push $__USER_DS ; verw (% _ASM_SP ) ; add $8, % _ASM_SP ),\
+		"", X86_FEATURE_NO_VERW
+.endm
+
+#endif
 
 #endif

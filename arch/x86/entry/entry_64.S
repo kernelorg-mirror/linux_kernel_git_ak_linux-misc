@@ -39,6 +39,7 @@
 #include <asm/frame.h>
 #include <asm/nospec-branch.h>
 #include <linux/err.h>
+#include <asm/clearcpu.h>
 
 #include "calling.h"
 
@@ -1406,6 +1407,17 @@ ENTRY(nmi)
 	movq	%rsp, %rdi
 	movq	$-1, %rsi
 	call	do_nmi
+
+	/*
+	 * Clear only when force clearing was enabled. Otherwise
+	 * we assume NMI code is not sensitive.
+	 * If you don't have jump labels we always clear too.
+	 */
+#ifdef HAVE_JUMP_LABEL
+	STATIC_BRANCH_JMP l_yes=.Lno_clear_cpu key=force_cpu_clear, branch=1
+#endif
+	CLEAR_CPU
+.Lno_clear_cpu:
 
 	/*
 	 * Return back to user mode.  We must *not* do the normal exit
