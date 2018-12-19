@@ -2364,6 +2364,12 @@
 			This option might be useful if running inside a virtual machine
 			that does not expose the correct model number.
 
+	mds=verw	[X86, Intel]
+			Enable microcode based ("VERW") mitigation for Microarchitectural
+			Data Sampling (MDS). This is normally automatically enabled,
+			but may need to be set manually in guests when the VM
+			does not export all the CPUIDs from the host microcode.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.

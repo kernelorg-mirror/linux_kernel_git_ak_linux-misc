@@ -1075,6 +1075,7 @@ static const __initconst struct x86_cpu_id cpu_mds_clear_cpu_hsw[] = {
 };
 
 DEFINE_STATIC_KEY_FALSE(force_cpu_clear);
+static bool __read_mostly forced_mb_clear;
 
 /* Export here to avoid warnings */
 extern __visible void do_clear_cpu(void);
@@ -1089,7 +1090,10 @@ static void mds_select_mitigation(void)
 		setup_clear_cpu_cap(X86_BUG_MDS_CLEAR_CPU);
 		return;
 	}
-
+	if (cmdline_find_option_bool(boot_command_line, "mds=verw")) {
+		setup_force_cpu_cap(X86_FEATURE_MB_CLEAR);
+		forced_mb_clear = true;
+	}
 	if ((!boot_cpu_has(X86_FEATURE_MB_CLEAR) &&
 		x86_match_cpu(cpu_mds_clear_cpu)) ||
 		cmdline_find_option_bool(boot_command_line, "mds=swclear"))
@@ -1209,9 +1213,12 @@ static ssize_t cpu_show_common(struct device *dev, struct device_attribute *attr
 	case X86_BUG_MDS:
 		/* Assumes Hypervisor exposed HT state to us if in guest */
 		if (boot_cpu_has(X86_FEATURE_MB_CLEAR)) {
+			char *forced = forced_mb_clear ? ", forced" : "";
+
 			if (cpu_smt_control != CPU_SMT_ENABLED)
-				return sprintf(buf, "Mitigation: microcode\n");
-			return sprintf(buf, "Mitigation: microcode, HT vulnerable\n");
+				return sprintf(buf, "Mitigation: microcode%s\n", forced);
+			return sprintf(buf, "Mitigation: microcode, HT vulnerable%s\n",
+					forced);
 		}
 		if (boot_cpu_has_bug(X86_BUG_MDS_CLEAR_CPU)) {
 			if (cpu_smt_control != CPU_SMT_ENABLED)
