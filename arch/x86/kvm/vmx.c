@@ -10675,8 +10675,19 @@ static void vmx_l1d_flush(struct kvm_vcpu *vcpu)
 		flush_l1d |= kvm_get_cpu_l1tf_flush_l1d();
 		kvm_clear_cpu_l1tf_flush_l1d();
 
-		if (!flush_l1d)
+		if (!flush_l1d) {
+			/*
+			 * If we don't expose MB_CLEAR to the guest it
+			 * could be using software sequences for clear
+			 * cpu. If the hypervisor interrupts any of
+			 * these sequences the data will not be fully
+			 * cleared. The only way to fix that is for
+			 * us to clear unconditionally on each entry.
+			 */
+			if (!guest_cpuid_has(vcpu, X86_FEATURE_MB_CLEAR))
+				clear_cpu();
 			return;
+		}
 	}
 
 	vcpu->stat.l1d_flush++;
