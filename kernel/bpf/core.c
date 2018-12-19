@@ -99,6 +99,8 @@ struct bpf_prog *bpf_prog_alloc(unsigned int size, gfp_t gfp_extra_flags)
 	fp->aux = aux;
 	fp->aux->prog = fp;
 	fp->jit_requested = ebpf_jit_enabled();
+	fp->priv = !!capable(CAP_SYS_ADMIN);
+	fp->uid = current_euid();
 
 	INIT_LIST_HEAD_RCU(&fp->aux->ksym_lnode);
 

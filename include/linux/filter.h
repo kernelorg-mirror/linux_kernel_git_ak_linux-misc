@@ -20,11 +20,20 @@
 #include <linux/set_memory.h>
 #include <linux/kallsyms.h>
 #include <linux/if_vlan.h>
+#include <linux/clearcpu.h>
 
 #include <net/sch_generic.h>
 
 #include <uapi/linux/filter.h>
 #include <uapi/linux/bpf.h>
+
+#ifdef CONFIG_ARCH_HAS_CLEAR_CPU
+#include <asm/clearbpf.h>
+#else
+static inline void arch_bpf_prepare_nonpriv(kuid_t uid)
+{
+}
+#endif
 
 struct sk_buff;
 struct sock;
@@ -490,7 +499,9 @@ struct bpf_prog {
 				blinded:1,	/* Was blinded */
 				is_func:1,	/* program is a bpf function */
 				kprobe_override:1, /* Do we override a kprobe? */
-				has_callchain_buf:1; /* callchain buffer allocated? */
+				has_callchain_buf:1, /* callchain buffer allocated? */
+				priv:1;		/* Was loaded privileged */
+	kuid_t			uid;		/* Original uid who created it */
 	enum bpf_prog_type	type;		/* Type of BPF program */
 	enum bpf_attach_type	expected_attach_type; /* For some prog types */
 	u32			len;		/* Number of filter blocks */
@@ -513,7 +524,13 @@ struct sk_filter {
 	struct bpf_prog	*prog;
 };
 
-#define BPF_PROG_RUN(filter, ctx)  (*(filter)->bpf_func)(ctx, (filter)->insnsi)
+static inline unsigned _bpf_prog_run(const struct bpf_prog *bp, const void *ctx)
+{
+	if (!bp->priv)
+		arch_bpf_prepare_nonpriv(bp->uid);
+	return bp->bpf_func(ctx, bp->insnsi);
+}
+#define BPF_PROG_RUN(filter, ctx) _bpf_prog_run(filter, ctx)
 
 #define BPF_SKB_CB_LEN QDISC_CB_PRIV_LEN
 
