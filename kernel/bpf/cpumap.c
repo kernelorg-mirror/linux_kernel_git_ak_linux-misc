@@ -376,6 +376,9 @@ static void __cpu_map_entry_free(struct rcu_head *rcu)
 
 		/* No concurrent bq_enqueue can run at this point */
 		bq_flush_to_queue(rcpu, bq, false);
+
+		/* Do lazy_clear_cpu_interrupt here? */
+
 	}
 	free_percpu(rcpu->bulkq);
 	/* Cannot kthread_stop() here, last put free rcpu resources */
