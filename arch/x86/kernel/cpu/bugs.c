@@ -37,6 +37,7 @@
 static void __init spectre_v2_select_mitigation(void);
 static void __init ssb_select_mitigation(void);
 static void __init l1tf_select_mitigation(void);
+static void __init mds_select_mitigation(void);
 
 /* The base value of the SPEC_CTRL MSR that always has to be preserved. */
 u64 x86_spec_ctrl_base;
@@ -100,6 +101,8 @@ void __init check_bugs(void)
 	ssb_select_mitigation();
 
 	l1tf_select_mitigation();
+
+	mds_select_mitigation();
 
 #ifdef CONFIG_X86_32
 	/*
@@ -1057,6 +1060,12 @@ static int __init l1tf_cmdline(char *str)
 early_param("l1tf", l1tf_cmdline);
 
 #undef pr_fmt
+
+static void mds_select_mitigation(void)
+{
+	if (cmdline_find_option_bool(boot_command_line, "mds=off"))
+		setup_force_cpu_cap(X86_FEATURE_NO_VERW);
+}
 
 #ifdef CONFIG_SYSFS
 
