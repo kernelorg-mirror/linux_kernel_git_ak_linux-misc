@@ -16,7 +16,7 @@ static inline void clear_cpu(void)
 {
 	unsigned kernel_ds = __KERNEL_DS;
 	/* Has to be memory form, don't modify to use an register */
-	alternative_input("", "verw %[kernelds]", X86_BUG_MDS,
+	alternative_input("", "verw %[kernelds]", X86_FEATURE_VERW,
 		[kernelds] "m" (kernel_ds));
 }
 

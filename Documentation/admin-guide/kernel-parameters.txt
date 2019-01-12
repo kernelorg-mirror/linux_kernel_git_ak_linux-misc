@@ -2356,6 +2356,17 @@
 			Format: <first>,<last>
 			Specifies range of consoles to be captured by the MDA.
 
+	mds=off		[X86, Intel]
+			Disable workarounds for Micro-architectural Data Sampling.
+
+	mds=auto	[X86, Intel]
+			Automatically select default for MDS mitigation.
+			Currently this always flushes on kernel exit.
+
+	mds=full	[X86, Intel]
+			Always flush cpu buffers when exiting kernel for MDS
+			without any heuristics.
+
 	mem=nn[KMG]	[KNL,BOOT] Force usage of a specific amount of memory
 			Amount of memory to be used when the kernel is not able
 			to see the whole system memory or for test.
