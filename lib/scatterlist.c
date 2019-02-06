@@ -11,6 +11,7 @@
 #include <linux/scatterlist.h>
 #include <linux/highmem.h>
 #include <linux/kmemleak.h>
+#include <linux/clearcpu.h>
 
 /**
  * sg_next - return the next scatterlist entry in a list
@@ -831,6 +832,7 @@ size_t sg_copy_buffer(struct scatterlist *sgl, unsigned int nents, void *buf,
 
 		offset += len;
 	}
+	lazy_clear_cpu_interrupt();
 
 	sg_miter_stop(&miter);
 
