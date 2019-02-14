@@ -29,6 +29,7 @@
 #include <elf.h>
 #include <limits.h>
 #include <symbol/kallsyms.h>
+#include <linux/time64.h>
 #include <sys/utsname.h>
 
 static int dso__load_kernel_sym(struct dso *dso, struct map *map);
@@ -45,6 +46,7 @@ struct symbol_conf symbol_conf = {
 	.demangle		= true,
 	.demangle_kernel	= false,
 	.cumulate_callchain	= true,
+	.time_quantum		= 100 * NSEC_PER_MSEC, /* 100ms */
 	.show_hist_headers	= true,
 	.symfs			= "",
 	.event_group		= true,
