@@ -31,6 +31,7 @@ const char	*field_order;
 regex_t		ignore_callees_regex;
 int		have_ignore_callees = 0;
 enum sort_mode	sort__mode = SORT_MODE__NORMAL;
+bool		nanosecs = false;
 
 /*
  * Replaces all occurrences of a char used with the:

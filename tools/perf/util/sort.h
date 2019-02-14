@@ -278,6 +278,8 @@ struct sort_entry {
 extern struct sort_entry sort_thread;
 extern struct list_head hist_entry__sort_list;
 
+extern bool nanosecs;
+
 struct perf_evlist;
 struct tep_handle;
 int setup_sorting(struct perf_evlist *evlist);
