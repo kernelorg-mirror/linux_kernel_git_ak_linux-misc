@@ -531,4 +531,6 @@ static inline int hists__scnprintf_title(struct hists *hists, char *bf, size_t s
 	return __hists__scnprintf_title(hists, bf, size, true);
 }
 
+extern unsigned long time_quantum;
+
 #endif	/* __PERF_HIST_H */

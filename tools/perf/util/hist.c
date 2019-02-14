@@ -20,6 +20,8 @@
 #include <inttypes.h>
 #include <sys/param.h>
 
+unsigned long time_quantum = 100000000;
+
 static bool hists__filter_entry_by_dso(struct hists *hists,
 				       struct hist_entry *he);
 static bool hists__filter_entry_by_thread(struct hists *hists,
