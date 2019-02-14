@@ -30,6 +30,7 @@
 #include <elf.h>
 #include <limits.h>
 #include <symbol/kallsyms.h>
+#include <linux/time64.h>
 #include <sys/utsname.h>
 
 static int dso__load_kernel_sym(struct dso *dso, struct map *map);
