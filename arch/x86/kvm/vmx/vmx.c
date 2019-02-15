@@ -5866,27 +5866,36 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 static void vmx_l1d_flush(struct kvm_vcpu *vcpu)
 {
 	int size = PAGE_SIZE << L1D_CACHE_ORDER;
+	bool flush_l1d = vcpu->arch.l1tf_flush_l1d;
+
+	flush_l1d |= kvm_get_cpu_l1tf_flush_l1d();
+
+	/* CPUs with MDS_VMENTRY_FLUSH never use the L1D flush below. */
+	if (static_cpu_has(X86_FEATURE_MDS_VMENTRY_FLUSH)) {
+		vcpu->arch.l1tf_flush_l1d = false;
+		kvm_clear_cpu_l1tf_flush_l1d();
+		if (!flush_l1d && !static_key_enabled(&force_cpu_clear))
+			return;
+		clear_cpu();
+		return;
+	}
 
 	/*
 	 * This code is only executed when the the flush mode is 'cond' or
 	 * 'always'
 	 */
 	if (static_branch_likely(&vmx_l1d_flush_cond)) {
-		bool flush_l1d;
-
 		/*
 		 * Clear the per-vcpu flush bit, it gets set again
 		 * either from vcpu_run() or from one of the unsafe
 		 * VMEXIT handlers.
 		 */
-		flush_l1d = vcpu->arch.l1tf_flush_l1d;
 		vcpu->arch.l1tf_flush_l1d = false;
 
 		/*
 		 * Clear the per-cpu flush bit, it gets set again from
 		 * the interrupt handlers.
 		 */
-		flush_l1d |= kvm_get_cpu_l1tf_flush_l1d();
 		kvm_clear_cpu_l1tf_flush_l1d();
 
 		if (!flush_l1d)
@@ -6369,7 +6378,8 @@ static void __vmx_vcpu_run(struct kvm_vcpu *vcpu, struct vcpu_vmx *vmx)
 	evmcs_rsp = static_branch_unlikely(&enable_evmcs) ?
 		(unsigned long)&current_evmcs->host_rsp : 0;
 
-	if (static_branch_unlikely(&vmx_l1d_should_flush))
+	if (static_branch_unlikely(&vmx_l1d_should_flush) ||
+	    static_cpu_has(X86_FEATURE_MDS_VMENTRY_FLUSH))
 		vmx_l1d_flush(vcpu);
 
 	asm(

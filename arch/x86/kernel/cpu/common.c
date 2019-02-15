@@ -1006,6 +1006,15 @@ static const __initconst struct x86_cpu_id cpu_no_mds[] = {
 	{}
 };
 
+/* CPUs with MDS, but not L1TF, that don't have L1D flush */
+static const __initconst struct x86_cpu_id cpu_mds_no_l1d[] = {
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_AIRMONT		},
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_AIRMONT_MID	},
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_SILVERMONT	},
+	{ X86_VENDOR_INTEL,	6,	INTEL_FAM6_ATOM_SILVERMONT_X	},
+	{}
+};
+
 static void __init cpu_set_bug_bits(struct cpuinfo_x86 *c)
 {
 	u64 ia32_cap = 0;
@@ -1029,8 +1038,11 @@ static void __init cpu_set_bug_bits(struct cpuinfo_x86 *c)
 
 	if ((boot_cpu_data.x86_vendor == X86_VENDOR_INTEL &&
 	    !x86_match_cpu(cpu_no_mds)) &&
-	    !(ia32_cap & ARCH_CAP_MDS_NO))
+	    !(ia32_cap & ARCH_CAP_MDS_NO)) {
 		setup_force_cpu_bug(X86_BUG_MDS);
+		if (x86_match_cpu(cpu_mds_no_l1d))
+			setup_force_cpu_bug(X86_BUG_MDS_NO_L1TF);
+	}
 
 	if (x86_match_cpu(cpu_no_meltdown))
 		return;

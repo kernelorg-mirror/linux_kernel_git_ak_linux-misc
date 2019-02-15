@@ -353,6 +353,9 @@
 #define X86_FEATURE_ARCH_CAPABILITIES	(18*32+29) /* IA32_ARCH_CAPABILITIES MSR (Intel) */
 #define X86_FEATURE_SPEC_CTRL_SSBD	(18*32+31) /* "" Speculative Store Bypass Disable */
 
+/* Linux defined features, word 19 */
+#define X86_FEATURE_MDS_VMENTRY_FLUSH	(19*32+0) /* MDS needs extra flush for vmentry */
+
 /*
  * BUG word(s)
  */
@@ -384,5 +387,6 @@
 #define X86_BUG_SPEC_STORE_BYPASS	X86_BUG(17) /* CPU is affected by speculative store bypass attack */
 #define X86_BUG_L1TF			X86_BUG(18) /* CPU is affected by L1 Terminal Fault */
 #define X86_BUG_MDS			X86_BUG(19) /* CPU is affected by Microarchitectural data sampling */
+#define X86_BUG_MDS_NO_L1TF		X86_BUG(20) /* MDS but no L1TF L1D flush */
 
 #endif /* _ASM_X86_CPUFEATURES_H */

@@ -1087,6 +1087,9 @@ static void mds_select_mitigation(void)
 	if (cmdline_find_option_bool(boot_command_line, "mds=full") ||
 	     cmdline_find_option_bool(boot_command_line, "mds=auto"))
 		setup_force_cpu_cap(X86_FEATURE_VERW);
+
+	if (boot_cpu_has(X86_FEATURE_VERW) && boot_cpu_has_bug(X86_BUG_MDS_NO_L1TF))
+		setup_force_cpu_cap(X86_FEATURE_MDS_VMENTRY_FLUSH);
 }
 
 #ifdef CONFIG_SYSFS
