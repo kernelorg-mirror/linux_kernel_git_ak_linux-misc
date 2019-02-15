@@ -209,7 +209,7 @@ void iio_trigger_notify_done(struct iio_trigger *trig)
 	    trig->ops->try_reenable)
 		if (trig->ops->try_reenable(trig))
 			/* Missed an interrupt so launch new poll now */
-			iio_trigger_poll(trig);
+			iio_trigger_poll(trig); /* THIS IS A RECURSION! */
 }
 EXPORT_SYMBOL(iio_trigger_notify_done);
 
