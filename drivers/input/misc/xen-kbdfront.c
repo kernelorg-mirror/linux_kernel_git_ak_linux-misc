@@ -19,6 +19,7 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/slab.h>
+#include <linux/clearcpu.h>
 
 #include <asm/xen/hypervisor.h>
 
@@ -193,7 +194,7 @@ static irqreturn_t input_handler(int rq, void *dev_id)
 	mb();			/* ensure we got ring contents */
 	page->in_cons = cons;
 	notify_remote_via_irq(info->irq);
-
+	lazy_clear_cpu();
 	return IRQ_HANDLED;
 }
 

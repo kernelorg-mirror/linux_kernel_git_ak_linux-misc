@@ -28,6 +28,7 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
+#include <linux/clearcpu.h>
 
 #include <asm/xen/hypervisor.h>
 
@@ -358,6 +359,7 @@ static irqreturn_t xenfb_event_handler(int rq, void *dev_id)
 	/* Flush dirty rectangle: */
 	xenfb_refresh(info, INT_MAX, INT_MAX, -INT_MAX, -INT_MAX);
 
+	lazy_clear_cpu();
 	return IRQ_HANDLED;
 }
 

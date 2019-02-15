@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/net.h>
 #include <linux/socket.h>
+#include <linux/clearcpu.h>
 
 #include <net/sock.h>
 
@@ -219,6 +220,7 @@ again:
 			 */
 			smp_wmb();
 			bedata->rsp[req_id].req_id = req_id;
+			lazy_clear_cpu();
 		}
 
 		done = 1;
