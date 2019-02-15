@@ -1064,6 +1064,9 @@ early_param("l1tf", l1tf_cmdline);
 DEFINE_PER_CPU(bool, clear_cpu_flag);
 EXPORT_PER_CPU_SYMBOL(clear_cpu_flag);
 
+DEFINE_STATIC_KEY_FALSE(force_cpu_clear);
+EXPORT_SYMBOL(force_cpu_clear);
+
 static void mds_select_mitigation(void)
 {
 	if (!boot_cpu_has(X86_BUG_MDS))
@@ -1086,9 +1089,12 @@ static void mds_select_mitigation(void)
 	setup_force_cpu_cap(X86_FEATURE_VERW);
 	if (cmdline_find_option_bool(boot_command_line, "mds=off"))
 		setup_clear_cpu_cap(X86_FEATURE_VERW);
-	/* Nop currently because this is default for now. */
+	/* Default to old behavior for now */
 	if (cmdline_find_option_bool(boot_command_line, "mds=full") ||
-	     cmdline_find_option_bool(boot_command_line, "mds=auto"))
+		true)
+		static_branch_enable(&force_cpu_clear);
+	/* Nop currently because this is default for now. */
+	if (cmdline_find_option_bool(boot_command_line, "mds=auto"))
 		setup_force_cpu_cap(X86_FEATURE_VERW);
 
 	if (boot_cpu_has(X86_FEATURE_VERW) && boot_cpu_has_bug(X86_BUG_MDS_NO_L1TF))

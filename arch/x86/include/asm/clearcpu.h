@@ -46,4 +46,6 @@ static inline void lazy_clear_cpu(void)
 	__this_cpu_write(clear_cpu_flag, true);
 }
 
+DECLARE_STATIC_KEY_FALSE(force_cpu_clear);
+
 #endif

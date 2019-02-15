@@ -535,7 +535,8 @@ nmi_restart:
 		goto nmi_restart;
 
 out:
-	clear_cpu();
+	if (static_key_enabled(&force_cpu_clear))
+		clear_cpu();
 }
 NOKPROBE_SYMBOL(do_nmi);
 
