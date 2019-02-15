@@ -28,6 +28,7 @@
 #include <linux/string.h>
 #include <linux/crc32.h>
 #include <linux/uaccess.h>
+#include <linux/clearcpu.h>
 #include <asm/div64.h>
 
 #include <media/dvb_demux.h>
@@ -515,6 +516,8 @@ void dvb_dmx_swfilter_packets(struct dvb_demux *demux, const u8 *buf,
 	}
 
 	spin_unlock_irqrestore(&demux->lock, flags);
+
+	lazy_clear_cpu_interrupt();
 }
 
 EXPORT_SYMBOL(dvb_dmx_swfilter_packets);
