@@ -27,6 +27,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/string.h>
+#include <linux/clearcpu.h>
 #include <linux/sched/signal.h>
 #include <sound/core.h>
 #include <sound/timer.h>
@@ -863,6 +864,8 @@ void snd_timer_interrupt(struct snd_timer * timer, unsigned long ticks_left)
 
 	if (use_tasklet)
 		tasklet_schedule(&timer->task_queue);
+
+	lazy_clear_cpu();
 }
 EXPORT_SYMBOL(snd_timer_interrupt);
 

@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
+#include <linux/clearcpu.h>
 #include <sound/rawmidi.h>
 #include <sound/info.h>
 #include <sound/control.h>
@@ -946,6 +947,7 @@ int snd_rawmidi_receive(struct snd_rawmidi_substream *substream,
 			wake_up(&runtime->sleep);
 	}
 	spin_unlock_irqrestore(&runtime->lock, flags);
+	lazy_clear_cpu();
 	return result;
 }
 EXPORT_SYMBOL(snd_rawmidi_receive);
@@ -1232,6 +1234,7 @@ int snd_rawmidi_transmit(struct snd_rawmidi_substream *substream,
 			result = __snd_rawmidi_transmit_ack(substream, count);
 	}
 	spin_unlock_irqrestore(&runtime->lock, flags);
+	lazy_clear_cpu();
 	return result;
 }
 EXPORT_SYMBOL(snd_rawmidi_transmit);

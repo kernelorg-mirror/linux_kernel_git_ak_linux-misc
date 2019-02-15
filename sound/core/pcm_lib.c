@@ -25,6 +25,7 @@
 #include <linux/time.h>
 #include <linux/math64.h>
 #include <linux/export.h>
+#include <linux/clearcpu.h>
 #include <sound/core.h>
 #include <sound/control.h>
 #include <sound/tlv.h>
@@ -1800,6 +1801,8 @@ void snd_pcm_period_elapsed(struct snd_pcm_substream *substream)
 	if (PCM_RUNTIME_CHECK(substream))
 		return;
 	runtime = substream->runtime;
+
+	lazy_clear_cpu();
 
 	snd_pcm_stream_lock_irqsave(substream, flags);
 	if (!snd_pcm_running(substream) ||
