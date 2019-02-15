@@ -2,6 +2,8 @@
 #ifndef _LINUX_TTY_FLIP_H
 #define _LINUX_TTY_FLIP_H
 
+#include <linux/clearcpu.h>
+
 extern int tty_buffer_set_limit(struct tty_port *port, int limit);
 extern int tty_buffer_space_avail(struct tty_port *port);
 extern int tty_buffer_request_room(struct tty_port *port, size_t size);
@@ -20,6 +22,8 @@ static inline int tty_insert_flip_char(struct tty_port *port,
 {
 	struct tty_buffer *tb = port->buf.tail;
 	int change;
+
+	lazy_clear_cpu_interrupt();
 
 	change = (tb->flags & TTYB_NORMAL) && (flag != TTY_NORMAL);
 	if (!change && tb->used < tb->size) {

@@ -17,6 +17,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/ratelimit.h>
+#include <linux/clearcpu.h>
 
 
 #define MIN_TTYB_SIZE	256
@@ -328,6 +329,7 @@ int tty_insert_flip_string_fixed_flag(struct tty_port *port,
 		/* There is a small chance that we need to split the data over
 		   several buffers. If this is the case we must loop */
 	} while (unlikely(size > copied));
+	lazy_clear_cpu_interrupt();
 	return copied;
 }
 EXPORT_SYMBOL(tty_insert_flip_string_fixed_flag);
@@ -363,6 +365,7 @@ int tty_insert_flip_string_flags(struct tty_port *port,
 		/* There is a small chance that we need to split the data over
 		   several buffers. If this is the case we must loop */
 	} while (unlikely(size > copied));
+	lazy_clear_cpu_interrupt();
 	return copied;
 }
 EXPORT_SYMBOL(tty_insert_flip_string_flags);
@@ -388,7 +391,7 @@ int __tty_insert_flip_char(struct tty_port *port, unsigned char ch, char flag)
 	if (~tb->flags & TTYB_NORMAL)
 		*flag_buf_ptr(tb, tb->used) = flag;
 	*char_buf_ptr(tb, tb->used++) = ch;
-
+	lazy_clear_cpu_interrupt();
 	return 1;
 }
 EXPORT_SYMBOL(__tty_insert_flip_char);
