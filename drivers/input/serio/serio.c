@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
+#include <linux/clearcpu.h>
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@ucw.cz>");
 MODULE_DESCRIPTION("Serio abstraction core");
@@ -1016,6 +1017,8 @@ irqreturn_t serio_interrupt(struct serio *serio,
 		serio_rescan(serio);
 		ret = IRQ_HANDLED;
 	}
+
+	lazy_clear_cpu_interrupt();
 
 	spin_unlock_irqrestore(&serio->lock, flags);
 

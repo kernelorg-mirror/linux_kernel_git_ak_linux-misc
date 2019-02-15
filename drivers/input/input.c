@@ -27,6 +27,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
+#include <linux/clearcpu.h>
 #include "input-compat.h"
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
@@ -436,6 +437,7 @@ void input_event(struct input_dev *dev,
 		input_handle_event(dev, type, code, value);
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 	}
+	lazy_clear_cpu_interrupt();
 }
 EXPORT_SYMBOL(input_event);
 
@@ -468,6 +470,7 @@ void input_inject_event(struct input_handle *handle,
 
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 	}
+	lazy_clear_cpu_interrupt();
 }
 EXPORT_SYMBOL(input_inject_event);
 
