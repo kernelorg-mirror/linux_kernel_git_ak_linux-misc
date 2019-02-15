@@ -2,6 +2,7 @@
 #include <linux/export.h>
 #include <linux/swap.h> /* for totalram_pages */
 #include <linux/memblock.h>
+#include <linux/clearcpu.h>
 
 void *kmap(struct page *page)
 {
@@ -37,6 +38,8 @@ void *kmap_atomic_prot(struct page *page, pgprot_t prot)
 
 	preempt_disable();
 	pagefault_disable();
+
+	lazy_clear_cpu_interrupt();
 
 	if (!PageHighMem(page))
 		return page_address(page);
