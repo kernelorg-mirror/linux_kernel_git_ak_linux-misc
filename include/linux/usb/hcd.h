@@ -25,6 +25,7 @@
 #include <linux/rwsem.h>
 #include <linux/interrupt.h>
 #include <linux/idr.h>
+#include <linux/clearcpu.h>
 
 #define MAX_TOPO_LEVEL		6
 
@@ -688,8 +689,10 @@ static inline void usbmon_urb_submit_error(struct usb_bus *bus, struct urb *urb,
 static inline void usbmon_urb_complete(struct usb_bus *bus, struct urb *urb,
 		int status)
 {
-	if (bus->monitored)
+	if (bus->monitored) {
 		(*mon_ops->urb_complete)(bus, urb, status);
+		lazy_clear_cpu_interrupt();
+	}
 }
 
 int usb_mon_register(const struct usb_mon_operations *ops);
