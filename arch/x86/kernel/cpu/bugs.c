@@ -1106,9 +1106,7 @@ static void mds_select_mitigation(void)
 	setup_force_cpu_cap(X86_FEATURE_VERW);
 	if (cmdline_find_option_bool(boot_command_line, "mds=off"))
 		setup_clear_cpu_cap(X86_FEATURE_VERW);
-	/* Default to old behavior for now */
-	if (cmdline_find_option_bool(boot_command_line, "mds=full") ||
-		true)
+	if (cmdline_find_option_bool(boot_command_line, "mds=full"))
 		static_branch_enable(&force_cpu_clear);
 	/* Nop currently because this is default for now. */
 	if (cmdline_find_option_bool(boot_command_line, "mds=auto"))
