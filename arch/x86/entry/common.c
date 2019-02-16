@@ -212,8 +212,12 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	ti->status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
 #endif
 
-	if (static_key_enabled(&force_cpu_clear))
+	if (static_cpu_has(X86_BUG_MDS) &&
+		(static_key_enabled(&force_cpu_clear) ||
+		 __this_cpu_read(clear_cpu_flag))) {
 		clear_cpu();
+		__this_cpu_write(clear_cpu_flag, false);
+	}
 
 	user_enter_irqoff();
 }
