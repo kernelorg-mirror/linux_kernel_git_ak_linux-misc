@@ -299,12 +299,13 @@ static int bttv_rc5_irq(struct bttv *btv)
 static void bttv_ir_start(struct bttv_ir *ir)
 {
 	if (ir->polling) {
-		timer_setup(&ir->timer, bttv_input_timer, 0);
+		timer_setup(&ir->timer, bttv_input_timer, TIMER_USER_DATA);
 		ir->timer.expires  = jiffies + msecs_to_jiffies(1000);
 		add_timer(&ir->timer);
 	} else if (ir->rc5_gpio) {
 		/* set timer_end for code completion */
-		timer_setup(&ir->timer, bttv_rc5_timer_end, 0);
+		timer_setup(&ir->timer, bttv_rc5_timer_end,
+			    TIMER_USER_DATA);
 		ir->shift_by = 1;
 		ir->rc5_remote_gap = ir_rc5_remote_gap;
 	}

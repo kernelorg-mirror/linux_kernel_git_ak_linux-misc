@@ -384,8 +384,8 @@ static void snd_wavefront_midi_output_trigger(struct snd_rawmidi_substream *subs
 		if ((midi->mode[mpu] & MPU401_MODE_OUTPUT_TRIGGER) == 0) {
 			if (!midi->istimer) {
 				timer_setup(&midi->timer,
-					    snd_wavefront_midi_output_timer,
-					    0);
+				            snd_wavefront_midi_output_timer,
+				            TIMER_USER_DATA);
 				mod_timer(&midi->timer, 1 + jiffies);
 			}
 			midi->istimer++;

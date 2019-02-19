@@ -1131,7 +1131,7 @@ static struct sta_info * ap_add_sta(struct ap_data *ap, u8 *addr)
 	}
 
 #ifndef PRISM2_NO_KERNEL_IEEE80211_MGMT
-	timer_setup(&sta->timer, ap_handle_timer, 0);
+	timer_setup(&sta->timer, ap_handle_timer, TIMER_USER_DATA);
 	sta->timer.expires = jiffies + ap->max_inactivity;
 	if (!ap->local->hostapd)
 		add_timer(&sta->timer);

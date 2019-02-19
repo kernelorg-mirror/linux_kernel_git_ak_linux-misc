@@ -723,8 +723,10 @@ static int waveform_common_attach(struct comedi_device *dev,
 		devpriv->ao_loopbacks[i] = s->maxdata / 2;
 
 	devpriv->dev = dev;
-	timer_setup(&devpriv->ai_timer, waveform_ai_timer, 0);
-	timer_setup(&devpriv->ao_timer, waveform_ao_timer, 0);
+	timer_setup(&devpriv->ai_timer, waveform_ai_timer,
+		    TIMER_USER_DATA);
+	timer_setup(&devpriv->ao_timer, waveform_ao_timer,
+		    TIMER_USER_DATA);
 
 	dev_info(dev->class_dev,
 		 "%s: %u microvolt, %u microsecond waveform attached\n",

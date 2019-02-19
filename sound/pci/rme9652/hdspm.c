@@ -1978,7 +1978,8 @@ snd_hdspm_midi_output_trigger(struct snd_rawmidi_substream *substream, int up)
 	if (up) {
 		if (!hmidi->istimer) {
 			timer_setup(&hmidi->timer,
-				    snd_hdspm_midi_output_timer, 0);
+				    snd_hdspm_midi_output_timer,
+				    TIMER_USER_DATA);
 			mod_timer(&hmidi->timer, 1 + jiffies);
 			hmidi->istimer++;
 		}

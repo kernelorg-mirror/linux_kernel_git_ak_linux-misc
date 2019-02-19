@@ -2369,7 +2369,8 @@ int __snd_usbmidi_create(struct snd_card *card,
 		usb_id = USB_ID(le16_to_cpu(umidi->dev->descriptor.idVendor),
 			       le16_to_cpu(umidi->dev->descriptor.idProduct));
 	umidi->usb_id = usb_id;
-	timer_setup(&umidi->error_timer, snd_usbmidi_error_timer, 0);
+	timer_setup(&umidi->error_timer, snd_usbmidi_error_timer,
+		    TIMER_USER_DATA);
 
 	/* detect the endpoint(s) to use */
 	memset(endpoints, 0, sizeof(endpoints));

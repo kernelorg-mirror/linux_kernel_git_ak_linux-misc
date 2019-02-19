@@ -317,7 +317,7 @@ static void cadet_start_rds(struct cadet *dev)
 {
 	dev->rdsstat = 1;
 	outb(0x80, dev->io);        /* Select RDS fifo */
-	timer_setup(&dev->readtimer, cadet_handler, 0);
+	timer_setup(&dev->readtimer, cadet_handler, TIMER_USER_DATA);
 	dev->readtimer.expires = jiffies + msecs_to_jiffies(50);
 	add_timer(&dev->readtimer);
 }

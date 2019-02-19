@@ -374,7 +374,7 @@ void fw_send_request(struct fw_card *card, struct fw_transaction *t, int tcode,
 	t->card = card;
 	t->is_split_transaction = false;
 	timer_setup(&t->split_timeout_timer,
-		    split_transaction_timeout_callback, 0);
+		    split_transaction_timeout_callback, TIMER_USER_DATA);
 	t->callback = callback;
 	t->callback_data = callback_data;
 
@@ -431,7 +431,8 @@ int fw_run_transaction(struct fw_card *card, int tcode, int destination_id,
 	struct transaction_callback_data d;
 	struct fw_transaction t;
 
-	timer_setup_on_stack(&t.split_timeout_timer, NULL, 0);
+	timer_setup_on_stack(&t.split_timeout_timer, NULL,
+			     TIMER_USER_DATA);
 	init_completion(&d.done);
 	d.payload = payload;
 	fw_send_request(card, &t, tcode, destination_id, generation, speed,

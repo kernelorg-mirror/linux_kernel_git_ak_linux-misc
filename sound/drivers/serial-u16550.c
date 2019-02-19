@@ -827,7 +827,8 @@ static int snd_uart16550_create(struct snd_card *card,
 	uart->prev_in = 0;
 	uart->rstatus = 0;
 	memset(uart->prev_status, 0x80, sizeof(unsigned char) * SNDRV_SERIAL_MAX_OUTS);
-	timer_setup(&uart->buffer_timer, snd_uart16550_buffer_timer, 0);
+	timer_setup(&uart->buffer_timer, snd_uart16550_buffer_timer,
+		    TIMER_USER_DATA);
 	uart->timer_running = 0;
 
 	/* Register device */

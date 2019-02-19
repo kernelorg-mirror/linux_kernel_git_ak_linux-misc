@@ -132,7 +132,7 @@ struct net_device *alloc_ieee80211(int sizeof_priv)
 
 	INIT_LIST_HEAD(&ieee->crypt_deinit_list);
 	timer_setup(&ieee->crypt_deinit_timer, ieee80211_crypt_deinit_handler,
-		    0);
+		    TIMER_USER_DATA);
 
 	spin_lock_init(&ieee->lock);
 	spin_lock_init(&ieee->wpax_suitlist_lock);

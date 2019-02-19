@@ -1005,7 +1005,7 @@ static int ace_setup(struct ace_device *ace)
 	 * Initialize the state machine tasklet and stall timer
 	 */
 	tasklet_init(&ace->fsm_tasklet, ace_fsm_tasklet, (unsigned long)ace);
-	timer_setup(&ace->stall_timer, ace_stall_timer, 0);
+	timer_setup(&ace->stall_timer, ace_stall_timer, TIMER_USER_DATA);
 
 	/*
 	 * Initialize the request queue

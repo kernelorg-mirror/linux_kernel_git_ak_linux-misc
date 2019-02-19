@@ -313,7 +313,8 @@ int av7110_ir_init(struct av7110 *av7110)
 	av_list[av_cnt++] = av7110;
 	av7110_check_ir_config(av7110, true);
 
-	timer_setup(&av7110->ir.keyup_timer, av7110_emit_keyup, 0);
+	timer_setup(&av7110->ir.keyup_timer, av7110_emit_keyup,
+		    TIMER_USER_DATA);
 
 	input_dev = input_allocate_device();
 	if (!input_dev)

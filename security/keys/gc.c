@@ -29,7 +29,7 @@ DECLARE_WORK(key_gc_work, key_garbage_collector);
  * Reaper for links from keyrings to dead keys.
  */
 static void key_gc_timer_func(struct timer_list *);
-static DEFINE_TIMER(key_gc_timer, key_gc_timer_func);
+static DEFINE_TIMER_USERDATA(key_gc_timer, key_gc_timer_func);
 
 static time64_t key_gc_next_run = TIME64_MAX;
 static struct key_type *key_gc_dead_keytype;

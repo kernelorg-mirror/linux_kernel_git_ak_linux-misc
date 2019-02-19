@@ -4040,7 +4040,7 @@ static int bttv_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 	INIT_LIST_HEAD(&btv->capture);
 	INIT_LIST_HEAD(&btv->vcapture);
 
-	timer_setup(&btv->timeout, bttv_irq_timeout, 0);
+	timer_setup(&btv->timeout, bttv_irq_timeout, TIMER_USER_DATA);
 
 	btv->i2c_rc = -1;
 	btv->tuner_type  = UNSET;

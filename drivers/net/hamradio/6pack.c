@@ -613,9 +613,9 @@ static int sixpack_open(struct tty_struct *tty)
 
 	netif_start_queue(dev);
 
-	timer_setup(&sp->tx_t, sp_xmit_on_air, 0);
+	timer_setup(&sp->tx_t, sp_xmit_on_air, TIMER_USER_DATA);
 
-	timer_setup(&sp->resync_t, resync_tnc, 0);
+	timer_setup(&sp->resync_t, resync_tnc, TIMER_USER_DATA);
 
 	spin_unlock_bh(&sp->lock);
 

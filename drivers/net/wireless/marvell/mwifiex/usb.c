@@ -1261,7 +1261,7 @@ static int mwifiex_usb_tx_init(struct mwifiex_adapter *adapter)
 		port->tx_aggr.timer_cnxt.is_hold_timer_set = false;
 		port->tx_aggr.timer_cnxt.hold_tmo_msecs = 0;
 		timer_setup(&port->tx_aggr.timer_cnxt.hold_timer,
-			    mwifiex_usb_tx_aggr_tmo, 0);
+			    mwifiex_usb_tx_aggr_tmo, TIMER_USER_DATA);
 	}
 
 	return 0;

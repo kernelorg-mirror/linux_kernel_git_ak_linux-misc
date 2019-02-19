@@ -628,9 +628,9 @@ int serial8250_em485_init(struct uart_8250_port *p)
 		return -ENOMEM;
 
 	hrtimer_init(&p->em485->stop_tx_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	hrtimer_init(&p->em485->start_tx_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	p->em485->stop_tx_timer.function = &serial8250_em485_handle_stop_tx;
 	p->em485->start_tx_timer.function = &serial8250_em485_handle_start_tx;
 	p->em485->port = p;

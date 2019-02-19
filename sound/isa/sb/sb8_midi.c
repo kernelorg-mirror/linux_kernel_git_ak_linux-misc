@@ -273,7 +273,8 @@ int snd_sb8dsp_midi(struct snd_sb *chip, int device)
 	if (chip->hardware >= SB_HW_20)
 		rmidi->info_flags |= SNDRV_RAWMIDI_INFO_DUPLEX;
 	rmidi->private_data = chip;
-	timer_setup(&chip->midi_timer, snd_sb8dsp_midi_output_timer, 0);
+	timer_setup(&chip->midi_timer, snd_sb8dsp_midi_output_timer,
+		    TIMER_USER_DATA);
 	chip->rmidi = rmidi;
 	return 0;
 }

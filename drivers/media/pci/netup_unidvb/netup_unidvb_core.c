@@ -664,7 +664,8 @@ static int netup_unidvb_dma_init(struct netup_unidvb_dev *ndev, int num)
 	spin_lock_init(&dma->lock);
 	INIT_WORK(&dma->work, netup_unidvb_dma_worker);
 	INIT_LIST_HEAD(&dma->free_buffers);
-	timer_setup(&dma->timeout, netup_unidvb_dma_timeout, 0);
+	timer_setup(&dma->timeout, netup_unidvb_dma_timeout,
+		    TIMER_USER_DATA);
 	dma->ring_buffer_size = ndev->dma_size / 2;
 	dma->addr_virt = ndev->dma_virt + dma->ring_buffer_size * num;
 	dma->addr_phys = (dma_addr_t)((u64)ndev->dma_phys +

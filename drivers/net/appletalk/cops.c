@@ -426,7 +426,7 @@ static int cops_open(struct net_device *dev)
 		if(lp->board==TANGENT)	/* Poll 20 times per second */
 		{
 		    cops_timer_dev = dev;
-		    timer_setup(&cops_timer, cops_poll, 0);
+		    timer_setup(&cops_timer, cops_poll, TIMER_USER_DATA);
 		    cops_timer.expires 	= jiffies + HZ/20;
 		    add_timer(&cops_timer);
 		} 

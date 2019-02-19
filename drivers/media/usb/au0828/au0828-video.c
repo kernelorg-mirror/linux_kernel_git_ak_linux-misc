@@ -1969,8 +1969,10 @@ int au0828_analog_register(struct au0828_dev *dev,
 	INIT_LIST_HEAD(&dev->vidq.active);
 	INIT_LIST_HEAD(&dev->vbiq.active);
 
-	timer_setup(&dev->vid_timeout, au0828_vid_buffer_timeout, 0);
-	timer_setup(&dev->vbi_timeout, au0828_vbi_buffer_timeout, 0);
+	timer_setup(&dev->vid_timeout, au0828_vid_buffer_timeout,
+		    TIMER_USER_DATA);
+	timer_setup(&dev->vbi_timeout, au0828_vbi_buffer_timeout,
+		    TIMER_USER_DATA);
 
 	dev->width = NTSC_STD_W;
 	dev->height = NTSC_STD_H;

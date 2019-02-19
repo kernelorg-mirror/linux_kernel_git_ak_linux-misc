@@ -1589,7 +1589,7 @@ static int m66592_probe(struct platform_device *pdev)
 	m66592->gadget.max_speed = USB_SPEED_HIGH;
 	m66592->gadget.name = udc_name;
 
-	timer_setup(&m66592->timer, m66592_timer, 0);
+	timer_setup(&m66592->timer, m66592_timer, TIMER_USER_DATA);
 	m66592->reg = reg;
 
 	ret = request_irq(ires->start, m66592_irq,

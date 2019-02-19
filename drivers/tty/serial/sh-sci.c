@@ -1173,7 +1173,8 @@ static ssize_t rx_fifo_timeout_store(struct device *dev,
 		sci->rx_fifo_timeout = r;
 		scif_set_rtrg(port, 1);
 		if (r > 0)
-			timer_setup(&sci->rx_fifo_timer, rx_fifo_timer_fn, 0);
+			timer_setup(&sci->rx_fifo_timer, rx_fifo_timer_fn,
+				    TIMER_USER_DATA);
 	}
 
 	return count;
@@ -1614,7 +1615,8 @@ static void sci_request_dma(struct uart_port *port)
 			dma += s->buf_len_rx;
 		}
 
-		hrtimer_init(&s->rx_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+		hrtimer_init(&s->rx_timer, CLOCK_MONOTONIC,
+			     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA);
 		s->rx_timer.function = rx_timer_fn;
 
 		s->chan_rx_saved = s->chan_rx = chan;
@@ -2326,7 +2328,8 @@ static void sci_reset(struct uart_port *port)
 	if (s->rx_trigger > 1) {
 		if (s->rx_fifo_timeout) {
 			scif_set_rtrg(port, 1);
-			timer_setup(&s->rx_fifo_timer, rx_fifo_timer_fn, 0);
+			timer_setup(&s->rx_fifo_timer, rx_fifo_timer_fn,
+				    TIMER_USER_DATA);
 		} else {
 			if (port->type == PORT_SCIFA ||
 			    port->type == PORT_SCIFB)

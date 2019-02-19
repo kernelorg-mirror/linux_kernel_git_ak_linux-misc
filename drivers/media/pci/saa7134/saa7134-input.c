@@ -492,7 +492,8 @@ int saa7134_ir_open(struct rc_dev *rc)
 	ir->running = true;
 
 	if (ir->polling) {
-		timer_setup(&ir->timer, saa7134_input_timer, 0);
+		timer_setup(&ir->timer, saa7134_input_timer,
+			    TIMER_USER_DATA);
 		ir->timer.expires = jiffies + HZ;
 		add_timer(&ir->timer);
 	}

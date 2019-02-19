@@ -447,7 +447,7 @@ void v_init_timer(struct vudc *udc)
 {
 	struct transfer_timer *t = &udc->tr_timer;
 
-	timer_setup(&t->timer, v_timer, 0);
+	timer_setup(&t->timer, v_timer, TIMER_USER_DATA);
 	t->state = VUDC_TR_STOPPED;
 }
 

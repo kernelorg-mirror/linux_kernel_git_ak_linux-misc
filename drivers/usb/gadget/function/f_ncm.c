@@ -1499,7 +1499,8 @@ static int ncm_bind(struct usb_configuration *c, struct usb_function *f)
 	ncm->port.open = ncm_open;
 	ncm->port.close = ncm_close;
 
-	hrtimer_init(&ncm->task_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_SOFT);
+	hrtimer_init(&ncm->task_timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL_SOFT | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	ncm->task_timer.function = ncm_tx_timeout;
 
 	DBG(cdev, "CDC Network: %s speed IN/%s OUT/%s NOTIFY/%s\n",

@@ -707,7 +707,8 @@ static int snd_mtpav_probe(struct platform_device *dev)
 	mtp_card->share_irq = 0;
 	mtp_card->inmidistate = 0;
 	mtp_card->outmidihwport = 0xffffffff;
-	timer_setup(&mtp_card->timer, snd_mtpav_output_timer, 0);
+	timer_setup(&mtp_card->timer, snd_mtpav_output_timer,
+		    TIMER_USER_DATA);
 
 	card->private_free = snd_mtpav_free;
 

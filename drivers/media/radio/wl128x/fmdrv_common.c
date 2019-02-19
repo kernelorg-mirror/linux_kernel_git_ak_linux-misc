@@ -1550,7 +1550,8 @@ int fmc_prepare(struct fmdev *fmdev)
 	atomic_set(&fmdev->tx_cnt, 1);
 	fmdev->resp_comp = NULL;
 
-	timer_setup(&fmdev->irq_info.timer, int_timeout_handler, 0);
+	timer_setup(&fmdev->irq_info.timer, int_timeout_handler,
+		    TIMER_USER_DATA);
 	/*TODO: add FM_STIC_EVENT later */
 	fmdev->irq_info.mask = FM_MAL_EVENT;
 

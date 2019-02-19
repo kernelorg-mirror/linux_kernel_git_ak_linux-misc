@@ -395,7 +395,7 @@ static int img_ascii_lcd_probe(struct platform_device *pdev)
 	ctx->scroll_rate = HZ / 2;
 
 	/* initialise a timer for scrolling the message */
-	timer_setup(&ctx->timer, img_ascii_lcd_scroll, 0);
+	timer_setup(&ctx->timer, img_ascii_lcd_scroll, TIMER_USER_DATA);
 
 	platform_set_drvdata(pdev, ctx);
 

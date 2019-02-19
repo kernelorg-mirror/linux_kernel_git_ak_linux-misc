@@ -812,7 +812,8 @@ at86rf230_setup_spi_messages(struct at86rf230_local *lp,
 	state->trx.tx_buf = state->buf;
 	state->trx.rx_buf = state->buf;
 	spi_message_add_tail(&state->trx, &state->msg);
-	hrtimer_init(&state->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&state->timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	state->timer.function = at86rf230_async_state_timer;
 }
 

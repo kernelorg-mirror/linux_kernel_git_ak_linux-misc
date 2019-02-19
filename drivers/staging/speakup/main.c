@@ -1160,7 +1160,7 @@ static const int NUM_CTL_LABELS = (MSG_CTL_END - MSG_CTL_START + 1);
 
 static void read_all_doc(struct vc_data *vc);
 static void cursor_done(struct timer_list *unused);
-static DEFINE_TIMER(cursor_timer, cursor_done);
+static DEFINE_TIMER_USERDATA(cursor_timer, cursor_done);
 
 static void do_handle_shift(struct vc_data *vc, u_char value, char up_flag)
 {

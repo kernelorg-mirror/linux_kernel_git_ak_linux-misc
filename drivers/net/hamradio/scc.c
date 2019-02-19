@@ -1523,8 +1523,8 @@ static int scc_net_alloc(const char *name, struct scc_channel *scc)
 	dev->ml_priv = scc;
 	scc->dev = dev;
 	spin_lock_init(&scc->lock);
-	timer_setup(&scc->tx_t, NULL, 0);
-	timer_setup(&scc->tx_wdog, NULL, 0);
+	timer_setup(&scc->tx_t, NULL, TIMER_USER_DATA);
+	timer_setup(&scc->tx_wdog, NULL, TIMER_USER_DATA);
 
 	err = register_netdevice(dev);
 	if (err) {

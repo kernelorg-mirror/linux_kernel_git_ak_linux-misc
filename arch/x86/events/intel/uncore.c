@@ -289,7 +289,8 @@ void uncore_pmu_cancel_hrtimer(struct intel_uncore_box *box)
 
 static void uncore_pmu_init_hrtimer(struct intel_uncore_box *box)
 {
-	hrtimer_init(&box->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&box->hrtimer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	box->hrtimer.function = uncore_pmu_hrtimer;
 }
 

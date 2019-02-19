@@ -1523,8 +1523,10 @@ static void dwc2_qh_init(struct dwc2_hsotg *hsotg, struct dwc2_qh *qh,
 
 	/* Initialize QH */
 	qh->hsotg = hsotg;
-	timer_setup(&qh->unreserve_timer, dwc2_unreserve_timer_fn, 0);
-	hrtimer_init(&qh->wait_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	timer_setup(&qh->unreserve_timer, dwc2_unreserve_timer_fn,
+		    TIMER_USER_DATA | TIMER_USER_DATA);
+	hrtimer_init(&qh->wait_timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	qh->wait_timer.function = &dwc2_wait_timer_fn;
 	qh->ep_type = ep_type;
 	qh->ep_is_in = ep_is_in;

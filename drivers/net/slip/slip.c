@@ -762,8 +762,8 @@ static struct slip *sl_alloc(void)
 	sl->mode        = SL_MODE_DEFAULT;
 #ifdef CONFIG_SLIP_SMART
 	/* initialize timer_list struct */
-	timer_setup(&sl->keepalive_timer, sl_keepalive, 0);
-	timer_setup(&sl->outfill_timer, sl_outfill, 0);
+	timer_setup(&sl->keepalive_timer, sl_keepalive, TIMER_USER_DATA);
+	timer_setup(&sl->outfill_timer, sl_outfill, TIMER_USER_DATA);
 #endif
 	slip_devs[i] = dev;
 	return sl;

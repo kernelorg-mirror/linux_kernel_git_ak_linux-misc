@@ -1441,7 +1441,7 @@ static void snd_hdsp_midi_output_trigger(struct snd_rawmidi_substream *substream
 	if (up) {
 		if (!hmidi->istimer) {
 			timer_setup(&hmidi->timer, snd_hdsp_midi_output_timer,
-				    0);
+				    TIMER_USER_DATA);
 			mod_timer(&hmidi->timer, 1 + jiffies);
 			hmidi->istimer++;
 		}

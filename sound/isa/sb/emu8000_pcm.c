@@ -241,7 +241,7 @@ static int emu8k_pcm_open(struct snd_pcm_substream *subs)
 	runtime->private_data = rec;
 
 	spin_lock_init(&rec->timer_lock);
-	timer_setup(&rec->timer, emu8k_pcm_timer_func, 0);
+	timer_setup(&rec->timer, emu8k_pcm_timer_func, TIMER_USER_DATA);
 
 	runtime->hw = emu8k_pcm_hw;
 	runtime->hw.buffer_bytes_max = emu->mem_size - LOOP_BLANK_SIZE * 3;

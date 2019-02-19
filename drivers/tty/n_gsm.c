@@ -1655,7 +1655,7 @@ static struct gsm_dlci *gsm_dlci_alloc(struct gsm_mux *gsm, int addr)
 	}
 
 	skb_queue_head_init(&dlci->skb_list);
-	timer_setup(&dlci->t1, gsm_dlci_t1, 0);
+	timer_setup(&dlci->t1, gsm_dlci_t1, TIMER_USER_DATA);
 	tty_port_init(&dlci->port);
 	dlci->port.ops = &gsm_port_ops;
 	dlci->gsm = gsm;
@@ -2109,7 +2109,8 @@ static int gsm_activate_mux(struct gsm_mux *gsm)
 	struct gsm_dlci *dlci;
 	int i = 0;
 
-	timer_setup(&gsm->t2_timer, gsm_control_retransmit, 0);
+	timer_setup(&gsm->t2_timer, gsm_control_retransmit,
+		    TIMER_USER_DATA);
 	init_waitqueue_head(&gsm->event);
 	spin_lock_init(&gsm->control_lock);
 	spin_lock_init(&gsm->tx_lock);

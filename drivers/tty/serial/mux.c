@@ -572,7 +572,7 @@ static int __init mux_init(void)
 
 	if(port_cnt > 0) {
 		/* Start the Mux timer */
-		timer_setup(&mux_timer, mux_poll, 0);
+		timer_setup(&mux_timer, mux_poll, TIMER_USER_DATA);
 		mod_timer(&mux_timer, jiffies + MUX_POLL_DELAY);
 
 #ifdef CONFIG_SERIAL_MUX_CONSOLE

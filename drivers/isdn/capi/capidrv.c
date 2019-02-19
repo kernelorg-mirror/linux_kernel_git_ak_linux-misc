@@ -2265,7 +2265,7 @@ static int capidrv_addcontr(u16 contr, struct capi_profile *profp)
 		return -1;
 	}
 	card->owner = THIS_MODULE;
-	timer_setup(&card->listentimer, listentimerfunc, 0);
+	timer_setup(&card->listentimer, listentimerfunc, TIMER_USER_DATA);
 	strcpy(card->name, id);
 	card->contrnr = contr;
 	card->nbchan = profp->nbchannel;

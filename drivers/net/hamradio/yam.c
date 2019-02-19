@@ -157,7 +157,7 @@ static struct net_device *yam_devs[NR_PORTS];
 
 static struct yam_mcs *yam_data;
 
-static DEFINE_TIMER(yam_timer, NULL);
+static DEFINE_TIMER_USERDATA(yam_timer, NULL);
 
 /* --------------------------------------------------------------------- */
 
@@ -1154,7 +1154,7 @@ static int __init yam_init_driver(void)
 
 	}
 
-	timer_setup(&yam_timer, yam_dotimer, 0);
+	timer_setup(&yam_timer, yam_dotimer, TIMER_USER_DATA);
 	yam_timer.expires = jiffies + HZ / 100;
 	add_timer(&yam_timer);
 

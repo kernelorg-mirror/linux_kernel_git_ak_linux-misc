@@ -258,7 +258,7 @@ static void snd_echo_midi_output_trigger(struct snd_rawmidi_substream *substream
 	if (up) {
 		if (!chip->tinuse) {
 			timer_setup(&chip->timer, snd_echo_midi_output_write,
-				    0);
+				    TIMER_USER_DATA);
 			chip->tinuse = 1;
 		}
 	} else {

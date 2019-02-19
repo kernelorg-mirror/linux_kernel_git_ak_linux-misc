@@ -516,7 +516,8 @@ static void __init serial8250_isa_init_ports(void)
 			base_ops = port->ops;
 		port->ops = &univ8250_port_ops;
 
-		timer_setup(&up->timer, serial8250_timeout, 0);
+		timer_setup(&up->timer, serial8250_timeout,
+			    TIMER_USER_DATA);
 
 		up->ops = &univ8250_driver_ops;
 

@@ -1000,7 +1000,7 @@ static int r3964_open(struct tty_struct *tty)
 	tty->disc_data = pInfo;
 	tty->receive_room = 65536;
 
-	timer_setup(&pInfo->tmr, on_timeout, 0);
+	timer_setup(&pInfo->tmr, on_timeout, TIMER_USER_DATA);
 
 	return 0;
 }

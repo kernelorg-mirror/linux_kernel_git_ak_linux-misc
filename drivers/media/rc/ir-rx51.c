@@ -253,7 +253,8 @@ static int ir_rx51_probe(struct platform_device *dev)
 	ir_rx51.freq = DIV_ROUND_CLOSEST(pwm_get_period(pwm), NSEC_PER_SEC);
 	pwm_put(pwm);
 
-	hrtimer_init(&ir_rx51.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&ir_rx51.timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	ir_rx51.timer.function = ir_rx51_timer_cb;
 
 	ir_rx51.dev = &dev->dev;

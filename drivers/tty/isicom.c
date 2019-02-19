@@ -173,7 +173,7 @@ static struct tty_driver *isicom_normal;
 static void isicom_tx(struct timer_list *unused);
 static void isicom_start(struct tty_struct *tty);
 
-static DEFINE_TIMER(tx, isicom_tx);
+static DEFINE_TIMER_USERDATA(tx, isicom_tx);
 
 /*   baud index mappings from linux defns to isi */
 

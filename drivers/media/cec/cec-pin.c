@@ -1312,7 +1312,8 @@ struct cec_adapter *cec_pin_allocate_adapter(const struct cec_pin_ops *pin_ops,
 	if (pin == NULL)
 		return ERR_PTR(-ENOMEM);
 	pin->ops = pin_ops;
-	hrtimer_init(&pin->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&pin->timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	pin->timer.function = cec_pin_timer;
 	init_waitqueue_head(&pin->kthread_waitq);
 	pin->tx_custom_low_usecs = CEC_TIM_CUSTOM_DEFAULT;

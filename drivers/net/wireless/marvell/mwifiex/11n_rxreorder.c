@@ -413,7 +413,8 @@ mwifiex_11n_create_rx_reorder_tbl(struct mwifiex_private *priv, u8 *ta,
 	new_node->timer_context.priv = priv;
 	new_node->timer_context.timer_is_set = false;
 
-	timer_setup(&new_node->timer_context.timer, mwifiex_flush_data, 0);
+	timer_setup(&new_node->timer_context.timer, mwifiex_flush_data,
+		    TIMER_USER_DATA);
 
 	for (i = 0; i < win_size; ++i)
 		new_node->rx_reorder_ptr[i] = NULL;

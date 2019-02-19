@@ -526,7 +526,7 @@ int input_ff_create_memless(struct input_dev *dev, void *data,
 	ml->private = data;
 	ml->play_effect = play_effect;
 	ml->gain = 0xffff;
-	timer_setup(&ml->timer, ml_effect_timer, 0);
+	timer_setup(&ml->timer, ml_effect_timer, TIMER_USER_DATA);
 
 	set_bit(FF_GAIN, dev->ffbit);
 

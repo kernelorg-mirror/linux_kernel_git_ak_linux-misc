@@ -1874,7 +1874,7 @@ static int r8a66597_probe(struct platform_device *pdev)
 	r8a66597->gadget.max_speed = USB_SPEED_HIGH;
 	r8a66597->gadget.name = udc_name;
 
-	timer_setup(&r8a66597->timer, r8a66597_timer, 0);
+	timer_setup(&r8a66597->timer, r8a66597_timer, TIMER_USER_DATA);
 	r8a66597->reg = reg;
 
 	if (r8a66597->pdata->on_chip) {

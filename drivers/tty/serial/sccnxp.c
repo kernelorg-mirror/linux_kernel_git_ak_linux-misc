@@ -1022,7 +1022,7 @@ static int sccnxp_probe(struct platform_device *pdev)
 
 		dev_err(&pdev->dev, "Unable to reguest IRQ %i\n", s->irq);
 	} else {
-		timer_setup(&s->timer, sccnxp_timer, 0);
+		timer_setup(&s->timer, sccnxp_timer, TIMER_USER_DATA);
 		mod_timer(&s->timer, jiffies +
 			  usecs_to_jiffies(s->pdata.poll_time_us));
 		return 0;

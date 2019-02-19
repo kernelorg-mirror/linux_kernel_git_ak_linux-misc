@@ -658,7 +658,7 @@ int create_visor_device(struct visor_device *dev)
 	dev->device.release = visorbus_release_device;
 	/* keep a reference just for us (now 2) */
 	get_device(&dev->device);
-	timer_setup(&dev->timer, dev_periodic_work, 0);
+	timer_setup(&dev->timer, dev_periodic_work, TIMER_USER_DATA);
 	/*
 	 * bus_id must be a unique name with respect to this bus TYPE (NOT bus
 	 * instance).  That's why we need to include the bus number within the

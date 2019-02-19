@@ -215,7 +215,7 @@ core_initcall(prandom_init);
 
 static void __prandom_timer(struct timer_list *unused);
 
-static DEFINE_TIMER(seed_timer, __prandom_timer);
+static DEFINE_TIMER_USERDATA(seed_timer, __prandom_timer);
 
 static void __prandom_timer(struct timer_list *unused)
 {

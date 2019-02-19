@@ -107,7 +107,7 @@ int img_ir_probe_raw(struct img_ir_priv *priv)
 	int error;
 
 	/* Set up the echo timer */
-	timer_setup(&raw->timer, img_ir_echo_timer, 0);
+	timer_setup(&raw->timer, img_ir_echo_timer, TIMER_USER_DATA);
 
 	/* Allocate raw decoder */
 	raw->rdev = rdev = rc_allocate_device(RC_DRIVER_IR_RAW);

@@ -56,7 +56,7 @@ int lib80211_crypt_info_init(struct lib80211_crypt_info *info, char *name,
 
 	INIT_LIST_HEAD(&info->crypt_deinit_list);
 	timer_setup(&info->crypt_deinit_timer, lib80211_crypt_deinit_handler,
-		    0);
+		    TIMER_USER_DATA);
 
 	return 0;
 }

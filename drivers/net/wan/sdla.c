@@ -1615,7 +1615,7 @@ static void setup_sdla(struct net_device *dev)
 	flp->dlci_conf		= sdla_dlci_conf;
 	flp->dev		= dev;
 
-	timer_setup(&flp->timer, sdla_poll, 0);
+	timer_setup(&flp->timer, sdla_poll, TIMER_USER_DATA);
 	flp->timer.expires	= 1;
 }
 

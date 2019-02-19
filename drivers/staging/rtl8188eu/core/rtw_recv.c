@@ -77,7 +77,7 @@ int _rtw_init_recv_priv(struct recv_priv *precvpriv, struct adapter *padapter)
 	res = rtw_hal_init_recv_priv(padapter);
 
 	timer_setup(&precvpriv->signal_stat_timer, rtw_signal_stat_timer_hdl,
-		    0);
+		    TIMER_USER_DATA);
 
 	precvpriv->signal_stat_sampling_interval = 1000; /* ms */
 

@@ -471,7 +471,7 @@ static int sony_laptop_setup_input(struct acpi_device *acpi_device)
 	}
 
 	timer_setup(&sony_laptop_input.release_key_timer,
-		    do_sony_laptop_release_key, 0);
+		    do_sony_laptop_release_key, TIMER_USER_DATA);
 
 	/* input keys */
 	key_dev = input_allocate_device();

@@ -82,7 +82,8 @@ static int snd_hrtimer_open(struct snd_timer *t)
 	stime = kzalloc(sizeof(*stime), GFP_KERNEL);
 	if (!stime)
 		return -ENOMEM;
-	hrtimer_init(&stime->hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&stime->hrt, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	stime->timer = t;
 	stime->hrt.function = snd_hrtimer_callback;
 	t->private_data = stime;

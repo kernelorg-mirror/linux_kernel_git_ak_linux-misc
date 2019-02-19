@@ -33,12 +33,14 @@ void rtw_init_mlme_timer(struct adapter *padapter)
 {
 	struct	mlme_priv *pmlmepriv = &padapter->mlmepriv;
 
-	timer_setup(&pmlmepriv->assoc_timer, _rtw_join_timeout_handler, 0);
-	timer_setup(&pmlmepriv->scan_to_timer, rtw_scan_timeout_handler, 0);
+	timer_setup(&pmlmepriv->assoc_timer, _rtw_join_timeout_handler,
+		    TIMER_USER_DATA);
+	timer_setup(&pmlmepriv->scan_to_timer, rtw_scan_timeout_handler,
+		    TIMER_USER_DATA);
 	timer_setup(&pmlmepriv->dynamic_chk_timer,
-		    _dynamic_check_timer_handler, 0);
+		    _dynamic_check_timer_handler, TIMER_USER_DATA);
 	timer_setup(&pmlmepriv->set_scan_deny_timer,
-		    _rtw_set_scan_deny_timer_hdl, 0);
+		    _rtw_set_scan_deny_timer_hdl, TIMER_USER_DATA);
 }
 
 void rtw_os_indicate_connect(struct adapter *adapter)
@@ -185,14 +187,18 @@ void rtw_report_sec_ie(struct adapter *adapter, u8 authmode, u8 *sec_ie)
 
 void init_addba_retry_timer(struct adapter *padapter, struct sta_info *psta)
 {
-	timer_setup(&psta->addba_retry_timer, addba_timer_hdl, 0);
+	timer_setup(&psta->addba_retry_timer, addba_timer_hdl,
+		    TIMER_USER_DATA);
 }
 
 void init_mlme_ext_timer(struct adapter *padapter)
 {
 	struct	mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
 
-	timer_setup(&pmlmeext->survey_timer, survey_timer_hdl, 0);
-	timer_setup(&pmlmeext->link_timer, link_timer_hdl, 0);
-	timer_setup(&pmlmeext->sa_query_timer, sa_query_timer_hdl, 0);
+	timer_setup(&pmlmeext->survey_timer, survey_timer_hdl,
+		    TIMER_USER_DATA);
+	timer_setup(&pmlmeext->link_timer, link_timer_hdl,
+		    TIMER_USER_DATA);
+	timer_setup(&pmlmeext->sa_query_timer, sa_query_timer_hdl,
+		    TIMER_USER_DATA);
 }

@@ -470,7 +470,7 @@ static struct uwb_rsv *uwb_rsv_alloc(struct uwb_rc *rc)
 	INIT_LIST_HEAD(&rsv->rc_node);
 	INIT_LIST_HEAD(&rsv->pal_node);
 	kref_init(&rsv->kref);
-	timer_setup(&rsv->timer, uwb_rsv_timer, 0);
+	timer_setup(&rsv->timer, uwb_rsv_timer, TIMER_USER_DATA);
 
 	rsv->rc = rc;
 	INIT_WORK(&rsv->handle_timeout_work, uwb_rsv_handle_timeout_work);
@@ -987,7 +987,8 @@ void uwb_rsv_init(struct uwb_rc *rc)
 	rc->bow.can_reserve_extra_mases = true;
 	rc->bow.total_expired = 0;
 	rc->bow.window = UWB_DRP_BACKOFF_WIN_MIN >> 1;
-	timer_setup(&rc->bow.timer, uwb_rsv_backoff_win_timer, 0);
+	timer_setup(&rc->bow.timer, uwb_rsv_backoff_win_timer,
+		    TIMER_USER_DATA);
 
 	bitmap_complement(rc->uwb_dev.streams, rc->uwb_dev.streams, UWB_NUM_STREAMS);
 }

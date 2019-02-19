@@ -1066,7 +1066,8 @@ void i915_pmu_register(struct drm_i915_private *i915)
 	i915->pmu.base.event_idx	= i915_pmu_event_event_idx;
 
 	spin_lock_init(&i915->pmu.lock);
-	hrtimer_init(&i915->pmu.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&i915->pmu.timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL | HRTIMER_MODE_USER_DATA | HRTIMER_MODE_USER_DATA);
 	i915->pmu.timer.function = i915_sample;
 
 	ret = perf_pmu_register(&i915->pmu.base, "i915", -1);

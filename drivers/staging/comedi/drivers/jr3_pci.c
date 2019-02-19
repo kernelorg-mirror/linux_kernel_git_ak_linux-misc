@@ -762,7 +762,7 @@ static int jr3_pci_auto_attach(struct comedi_device *dev,
 	}
 
 	devpriv->dev = dev;
-	timer_setup(&devpriv->timer, jr3_pci_poll_dev, 0);
+	timer_setup(&devpriv->timer, jr3_pci_poll_dev, TIMER_USER_DATA);
 	devpriv->timer.expires = jiffies + msecs_to_jiffies(1000);
 	add_timer(&devpriv->timer);
 

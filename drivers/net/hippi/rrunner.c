@@ -1229,7 +1229,7 @@ static int rr_open(struct net_device *dev)
 
 	/* Set the timer to switch to check for link beat and perhaps switch
 	   to an alternate media type. */
-	timer_setup(&rrpriv->timer, rr_timer, 0);
+	timer_setup(&rrpriv->timer, rr_timer, TIMER_USER_DATA);
 	rrpriv->timer.expires = RUN_AT(5*HZ);           /* 5 sec. watchdog */
 	add_timer(&rrpriv->timer);
 

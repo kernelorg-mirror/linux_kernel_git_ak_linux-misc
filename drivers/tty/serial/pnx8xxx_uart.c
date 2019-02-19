@@ -662,7 +662,8 @@ static void __init pnx8xxx_init_ports(void)
 	first = 0;
 
 	for (i = 0; i < NR_PORTS; i++) {
-		timer_setup(&pnx8xxx_ports[i].timer, pnx8xxx_timeout, 0);
+		timer_setup(&pnx8xxx_ports[i].timer, pnx8xxx_timeout,
+			    TIMER_USER_DATA);
 		pnx8xxx_ports[i].port.ops = &pnx8xxx_pops;
 	}
 }

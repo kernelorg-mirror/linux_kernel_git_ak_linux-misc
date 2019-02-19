@@ -1795,7 +1795,7 @@ struct input_dev *input_allocate_device(void)
 		device_initialize(&dev->dev);
 		mutex_init(&dev->mutex);
 		spin_lock_init(&dev->event_lock);
-		timer_setup(&dev->timer, NULL, 0);
+		timer_setup(&dev->timer, NULL, TIMER_USER_DATA);
 		INIT_LIST_HEAD(&dev->h_list);
 		INIT_LIST_HEAD(&dev->node);
 

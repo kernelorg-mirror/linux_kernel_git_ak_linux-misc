@@ -251,7 +251,7 @@ static void kd_nosound(struct timer_list *unused)
 	input_handler_for_each_handle(&kbd_handler, &zero, kd_sound_helper);
 }
 
-static DEFINE_TIMER(kd_mksound_timer, kd_nosound);
+static DEFINE_TIMER_USERDATA(kd_mksound_timer, kd_nosound);
 
 void kd_mksound(unsigned int hz, unsigned int ticks)
 {

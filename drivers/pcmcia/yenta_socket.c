@@ -1234,7 +1234,8 @@ static int yenta_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	if (!socket->cb_irq || request_irq(socket->cb_irq, yenta_interrupt, IRQF_SHARED | IRQF_USER_DATA, "yenta", socket)) {
 		/* No IRQ or request_irq failed. Poll */
 		socket->cb_irq = 0; /* But zero is a valid IRQ number. */
-		timer_setup(&socket->poll_timer, yenta_interrupt_wrapper, 0);
+		timer_setup(&socket->poll_timer, yenta_interrupt_wrapper,
+			    TIMER_USER_DATA);
 		mod_timer(&socket->poll_timer, jiffies + HZ);
 		dev_info(&dev->dev,
 			 "no PCI IRQ, CardBus support disabled for this socket.\n");
