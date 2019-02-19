@@ -825,10 +825,9 @@ int mthca_init_eq_table(struct mthca_dev *dev)
 				 "%s@pci:%s", eq_name[i],
 				 pci_name(dev->pdev));
 			err = request_irq(dev->eq_table.eq[i].msi_x_vector,
-					  mthca_is_memfree(dev) ?
-					  mthca_arbel_msi_x_interrupt :
-					  mthca_tavor_msi_x_interrupt,
-					  0, dev->eq_table.eq[i].irq_name,
+					  mthca_is_memfree(dev) ? mthca_arbel_msi_x_interrupt : mthca_tavor_msi_x_interrupt,
+					  IRQF_USER_DATA,
+					  dev->eq_table.eq[i].irq_name,
 					  dev->eq_table.eq + i);
 			if (err)
 				goto err_out_cmd;
@@ -838,10 +837,9 @@ int mthca_init_eq_table(struct mthca_dev *dev)
 		snprintf(dev->eq_table.eq[0].irq_name, IB_DEVICE_NAME_MAX,
 			 DRV_NAME "@pci:%s", pci_name(dev->pdev));
 		err = request_irq(dev->pdev->irq,
-				  mthca_is_memfree(dev) ?
-				  mthca_arbel_interrupt :
-				  mthca_tavor_interrupt,
-				  IRQF_SHARED, dev->eq_table.eq[0].irq_name, dev);
+				  mthca_is_memfree(dev) ? mthca_arbel_interrupt : mthca_tavor_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  dev->eq_table.eq[0].irq_name, dev);
 		if (err)
 			goto err_out_cmd;
 		dev->eq_table.have_irq = 1;

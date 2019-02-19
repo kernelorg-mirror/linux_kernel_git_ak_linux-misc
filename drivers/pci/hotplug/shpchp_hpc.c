@@ -1049,8 +1049,9 @@ int shpc_init(struct controller *ctrl, struct pci_dev *pdev)
 			pci_set_master(pdev);
 		}
 
-		rc = request_irq(ctrl->pci_dev->irq, shpc_isr, IRQF_SHARED,
-				 MY_NAME, (void *)ctrl);
+		rc = request_irq(ctrl->pci_dev->irq, shpc_isr,
+				 IRQF_SHARED | IRQF_USER_DATA, MY_NAME,
+				 (void *)ctrl);
 		ctrl_dbg(ctrl, "request_irq %d (returns %d)\n",
 			 ctrl->pci_dev->irq, rc);
 		if (rc) {

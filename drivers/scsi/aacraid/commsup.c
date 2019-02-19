@@ -2553,9 +2553,7 @@ int aac_acquire_irq(struct aac_dev *dev)
 		for (i = 0; i < dev->max_msix; i++) {
 			dev->aac_msix[i].vector_no = i;
 			dev->aac_msix[i].dev = dev;
-			if (request_irq(pci_irq_vector(dev->pdev, i),
-					dev->a_ops.adapter_intr,
-					0, "aacraid", &(dev->aac_msix[i]))) {
+			if (request_irq(pci_irq_vector(dev->pdev, i), dev->a_ops.adapter_intr, IRQF_USER_DATA, "aacraid", &(dev->aac_msix[i]))) {
 				printk(KERN_ERR "%s%d: Failed to register IRQ for vector %d.\n",
 						dev->name, dev->id, i);
 				for (j = 0 ; j < i ; j++)
@@ -2569,9 +2567,7 @@ int aac_acquire_irq(struct aac_dev *dev)
 		dev->aac_msix[0].vector_no = 0;
 		dev->aac_msix[0].dev = dev;
 
-		if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr,
-			IRQF_SHARED, "aacraid",
-			&(dev->aac_msix[0])) < 0) {
+		if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr, IRQF_SHARED | IRQF_USER_DATA, "aacraid", &(dev->aac_msix[0])) < 0) {
 			if (dev->msi)
 				pci_disable_msi(dev->pdev);
 			printk(KERN_ERR "%s%d: Interrupt unavailable.\n",

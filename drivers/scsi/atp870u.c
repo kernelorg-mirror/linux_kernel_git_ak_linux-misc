@@ -1551,7 +1551,8 @@ static int atp870u_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	else
 		atp870_init(shpnt);
 
-	err = request_irq(shpnt->irq, atp870u_intr_handle, IRQF_SHARED, "atp870u", shpnt);
+	err = request_irq(shpnt->irq, atp870u_intr_handle,
+			  IRQF_SHARED | IRQF_USER_DATA, "atp870u", shpnt);
 	if (err) {
 		dev_err(&pdev->dev, "Unable to allocate IRQ %d.\n", shpnt->irq);
 		goto free_tables;

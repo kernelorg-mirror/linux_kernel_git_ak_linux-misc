@@ -1342,7 +1342,7 @@ static int cx8800_initdev(struct pci_dev *pci_dev,
 
 	/* get irq */
 	err = request_irq(pci_dev->irq, cx8800_irq,
-			  IRQF_SHARED, core->name, dev);
+			  IRQF_SHARED | IRQF_USER_DATA, core->name, dev);
 	if (err < 0) {
 		pr_err("can't get IRQ %d\n", pci_dev->irq);
 		goto fail_core;

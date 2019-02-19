@@ -385,7 +385,9 @@ static int gru_chiplet_setup_tlb_irq(int chiplet, char *irq_name,
 			return ret;
 		}
 
-		ret = request_irq(irq, irq_handler, 0, irq_name, NULL);
+		ret = request_irq(irq, irq_handler,
+				  IRQF_USER_DATA, irq_name,
+				  NULL);
 		if (ret) {
 			printk(KERN_ERR "%s: request_irq failed, errno=%d\n",
 			       GRU_DRIVER_ID_STR, -ret);
@@ -433,7 +435,8 @@ static int gru_chiplet_setup_tlb_irq(int chiplet, char *irq_name,
 		return irq;
 	}
 
-	ret = request_irq(irq, irq_handler, 0, irq_name, NULL);
+	ret = request_irq(irq, irq_handler, IRQF_USER_DATA,
+			  irq_name, NULL);
 	if (ret) {
 		uv_teardown_irq(irq);
 		printk(KERN_ERR "%s: request_irq failed, errno=%d\n",

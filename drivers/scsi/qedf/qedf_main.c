@@ -2112,7 +2112,9 @@ static int qedf_request_msix_irq(struct qedf_ctx *qedf)
 	cpu = cpumask_first(cpu_online_mask);
 	for (i = 0; i < qedf->num_queues; i++) {
 		rc = request_irq(qedf->int_info.msix[i].vector,
-		    qedf_msix_handler, 0, "qedf", &qedf->fp_array[i]);
+				 qedf_msix_handler,
+				 IRQF_USER_DATA, "qedf",
+				 &qedf->fp_array[i]);
 
 		if (rc) {
 			QEDF_WARN(&(qedf->dbg_ctx), "request_irq failed.\n");

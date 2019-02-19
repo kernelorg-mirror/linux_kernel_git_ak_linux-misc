@@ -1134,10 +1134,12 @@ static int rtl8180_start(struct ieee80211_hw *dev)
 
 	if (priv->chip_family == RTL818X_CHIP_FAMILY_RTL8187SE) {
 		ret = request_irq(priv->pdev->irq, rtl8187se_interrupt,
-			  IRQF_SHARED, KBUILD_MODNAME, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  KBUILD_MODNAME, dev);
 	} else {
 		ret = request_irq(priv->pdev->irq, rtl8180_interrupt,
-			  IRQF_SHARED, KBUILD_MODNAME, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  KBUILD_MODNAME, dev);
 	}
 
 	if (ret) {

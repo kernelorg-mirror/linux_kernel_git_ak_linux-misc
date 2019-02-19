@@ -597,8 +597,7 @@ static int aha1740_probe (struct device *dev)
 	}
 	
 	DEB(printk("aha1740_probe: enable interrupt channel %d\n",irq_level));
-	if (request_irq(irq_level,aha1740_intr_handle,irq_type ? 0 : IRQF_SHARED,
-			"aha1740",shpnt)) {
+	if (request_irq(irq_level, aha1740_intr_handle, (irq_type ? 0 : IRQF_SHARED) | IRQF_USER_DATA, "aha1740", shpnt)) {
 		printk(KERN_ERR "aha1740_probe: Unable to allocate IRQ %d.\n",
 		       irq_level);
 		goto err_unmap;

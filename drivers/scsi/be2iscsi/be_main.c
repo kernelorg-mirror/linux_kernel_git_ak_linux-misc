@@ -821,7 +821,9 @@ static int beiscsi_init_irqs(struct beiscsi_hba *phba)
 			}
 
 			ret = request_irq(pci_irq_vector(pcidev, i),
-					  be_isr_msix, 0, phba->msi_name[i],
+					  be_isr_msix,
+					  IRQF_USER_DATA,
+					  phba->msi_name[i],
 					  &phwi_context->be_eq[i]);
 			if (ret) {
 				beiscsi_log(phba, KERN_ERR, BEISCSI_LOG_INIT,
@@ -838,7 +840,8 @@ static int beiscsi_init_irqs(struct beiscsi_hba *phba)
 			ret = -ENOMEM;
 			goto free_msix_irqs;
 		}
-		ret = request_irq(pci_irq_vector(pcidev, i), be_isr_mcc, 0,
+		ret = request_irq(pci_irq_vector(pcidev, i), be_isr_mcc,
+				  IRQF_USER_DATA,
 				  phba->msi_name[i], &phwi_context->be_eq[i]);
 		if (ret) {
 			beiscsi_log(phba, KERN_ERR, BEISCSI_LOG_INIT ,
@@ -849,8 +852,9 @@ static int beiscsi_init_irqs(struct beiscsi_hba *phba)
 		}
 
 	} else {
-		ret = request_irq(pcidev->irq, be_isr, IRQF_SHARED,
-				  "beiscsi", phba);
+		ret = request_irq(pcidev->irq, be_isr,
+				  IRQF_SHARED | IRQF_USER_DATA, "beiscsi",
+				  phba);
 		if (ret) {
 			beiscsi_log(phba, KERN_ERR, BEISCSI_LOG_INIT,
 				    "BM_%d : beiscsi_init_irqs-"

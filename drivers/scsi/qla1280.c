@@ -4323,8 +4323,7 @@ qla1280_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Disable ISP interrupts. */
 	qla1280_disable_intrs(ha);
 
-	if (request_irq(pdev->irq, qla1280_intr_handler, IRQF_SHARED,
-				"qla1280", ha)) {
+	if (request_irq(pdev->irq, qla1280_intr_handler, IRQF_SHARED | IRQF_USER_DATA, "qla1280", ha)) {
 		printk("qla1280 : Failed to reserve interrupt %d already "
 		       "in use\n", pdev->irq);
 		goto error_release_region;

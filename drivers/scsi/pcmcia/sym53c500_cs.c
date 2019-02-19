@@ -761,7 +761,7 @@ SYM53C500_config(struct pcmcia_device *link)
 	data = (struct sym53c500_data *)host->hostdata;
 
 	if (irq_level > 0) {
-		if (request_irq(irq_level, SYM53C500_intr, IRQF_SHARED, "SYM53C500", host)) {
+		if (request_irq(irq_level, SYM53C500_intr, IRQF_SHARED | IRQF_USER_DATA, "SYM53C500", host)) {
 			printk("SYM53C500: unable to allocate IRQ %d\n", irq_level);
 			goto err_free_scsi;
 		}

@@ -656,8 +656,9 @@ static int ipc_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!scu->i2c_base)
 		return -ENOMEM;
 
-	err = devm_request_irq(&pdev->dev, pdev->irq, ioc, 0, "intel_scu_ipc",
-			       scu);
+	err = devm_request_irq(&pdev->dev, pdev->irq, ioc,
+			       IRQF_USER_DATA,
+			       "intel_scu_ipc", scu);
 	if (err)
 		return err;
 

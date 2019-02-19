@@ -764,7 +764,8 @@ static int apci1500_auto_attach(struct comedi_device *dev,
 	z8536_reset(dev);
 
 	if (pcidev->irq > 0) {
-		ret = request_irq(pcidev->irq, apci1500_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, apci1500_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;

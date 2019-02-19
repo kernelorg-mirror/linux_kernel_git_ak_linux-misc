@@ -2135,7 +2135,7 @@ static int rtl_pci_intr_mode_msi(struct ieee80211_hw *hw)
 		return ret;
 
 	ret = request_irq(rtlpci->pdev->irq, &_rtl_pci_interrupt,
-			  IRQF_SHARED, KBUILD_MODNAME, hw);
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, hw);
 	if (ret < 0) {
 		pci_disable_msi(rtlpci->pdev);
 		return ret;
@@ -2156,7 +2156,7 @@ static int rtl_pci_intr_mode_legacy(struct ieee80211_hw *hw)
 	int ret;
 
 	ret = request_irq(rtlpci->pdev->irq, &_rtl_pci_interrupt,
-			  IRQF_SHARED, KBUILD_MODNAME, hw);
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, hw);
 	if (ret < 0)
 		return ret;
 

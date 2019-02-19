@@ -378,8 +378,8 @@ static int goldfish_tty_probe(struct platform_device *pdev)
 
 	writel(GOLDFISH_TTY_CMD_INT_DISABLE, base + GOLDFISH_TTY_REG_CMD);
 
-	ret = request_irq(irq, goldfish_tty_interrupt, IRQF_SHARED,
-			  "goldfish_tty", qtty);
+	ret = request_irq(irq, goldfish_tty_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, "goldfish_tty", qtty);
 	if (ret) {
 		pr_err("goldfish_tty: No IRQ available!\n");
 		goto err_dec_line_count;

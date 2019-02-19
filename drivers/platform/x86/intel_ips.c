@@ -1528,7 +1528,8 @@ static int ips_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 	ips->irq = pci_irq_vector(dev, 0);
 
-	ret = request_irq(ips->irq, ips_irq_handler, IRQF_SHARED, "ips", ips);
+	ret = request_irq(ips->irq, ips_irq_handler,
+			  IRQF_SHARED | IRQF_USER_DATA, "ips", ips);
 	if (ret) {
 		dev_err(&dev->dev, "request irq failed, aborting\n");
 		return ret;

@@ -318,8 +318,8 @@ static int tw686x_probe(struct pci_dev *pci_dev,
 
 	spin_lock_init(&dev->lock);
 
-	err = request_irq(pci_dev->irq, tw686x_irq, IRQF_SHARED,
-			  dev->name, dev);
+	err = request_irq(pci_dev->irq, tw686x_irq,
+			  IRQF_SHARED | IRQF_USER_DATA, dev->name, dev);
 	if (err < 0) {
 		dev_err(&pci_dev->dev, "unable to request interrupt\n");
 		goto iounmap;

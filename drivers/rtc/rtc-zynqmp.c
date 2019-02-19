@@ -234,7 +234,8 @@ static int xlnx_rtc_probe(struct platform_device *pdev)
 		return xrtcdev->alarm_irq;
 	}
 	ret = devm_request_irq(&pdev->dev, xrtcdev->alarm_irq,
-			       xlnx_rtc_interrupt, 0,
+			       xlnx_rtc_interrupt,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), xrtcdev);
 	if (ret) {
 		dev_err(&pdev->dev, "request irq failed\n");
@@ -247,7 +248,8 @@ static int xlnx_rtc_probe(struct platform_device *pdev)
 		return xrtcdev->sec_irq;
 	}
 	ret = devm_request_irq(&pdev->dev, xrtcdev->sec_irq,
-			       xlnx_rtc_interrupt, 0,
+			       xlnx_rtc_interrupt,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), xrtcdev);
 	if (ret) {
 		dev_err(&pdev->dev, "request irq failed\n");

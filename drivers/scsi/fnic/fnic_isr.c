@@ -178,12 +178,16 @@ int fnic_request_intr(struct fnic *fnic)
 
 	case VNIC_DEV_INTR_MODE_INTX:
 		err = request_irq(pci_irq_vector(fnic->pdev, 0),
-				&fnic_isr_legacy, IRQF_SHARED, DRV_NAME, fnic);
+				  &fnic_isr_legacy,
+				  IRQF_SHARED | IRQF_USER_DATA, DRV_NAME,
+				  fnic);
 		break;
 
 	case VNIC_DEV_INTR_MODE_MSI:
-		err = request_irq(pci_irq_vector(fnic->pdev, 0), &fnic_isr_msi,
-				  0, fnic->name, fnic);
+		err = request_irq(pci_irq_vector(fnic->pdev, 0),
+				  &fnic_isr_msi,
+				  IRQF_USER_DATA, fnic->name,
+				  fnic);
 		break;
 
 	case VNIC_DEV_INTR_MODE_MSIX:
@@ -211,7 +215,8 @@ int fnic_request_intr(struct fnic *fnic)
 
 		for (i = 0; i < ARRAY_SIZE(fnic->msix); i++) {
 			err = request_irq(pci_irq_vector(fnic->pdev, i),
-					  fnic->msix[i].isr, 0,
+					  fnic->msix[i].isr,
+					  IRQF_USER_DATA,
 					  fnic->msix[i].devname,
 					  fnic->msix[i].devid);
 			if (err) {

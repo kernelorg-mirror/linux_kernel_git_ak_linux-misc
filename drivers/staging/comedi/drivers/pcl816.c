@@ -579,7 +579,7 @@ static void pcl816_alloc_irq_and_dma(struct comedi_device *dev,
 	    !(dma_chan == 3 || dma_chan == 1))
 		return;
 
-	if (request_irq(irq_num, pcl816_interrupt, 0, dev->board_name, dev))
+	if (request_irq(irq_num, pcl816_interrupt, IRQF_USER_DATA, dev->board_name, dev))
 		return;
 
 	/* DMA uses two 16K buffers */

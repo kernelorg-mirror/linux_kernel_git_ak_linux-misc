@@ -783,9 +783,7 @@ static int azx_acquire_irq(struct azx *chip, int do_disconnect)
 {
 	struct hdac_bus *bus = azx_bus(chip);
 
-	if (request_irq(chip->pci->irq, azx_interrupt,
-			chip->msi ? 0 : IRQF_SHARED,
-			chip->card->irq_descr, chip)) {
+	if (request_irq(chip->pci->irq, azx_interrupt, (chip->msi ? 0 : IRQF_SHARED) | IRQF_USER_DATA, chip->card->irq_descr, chip)) {
 		dev_err(chip->card->dev,
 			"unable to grab IRQ %d, disabling device\n",
 			chip->pci->irq);

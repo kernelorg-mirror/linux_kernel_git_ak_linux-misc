@@ -193,8 +193,9 @@ static int goldfish_battery_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	ret = devm_request_irq(&pdev->dev, data->irq, goldfish_battery_interrupt,
-						IRQF_SHARED, pdev->name, data);
+	ret = devm_request_irq(&pdev->dev, data->irq,
+			       goldfish_battery_interrupt,
+			       IRQF_SHARED | IRQF_USER_DATA, pdev->name, data);
 	if (ret)
 		return ret;
 

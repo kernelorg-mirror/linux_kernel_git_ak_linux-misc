@@ -658,7 +658,8 @@ static int ni_65xx_auto_attach(struct comedi_device *dev,
 	writeb(0x00, dev->mmio + NI_65XX_CTRL_REG);
 
 	if (pcidev->irq) {
-		ret = request_irq(pcidev->irq, ni_65xx_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, ni_65xx_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;

@@ -288,7 +288,8 @@ init_card(struct sfax_hw *sf)
 	int	ret, cnt = 3;
 	u_long	flags;
 
-	ret = request_irq(sf->irq, speedfax_irq, IRQF_SHARED, sf->name, sf);
+	ret = request_irq(sf->irq, speedfax_irq, IRQF_SHARED | IRQF_USER_DATA,
+			  sf->name, sf);
 	if (ret) {
 		pr_info("%s: couldn't get interrupt %d\n", sf->name, sf->irq);
 		return ret;

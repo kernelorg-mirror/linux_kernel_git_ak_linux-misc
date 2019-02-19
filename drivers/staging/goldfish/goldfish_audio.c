@@ -328,8 +328,9 @@ static int goldfish_audio_probe(struct platform_device *pdev)
 	data->write_buffer2 = data->buffer_virt + WRITE_BUFFER_SIZE;
 	data->read_buffer = data->buffer_virt + 2 * WRITE_BUFFER_SIZE;
 
-	ret = devm_request_irq(&pdev->dev, data->irq, goldfish_audio_interrupt,
-			       IRQF_SHARED, pdev->name, data);
+	ret = devm_request_irq(&pdev->dev, data->irq,
+			       goldfish_audio_interrupt,
+			       IRQF_SHARED | IRQF_USER_DATA, pdev->name, data);
 	if (ret) {
 		dev_err(&pdev->dev, "request_irq failed\n");
 		return ret;

@@ -1346,7 +1346,8 @@ static int mrf24j40_probe(struct spi_device *spi)
 		irq_type = IRQF_TRIGGER_LOW;
 
 	ret = devm_request_irq(&spi->dev, spi->irq, mrf24j40_isr,
-			       irq_type, dev_name(&spi->dev), devrec);
+			       irq_type | IRQF_USER_DATA, dev_name(&spi->dev),
+			       devrec);
 	if (ret) {
 		dev_err(printdev(devrec), "Unable to get IRQ");
 		goto err_register_device;

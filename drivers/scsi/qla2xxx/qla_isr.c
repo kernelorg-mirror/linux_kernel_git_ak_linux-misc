@@ -3476,12 +3476,14 @@ qla24xx_enable_msix(struct qla_hw_data *ha, struct rsp_que *rsp)
 		    "qla2xxx%lu_%s", vha->host_no, msix_entries[i].name);
 		if (IS_P3P_TYPE(ha))
 			ret = request_irq(qentry->vector,
-				qla82xx_msix_entries[i].handler,
-				0, qla82xx_msix_entries[i].name, rsp);
+					  qla82xx_msix_entries[i].handler,
+					  IRQF_USER_DATA,
+					  qla82xx_msix_entries[i].name, rsp);
 		else
 			ret = request_irq(qentry->vector,
-				msix_entries[i].handler,
-				0, qentry->name, rsp);
+					  msix_entries[i].handler,
+					  IRQF_USER_DATA,
+					  qentry->name, rsp);
 		if (ret)
 			goto msix_register_fail;
 		qentry->have_irq = 1;
@@ -3502,8 +3504,9 @@ qla24xx_enable_msix(struct qla_hw_data *ha, struct rsp_que *rsp)
 		    msix_entries[QLA_ATIO_VECTOR].name);
 		qentry->in_use = 1;
 		ret = request_irq(qentry->vector,
-			msix_entries[QLA_ATIO_VECTOR].handler,
-			0, qentry->name, rsp);
+				  msix_entries[QLA_ATIO_VECTOR].handler,
+				  IRQF_USER_DATA,
+				  qentry->name, rsp);
 		qentry->have_irq = 1;
 	}
 
@@ -3606,8 +3609,8 @@ skip_msi:
 		return QLA_FUNCTION_FAILED;
 
 	ret = request_irq(ha->pdev->irq, ha->isp_ops->intr_handler,
-	    ha->flags.msi_enabled ? 0 : IRQF_SHARED,
-	    QLA2XXX_DRIVER_NAME, rsp);
+			  (ha->flags.msi_enabled ? 0 : IRQF_SHARED) | IRQF_USER_DATA,
+			  QLA2XXX_DRIVER_NAME, rsp);
 	if (ret) {
 		ql_log(ql_log_warn, vha, 0x003a,
 		    "Failed to reserve interrupt %d already in use.\n",
@@ -3677,7 +3680,8 @@ int qla25xx_request_irq(struct qla_hw_data *ha, struct qla_qpair *qpair,
 
 	scnprintf(msix->name, sizeof(msix->name),
 	    "qla2xxx%lu_qpair%d", vha->host_no, qpair->id);
-	ret = request_irq(msix->vector, intr->handler, 0, msix->name, qpair);
+	ret = request_irq(msix->vector, intr->handler,
+			  IRQF_USER_DATA, msix->name, qpair);
 	if (ret) {
 		ql_log(ql_log_fatal, vha, 0x00e6,
 		    "MSI-X: Unable to register handler -- %x/%d.\n",

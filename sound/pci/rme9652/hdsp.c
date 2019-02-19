@@ -5248,8 +5248,7 @@ static int snd_hdsp_create(struct snd_card *card,
 		return -EBUSY;
 	}
 
-	if (request_irq(pci->irq, snd_hdsp_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, hdsp)) {
+	if (request_irq(pci->irq, snd_hdsp_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, hdsp)) {
 		dev_err(hdsp->card->dev, "unable to use IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}

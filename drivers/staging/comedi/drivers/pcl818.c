@@ -997,7 +997,8 @@ static int pcl818_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 
 	/* we can use IRQ 2-7 for async command support */
 	if (it->options[1] >= 2 && it->options[1] <= 7) {
-		ret = request_irq(it->options[1], pcl818_interrupt, 0,
+		ret = request_irq(it->options[1], pcl818_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

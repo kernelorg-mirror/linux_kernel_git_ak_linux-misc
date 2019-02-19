@@ -1123,7 +1123,7 @@ wbcir_probe(struct pnp_dev *device, const struct pnp_device_id *dev_id)
 	}
 
 	err = request_irq(data->irq, wbcir_irq_handler,
-			  0, DRVNAME, device);
+			  IRQF_USER_DATA, DRVNAME, device);
 	if (err) {
 		dev_err(dev, "Failed to claim IRQ %u\n", data->irq);
 		err = -EBUSY;

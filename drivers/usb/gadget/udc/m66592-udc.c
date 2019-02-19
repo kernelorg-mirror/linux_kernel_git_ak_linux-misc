@@ -1592,8 +1592,8 @@ static int m66592_probe(struct platform_device *pdev)
 	timer_setup(&m66592->timer, m66592_timer, 0);
 	m66592->reg = reg;
 
-	ret = request_irq(ires->start, m66592_irq, IRQF_SHARED,
-			udc_name, m66592);
+	ret = request_irq(ires->start, m66592_irq,
+			  IRQF_SHARED | IRQF_USER_DATA, udc_name, m66592);
 	if (ret < 0) {
 		pr_err("request_irq error (%d)\n", ret);
 		goto clean_up;

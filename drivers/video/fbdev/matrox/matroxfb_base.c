@@ -232,8 +232,7 @@ int matroxfb_enable_irq(struct matrox_fb_info *minfo, int reenable)
 		bm = 0x020;
 
 	if (!test_and_set_bit(0, &minfo->irq_flags)) {
-		if (request_irq(minfo->pcidev->irq, matrox_irq,
-				IRQF_SHARED, "matroxfb", minfo)) {
+		if (request_irq(minfo->pcidev->irq, matrox_irq, IRQF_SHARED | IRQF_USER_DATA, "matroxfb", minfo)) {
 			clear_bit(0, &minfo->irq_flags);
 			return -EINVAL;
 		}

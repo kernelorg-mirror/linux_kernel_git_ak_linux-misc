@@ -4008,8 +4008,7 @@ int snd_cs46xx_create(struct snd_card *card,
 		}
 	}
 
-	if (request_irq(pci->irq, snd_cs46xx_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_cs46xx_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(chip->card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_cs46xx_free(chip);
 		return -EBUSY;

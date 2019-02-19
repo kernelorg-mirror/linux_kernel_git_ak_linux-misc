@@ -823,8 +823,8 @@ static int wd719x_board_found(struct Scsi_Host *sh)
 		goto fail_free_params;
 	}
 
-	ret = request_irq(wd->pdev->irq, wd719x_interrupt, IRQF_SHARED,
-			  "wd719x", wd);
+	ret = request_irq(wd->pdev->irq, wd719x_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, "wd719x", wd);
 	if (ret) {
 		dev_warn(&wd->pdev->dev, "unable to assign IRQ %d\n",
 			 wd->pdev->irq);

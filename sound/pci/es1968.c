@@ -2724,8 +2724,7 @@ static int snd_es1968_create(struct snd_card *card,
 		return err;
 	}
 	chip->io_port = pci_resource_start(pci, 0);
-	if (request_irq(pci->irq, snd_es1968_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_es1968_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_es1968_free(chip);
 		return -EBUSY;

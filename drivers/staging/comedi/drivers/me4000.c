@@ -1129,7 +1129,8 @@ static int me4000_auto_attach(struct comedi_device *dev,
 	me4000_reset(dev);
 
 	if (pcidev->irq > 0) {
-		result = request_irq(pcidev->irq, me4000_ai_isr, IRQF_SHARED,
+		result = request_irq(pcidev->irq, me4000_ai_isr,
+				     IRQF_SHARED | IRQF_USER_DATA,
 				     dev->board_name, dev);
 		if (result == 0) {
 			dev->irq = pcidev->irq;

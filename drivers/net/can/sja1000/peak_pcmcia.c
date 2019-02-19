@@ -695,7 +695,8 @@ static int pcan_probe(struct pcmcia_device *pdev)
 	timer_setup(&card->led_timer, pcan_led_timer, 0);
 
 	/* request the given irq */
-	err = request_irq(pdev->irq, &pcan_isr, IRQF_SHARED, PCC_NAME, card);
+	err = request_irq(pdev->irq, &pcan_isr, IRQF_SHARED | IRQF_USER_DATA,
+			  PCC_NAME, card);
 	if (err) {
 		dev_err(&pdev->dev, "couldn't request irq%d\n", pdev->irq);
 		goto probe_err_5;

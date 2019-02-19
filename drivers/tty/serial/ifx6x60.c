@@ -1163,8 +1163,8 @@ static int ifx_spi_spi_probe(struct spi_device *spi)
 
 	ret = request_irq(gpio_to_irq(ifx_dev->gpio.reset_out),
 			  ifx_spi_reset_interrupt,
-			  IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING, DRVNAME,
-			  ifx_dev);
+			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_USER_DATA,
+			  DRVNAME, ifx_dev);
 	if (ret) {
 		dev_err(&spi->dev, "Unable to get irq %x\n",
 			gpio_to_irq(ifx_dev->gpio.reset_out));
@@ -1174,7 +1174,8 @@ static int ifx_spi_spi_probe(struct spi_device *spi)
 	ret = ifx_spi_reset(ifx_dev);
 
 	ret = request_irq(gpio_to_irq(ifx_dev->gpio.srdy),
-			  ifx_spi_srdy_interrupt, IRQF_TRIGGER_RISING, DRVNAME,
+			  ifx_spi_srdy_interrupt,
+			  IRQF_TRIGGER_RISING | IRQF_USER_DATA, DRVNAME,
 			  ifx_dev);
 	if (ret) {
 		dev_err(&spi->dev, "Unable to get irq %x",

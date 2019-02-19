@@ -250,8 +250,8 @@ static int timbuart_startup(struct uart_port *port)
 	iowrite32(RXBAF | RXBF | RXTT | CTS_DELTA,
 		port->membase + TIMBUART_IER);
 
-	return request_irq(port->irq, timbuart_handleinterrupt, IRQF_SHARED,
-		"timb-uart", uart);
+	return request_irq(port->irq, timbuart_handleinterrupt,
+			   IRQF_SHARED | IRQF_USER_DATA, "timb-uart", uart);
 }
 
 static void timbuart_shutdown(struct uart_port *port)

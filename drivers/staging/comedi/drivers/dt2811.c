@@ -565,7 +565,8 @@ static int dt2811_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 
 	/* IRQ's 2,3,5,7 are valid for async command support */
 	if (it->options[1] <= 7  && (BIT(it->options[1]) & 0xac)) {
-		ret = request_irq(it->options[1], dt2811_interrupt, 0,
+		ret = request_irq(it->options[1], dt2811_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

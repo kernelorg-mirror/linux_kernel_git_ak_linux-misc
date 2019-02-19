@@ -207,7 +207,8 @@ static int altera_spi_probe(struct platform_device *pdev)
 	/* irq is optional */
 	hw->irq = platform_get_irq(pdev, 0);
 	if (hw->irq >= 0) {
-		err = devm_request_irq(&pdev->dev, hw->irq, altera_spi_irq, 0,
+		err = devm_request_irq(&pdev->dev, hw->irq, altera_spi_irq,
+				       IRQF_USER_DATA,
 				       pdev->name, master);
 		if (err)
 			goto exit;

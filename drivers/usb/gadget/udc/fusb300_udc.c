@@ -1418,15 +1418,15 @@ static int fusb300_probe(struct platform_device *pdev)
 	fusb300->gadget.name = udc_name;
 	fusb300->reg = reg;
 
-	ret = request_irq(ires->start, fusb300_irq, IRQF_SHARED,
-			  udc_name, fusb300);
+	ret = request_irq(ires->start, fusb300_irq,
+			  IRQF_SHARED | IRQF_USER_DATA, udc_name, fusb300);
 	if (ret < 0) {
 		pr_err("request_irq error (%d)\n", ret);
 		goto clean_up;
 	}
 
 	ret = request_irq(ires1->start, fusb300_irq,
-			IRQF_SHARED, udc_name, fusb300);
+			  IRQF_SHARED | IRQF_USER_DATA, udc_name, fusb300);
 	if (ret < 0) {
 		pr_err("request_irq1 error (%d)\n", ret);
 		goto clean_up;

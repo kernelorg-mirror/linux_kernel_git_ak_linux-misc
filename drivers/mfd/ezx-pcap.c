@@ -479,8 +479,8 @@ static int ezx_pcap_probe(struct spi_device *spi)
 	adc_irq = pcap_to_irq(pcap, (pdata->config & PCAP_SECOND_PORT) ?
 					PCAP_IRQ_ADCDONE2 : PCAP_IRQ_ADCDONE);
 
-	ret = devm_request_irq(&spi->dev, adc_irq, pcap_adc_irq, 0, "ADC",
-				pcap);
+	ret = devm_request_irq(&spi->dev, adc_irq, pcap_adc_irq,
+			       IRQF_USER_DATA, "ADC", pcap);
 	if (ret)
 		goto free_irqchip;
 

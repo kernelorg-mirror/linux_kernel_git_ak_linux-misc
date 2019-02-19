@@ -1499,11 +1499,14 @@ static int pvscsi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		printk(KERN_INFO "vmw_pvscsi: using MSI%s\n",
 			adapter->dev->msix_enabled ? "-X" : "");
 		error = request_irq(pci_irq_vector(pdev, 0), pvscsi_isr,
-				0, "vmw_pvscsi", adapter);
+				    IRQF_USER_DATA,
+				    "vmw_pvscsi", adapter);
 	} else {
 		printk(KERN_INFO "vmw_pvscsi: using INTx\n");
-		error = request_irq(pci_irq_vector(pdev, 0), pvscsi_shared_isr,
-				IRQF_SHARED, "vmw_pvscsi", adapter);
+		error = request_irq(pci_irq_vector(pdev, 0),
+				    pvscsi_shared_isr,
+				    IRQF_SHARED | IRQF_USER_DATA,
+				    "vmw_pvscsi", adapter);
 	}
 
 	if (error) {

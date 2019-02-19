@@ -1701,8 +1701,7 @@ static int snd_ca0106_create(int dev, struct snd_card *card,
 		return -EBUSY;
 	}
 
-	if (request_irq(pci->irq, snd_ca0106_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_ca0106_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		snd_ca0106_free(chip);
 		dev_err(card->dev, "cannot grab irq\n");
 		return -EBUSY;

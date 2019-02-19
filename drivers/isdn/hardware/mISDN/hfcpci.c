@@ -1738,7 +1738,7 @@ init_card(struct hfc_pci *hc)
 	spin_lock_irqsave(&hc->lock, flags);
 	disable_hwirq(hc);
 	spin_unlock_irqrestore(&hc->lock, flags);
-	if (request_irq(hc->irq, hfcpci_int, IRQF_SHARED, "HFC PCI", hc)) {
+	if (request_irq(hc->irq, hfcpci_int, IRQF_SHARED | IRQF_USER_DATA, "HFC PCI", hc)) {
 		printk(KERN_WARNING
 		       "mISDN: couldn't get interrupt %d\n", hc->irq);
 		return -EIO;

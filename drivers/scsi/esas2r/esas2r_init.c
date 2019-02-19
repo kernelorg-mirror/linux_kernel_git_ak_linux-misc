@@ -240,13 +240,7 @@ static void esas2r_claim_interrupts(struct esas2r_adapter *a)
 		   "esas2r_claim_interrupts irq=%d (%p, %s, %lx)",
 		   a->pcid->irq, a, a->name, flags);
 
-	if (request_irq(a->pcid->irq,
-			(a->intr_mode ==
-			 INTR_MODE_LEGACY) ? esas2r_interrupt :
-			esas2r_msi_interrupt,
-			flags,
-			a->name,
-			a)) {
+	if (request_irq(a->pcid->irq, (a->intr_mode == INTR_MODE_LEGACY) ? esas2r_interrupt : esas2r_msi_interrupt, flags | IRQF_USER_DATA, a->name, a)) {
 		esas2r_log(ESAS2R_LOG_CRIT, "unable to request IRQ %02X",
 			   a->pcid->irq);
 		return;

@@ -486,7 +486,8 @@ static int acpi_fujitsu_add(struct acpi_device *adev)
 	fujitsu_reset();
 
 	error = request_irq(fujitsu.irq, fujitsu_interrupt,
-			IRQF_SHARED, MODULENAME, fujitsu_interrupt);
+			    IRQF_SHARED | IRQF_USER_DATA, MODULENAME,
+			    fujitsu_interrupt);
 	if (error) {
 		release_region(fujitsu.io_base, fujitsu.io_length);
 		input_fujitsu_remove();

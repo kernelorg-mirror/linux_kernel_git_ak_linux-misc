@@ -2516,8 +2516,8 @@ static int mvumi_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (ret)
 		goto fail_init_fw;
 
-	ret = request_irq(mhba->pdev->irq, mvumi_isr_handler, IRQF_SHARED,
-				"mvumi", mhba);
+	ret = request_irq(mhba->pdev->irq, mvumi_isr_handler,
+			  IRQF_SHARED | IRQF_USER_DATA, "mvumi", mhba);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register IRQ\n");
 		goto fail_init_irq;
@@ -2645,8 +2645,8 @@ static int __maybe_unused mvumi_resume(struct pci_dev *pdev)
 		goto unmap_pci_addr;
 	}
 
-	ret = request_irq(mhba->pdev->irq, mvumi_isr_handler, IRQF_SHARED,
-				"mvumi", mhba);
+	ret = request_irq(mhba->pdev->irq, mvumi_isr_handler,
+			  IRQF_SHARED | IRQF_USER_DATA, "mvumi", mhba);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register IRQ\n");
 		goto unmap_pci_addr;

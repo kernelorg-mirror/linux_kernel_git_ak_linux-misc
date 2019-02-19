@@ -565,7 +565,7 @@ static int dt3155_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (err)
 		goto err_iounmap;
 	err = request_irq(pd->pdev->irq, dt3155_irq_handler_even,
-					IRQF_SHARED, DT3155_NAME, pd);
+			  IRQF_SHARED | IRQF_USER_DATA, DT3155_NAME, pd);
 	if (err)
 		goto err_iounmap;
 	err = video_register_device(&pd->vdev, VFL_TYPE_GRABBER, -1);

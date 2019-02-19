@@ -1366,8 +1366,7 @@ static int snd_rme32_create(struct rme32 *rme32)
 		return -ENOMEM;
 	}
 
-	if (request_irq(pci->irq, snd_rme32_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, rme32)) {
+	if (request_irq(pci->irq, snd_rme32_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, rme32)) {
 		dev_err(rme32->card->dev, "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}

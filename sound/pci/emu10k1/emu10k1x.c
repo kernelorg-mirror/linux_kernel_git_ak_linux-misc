@@ -942,8 +942,7 @@ static int snd_emu10k1x_create(struct snd_card *card,
 		return -EBUSY;
 	}
 
-	if (request_irq(pci->irq, snd_emu10k1x_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_emu10k1x_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "cannot grab irq %d\n", pci->irq);
 		snd_emu10k1x_free(chip);
 		return -EBUSY;

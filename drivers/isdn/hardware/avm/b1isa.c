@@ -97,7 +97,9 @@ static int b1isa_probe(struct pci_dev *pdev)
 		retval = -EBUSY;
 		goto err_free;
 	}
-	retval = request_irq(card->irq, b1_interrupt, 0, card->name, card);
+	retval = request_irq(card->irq, b1_interrupt,
+			     IRQF_USER_DATA, card->name,
+			     card);
 	if (retval) {
 		printk(KERN_ERR "b1isa: unable to get IRQ %d.\n", card->irq);
 		goto err_release_region;

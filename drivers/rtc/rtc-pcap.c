@@ -157,13 +157,15 @@ static int __init pcap_rtc_probe(struct platform_device *pdev)
 	timer_irq = pcap_to_irq(pcap_rtc->pcap, PCAP_IRQ_1HZ);
 	alarm_irq = pcap_to_irq(pcap_rtc->pcap, PCAP_IRQ_TODA);
 
-	err = devm_request_irq(&pdev->dev, timer_irq, pcap_rtc_irq, 0,
-				"RTC Timer", pcap_rtc);
+	err = devm_request_irq(&pdev->dev, timer_irq, pcap_rtc_irq,
+			       IRQF_USER_DATA, "RTC Timer",
+			       pcap_rtc);
 	if (err)
 		return err;
 
-	err = devm_request_irq(&pdev->dev, alarm_irq, pcap_rtc_irq, 0,
-				"RTC Alarm", pcap_rtc);
+	err = devm_request_irq(&pdev->dev, alarm_irq, pcap_rtc_irq,
+			       IRQF_USER_DATA, "RTC Alarm",
+			       pcap_rtc);
 	if (err)
 		return err;
 

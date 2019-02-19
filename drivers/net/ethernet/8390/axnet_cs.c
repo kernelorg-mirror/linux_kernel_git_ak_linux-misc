@@ -474,7 +474,8 @@ static int axnet_open(struct net_device *dev)
 	return -ENODEV;
 
     outb_p(0xFF, nic_base + EN0_ISR); /* Clear bogus intr. */
-    ret = request_irq(dev->irq, ei_irq_wrapper, IRQF_SHARED, "axnet_cs", dev);
+    ret = request_irq(dev->irq, ei_irq_wrapper, IRQF_SHARED | IRQF_USER_DATA,
+                      "axnet_cs", dev);
     if (ret)
 	    return ret;
 

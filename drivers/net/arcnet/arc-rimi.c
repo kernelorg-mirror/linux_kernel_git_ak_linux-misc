@@ -136,7 +136,7 @@ static int __init arcrimi_found(struct net_device *dev)
 	}
 
 	/* reserve the irq */
-	if (request_irq(dev->irq, arcnet_interrupt, 0, "arcnet (RIM I)", dev)) {
+	if (request_irq(dev->irq, arcnet_interrupt, IRQF_USER_DATA, "arcnet (RIM I)", dev)) {
 		iounmap(p);
 		release_mem_region(dev->mem_start, MIRROR_SIZE);
 		arc_printk(D_NORMAL, dev, "Can't get IRQ %d!\n", dev->irq);

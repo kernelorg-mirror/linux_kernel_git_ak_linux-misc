@@ -2413,8 +2413,8 @@ static int mxser_initbrd(struct mxser_board *brd)
 			info->ioaddr + UART_IER);
 	}
 
-	retval = request_irq(brd->irq, mxser_interrupt, IRQF_SHARED, "mxser",
-			brd);
+	retval = request_irq(brd->irq, mxser_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, "mxser", brd);
 	if (retval) {
 		for (i = 0; i < brd->info->nports; i++)
 			tty_port_destroy(&brd->ports[i].port);

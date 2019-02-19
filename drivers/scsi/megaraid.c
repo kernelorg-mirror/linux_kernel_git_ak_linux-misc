@@ -4299,9 +4299,7 @@ megaraid_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto out_free_cmd_buffer;
 	}
 
-	if (request_irq(irq, (adapter->flag & BOARD_MEMMAP) ?
-				megaraid_isr_memmapped : megaraid_isr_iomapped,
-					IRQF_SHARED, "megaraid", adapter)) {
+	if (request_irq(irq, (adapter->flag & BOARD_MEMMAP) ? megaraid_isr_memmapped : megaraid_isr_iomapped, IRQF_SHARED | IRQF_USER_DATA, "megaraid", adapter)) {
 		dev_warn(&pdev->dev, "Couldn't register IRQ %d!\n", irq);
 		goto out_free_scb_list;
 	}

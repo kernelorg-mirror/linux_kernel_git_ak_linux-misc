@@ -2648,8 +2648,7 @@ snd_m3_create(struct snd_card *card, struct pci_dev *pci,
 
 	snd_m3_hv_init(chip);
 
-	if (request_irq(pci->irq, snd_m3_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_m3_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		err = -ENOMEM;
 		goto free_chip;

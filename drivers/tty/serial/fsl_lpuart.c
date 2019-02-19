@@ -2205,12 +2205,16 @@ static int lpuart_probe(struct platform_device *pdev)
 
 	if (lpuart_is_32(sport)) {
 		lpuart_reg.cons = LPUART32_CONSOLE;
-		ret = devm_request_irq(&pdev->dev, sport->port.irq, lpuart32_int, 0,
-					DRIVER_NAME, sport);
+		ret = devm_request_irq(&pdev->dev, sport->port.irq,
+				       lpuart32_int,
+				       IRQF_USER_DATA,
+				       DRIVER_NAME, sport);
 	} else {
 		lpuart_reg.cons = LPUART_CONSOLE;
-		ret = devm_request_irq(&pdev->dev, sport->port.irq, lpuart_int, 0,
-					DRIVER_NAME, sport);
+		ret = devm_request_irq(&pdev->dev, sport->port.irq,
+				       lpuart_int,
+				       IRQF_USER_DATA,
+				       DRIVER_NAME, sport);
 	}
 
 	if (ret)

@@ -296,7 +296,8 @@ int oaktrail_hdmi_i2c_init(struct pci_dev *dev)
 	oaktrail_hdmi_i2c_gpio_fix();
 
 	/* request irq */
-	ret = request_irq(dev->irq, oaktrail_hdmi_i2c_handler, IRQF_SHARED,
+	ret = request_irq(dev->irq, oaktrail_hdmi_i2c_handler,
+			  IRQF_SHARED | IRQF_USER_DATA,
 			  oaktrail_hdmi_i2c_adapter.name, hdmi_dev);
 	if (ret) {
 		DRM_ERROR("Failed to request IRQ for I2C controller\n");

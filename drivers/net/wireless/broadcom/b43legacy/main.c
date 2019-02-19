@@ -2989,7 +2989,7 @@ static int b43legacy_wireless_core_start(struct b43legacy_wldev *dev)
 
 	drain_txstatus_queue(dev);
 	err = request_irq(dev->dev->irq, b43legacy_interrupt_handler,
-			  IRQF_SHARED, KBUILD_MODNAME, dev);
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, dev);
 	if (err) {
 		b43legacyerr(dev->wl, "Cannot request IRQ-%d\n",
 		       dev->dev->irq);

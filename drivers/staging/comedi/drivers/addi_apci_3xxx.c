@@ -783,7 +783,8 @@ static int apci3xxx_auto_attach(struct comedi_device *dev,
 
 	if (pcidev->irq > 0) {
 		ret = request_irq(pcidev->irq, apci3xxx_irq_handler,
-				  IRQF_SHARED, dev->board_name, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;
 	}

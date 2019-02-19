@@ -425,7 +425,8 @@ static int pcl711_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 		return ret;
 
 	if (it->options[1] && it->options[1] <= board->maxirq) {
-		ret = request_irq(it->options[1], pcl711_interrupt, 0,
+		ret = request_irq(it->options[1], pcl711_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

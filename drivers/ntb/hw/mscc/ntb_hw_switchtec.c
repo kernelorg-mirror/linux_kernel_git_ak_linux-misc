@@ -1448,14 +1448,14 @@ static int switchtec_ntb_init_db_msg_irq(struct switchtec_ntb *sndev)
 	sndev->doorbell_irq = pci_irq_vector(sndev->stdev->pdev, doorbell_irq);
 	sndev->message_irq = pci_irq_vector(sndev->stdev->pdev, message_irq);
 
-	rc = request_irq(sndev->doorbell_irq,
-			 switchtec_ntb_doorbell_isr, 0,
+	rc = request_irq(sndev->doorbell_irq, switchtec_ntb_doorbell_isr,
+			 IRQF_USER_DATA,
 			 "switchtec_ntb_doorbell", sndev);
 	if (rc)
 		return rc;
 
-	rc = request_irq(sndev->message_irq,
-			 switchtec_ntb_message_isr, 0,
+	rc = request_irq(sndev->message_irq, switchtec_ntb_message_isr,
+			 IRQF_USER_DATA,
 			 "switchtec_ntb_message", sndev);
 	if (rc) {
 		free_irq(sndev->doorbell_irq, sndev);

@@ -214,11 +214,7 @@ static int ltc2952_poweroff_init(struct platform_device *pdev)
 		data->gpio_trigger = NULL;
 	}
 
-	if (devm_request_irq(&pdev->dev, gpiod_to_irq(data->gpio_trigger),
-			     ltc2952_poweroff_handler,
-			     (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING),
-			     "ltc2952-poweroff",
-			     data)) {
+	if (devm_request_irq(&pdev->dev, gpiod_to_irq(data->gpio_trigger), ltc2952_poweroff_handler, (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING) | IRQF_USER_DATA, "ltc2952-poweroff", data)) {
 		/*
 		 * Some things may have happened:
 		 * - No trigger input was defined

@@ -702,8 +702,9 @@ int __must_check pcmcia_request_irq(struct pcmcia_device *p_dev,
 	if (!p_dev->irq)
 		return -EINVAL;
 
-	ret = request_irq(p_dev->irq, handler, IRQF_SHARED | IRQF_USER_DATA,
-			p_dev->devname, p_dev->priv);
+	ret = request_irq(p_dev->irq, handler,
+			  IRQF_SHARED | IRQF_USER_DATA,
+			  p_dev->devname, p_dev->priv);
 	if (!ret)
 		p_dev->_irq = 1;
 
@@ -752,8 +753,8 @@ static int pcmcia_setup_isa_irq(struct pcmcia_device *p_dev, int type)
 		/* register the correct driver, if possible, to check whether
 		 * registering a dummy handle works, i.e. if the IRQ isn't
 		 * marked as used by the kernel resource management core */
-		ret = request_irq(irq, test_action, type, p_dev->devname,
-				  p_dev);
+		ret = request_irq(irq, test_action, type | IRQF_USER_DATA,
+				  p_dev->devname, p_dev);
 		if (!ret) {
 			free_irq(irq, p_dev);
 			p_dev->irq = s->pcmcia_irq = irq;

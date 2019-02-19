@@ -631,8 +631,9 @@ static int ds1374_probe(struct i2c_client *client,
 		return ret;
 
 	if (client->irq > 0) {
-		ret = devm_request_irq(&client->dev, client->irq, ds1374_irq, 0,
-					"ds1374", client);
+		ret = devm_request_irq(&client->dev, client->irq, ds1374_irq,
+				       IRQF_USER_DATA,
+				       "ds1374", client);
 		if (ret) {
 			dev_err(&client->dev, "unable to request IRQ\n");
 			return ret;

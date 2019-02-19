@@ -10004,7 +10004,8 @@ lpfc_sli_enable_msix(struct lpfc_hba *phba)
 
 	/* vector-0 is associated to slow-path handler */
 	rc = request_irq(pci_irq_vector(phba->pcidev, 0),
-			 &lpfc_sli_sp_intr_handler, 0,
+			 &lpfc_sli_sp_intr_handler,
+			 IRQF_USER_DATA,
 			 LPFC_SP_DRIVER_HANDLER_NAME, phba);
 	if (rc) {
 		lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
@@ -10015,7 +10016,8 @@ lpfc_sli_enable_msix(struct lpfc_hba *phba)
 
 	/* vector-1 is associated to fast-path handler */
 	rc = request_irq(pci_irq_vector(phba->pcidev, 1),
-			 &lpfc_sli_fp_intr_handler, 0,
+			 &lpfc_sli_fp_intr_handler,
+			 IRQF_USER_DATA,
 			 LPFC_FP_DRIVER_HANDLER_NAME, phba);
 
 	if (rc) {
@@ -10103,7 +10105,8 @@ lpfc_sli_enable_msi(struct lpfc_hba *phba)
 	}
 
 	rc = request_irq(phba->pcidev->irq, lpfc_sli_intr_handler,
-			 0, LPFC_DRIVER_NAME, phba);
+			 IRQF_USER_DATA, LPFC_DRIVER_NAME,
+			 phba);
 	if (rc) {
 		pci_disable_msi(phba->pcidev);
 		lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
@@ -10161,7 +10164,8 @@ lpfc_sli_enable_intr(struct lpfc_hba *phba, uint32_t cfg_mode)
 	/* Fallback to INTx if both MSI-X/MSI initalization failed */
 	if (phba->intr_type == NONE) {
 		retval = request_irq(phba->pcidev->irq, lpfc_sli_intr_handler,
-				     IRQF_SHARED, LPFC_DRIVER_NAME, phba);
+				     IRQF_SHARED | IRQF_USER_DATA,
+				     LPFC_DRIVER_NAME, phba);
 		if (!retval) {
 			/* Indicate initialization to INTx mode */
 			phba->intr_type = INTx;
@@ -10297,14 +10301,16 @@ lpfc_sli4_enable_msix(struct lpfc_hba *phba)
 		atomic_set(&phba->sli4_hba.hba_eq_hdl[index].hba_eq_in_use, 1);
 		if (phba->cfg_fof && (index == (vectors - 1)))
 			rc = request_irq(pci_irq_vector(phba->pcidev, index),
-				 &lpfc_sli4_fof_intr_handler, 0,
-				 name,
-				 &phba->sli4_hba.hba_eq_hdl[index]);
+					 &lpfc_sli4_fof_intr_handler,
+					 IRQF_USER_DATA,
+					 name,
+					 &phba->sli4_hba.hba_eq_hdl[index]);
 		else
 			rc = request_irq(pci_irq_vector(phba->pcidev, index),
-				 &lpfc_sli4_hba_intr_handler, 0,
-				 name,
-				 &phba->sli4_hba.hba_eq_hdl[index]);
+					 &lpfc_sli4_hba_intr_handler,
+					 IRQF_USER_DATA,
+					 name,
+					 &phba->sli4_hba.hba_eq_hdl[index]);
 		if (rc) {
 			lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
 					"0486 MSI-X fast-path (%d) "
@@ -10377,7 +10383,8 @@ lpfc_sli4_enable_msi(struct lpfc_hba *phba)
 	}
 
 	rc = request_irq(phba->pcidev->irq, lpfc_sli4_intr_handler,
-			 0, LPFC_DRIVER_NAME, phba);
+			 IRQF_USER_DATA, LPFC_DRIVER_NAME,
+			 phba);
 	if (rc) {
 		pci_disable_msi(phba->pcidev);
 		lpfc_printf_log(phba, KERN_WARNING, LOG_INIT,
@@ -10445,8 +10452,10 @@ lpfc_sli4_enable_intr(struct lpfc_hba *phba, uint32_t cfg_mode)
 
 	/* Fallback to INTx if both MSI-X/MSI initalization failed */
 	if (phba->intr_type == NONE) {
-		retval = request_irq(phba->pcidev->irq, lpfc_sli4_intr_handler,
-				     IRQF_SHARED, LPFC_DRIVER_NAME, phba);
+		retval = request_irq(phba->pcidev->irq,
+				     lpfc_sli4_intr_handler,
+				     IRQF_SHARED | IRQF_USER_DATA,
+				     LPFC_DRIVER_NAME, phba);
 		if (!retval) {
 			struct lpfc_hba_eq_hdl *eqhdl;
 

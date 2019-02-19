@@ -781,7 +781,7 @@ static int rp2_probe(struct pci_dev *pdev,
 	card->ports = ports;
 
 	rc = devm_request_irq(&pdev->dev, pdev->irq, rp2_uart_interrupt,
-			      IRQF_SHARED, DRV_NAME, card);
+			      IRQF_SHARED | IRQF_USER_DATA, DRV_NAME, card);
 	if (rc)
 		return rc;
 

@@ -647,7 +647,8 @@ static int acp3x_audio_probe(struct platform_device *pdev)
 		goto dev_err;
 	}
 	status = devm_request_irq(&pdev->dev, adata->i2s_irq, i2s_irq_handler,
-				  irqflags, "ACP3x_I2S_IRQ", adata);
+				  irqflags | IRQF_USER_DATA, "ACP3x_I2S_IRQ",
+				  adata);
 	if (status) {
 		dev_err(&pdev->dev, "ACP3x I2S IRQ request failed\n");
 		goto dev_err;

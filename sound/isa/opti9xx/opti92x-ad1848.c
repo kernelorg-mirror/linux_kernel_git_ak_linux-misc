@@ -874,7 +874,8 @@ static int snd_opti9xx_probe(struct snd_card *card)
 #endif
 #ifdef OPTi93X
 	error = request_irq(irq, snd_opti93x_interrupt,
-			    0, DEV_NAME" - WSS", chip);
+			    IRQF_USER_DATA,
+			    DEV_NAME " - WSS", chip);
 	if (error < 0) {
 		snd_printk(KERN_ERR "opti9xx: can't grab IRQ %d\n", irq);
 		return error;

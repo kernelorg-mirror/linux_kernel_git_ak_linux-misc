@@ -492,7 +492,8 @@ static int __init ne_probe1(struct net_device *dev, unsigned long ioaddr)
 
 	/* Snarf the interrupt now.  There's no point in waiting since we cannot
 	   share and the board will usually be enabled. */
-	ret = request_irq(dev->irq, eip_interrupt, 0, name, dev);
+	ret = request_irq(dev->irq, eip_interrupt,
+			  IRQF_USER_DATA, name, dev);
 	if (ret) {
 		pr_cont(" unable to get IRQ %d (errno=%d).\n", dev->irq, ret);
 		goto err_out;

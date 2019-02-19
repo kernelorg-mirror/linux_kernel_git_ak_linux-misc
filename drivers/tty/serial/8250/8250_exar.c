@@ -499,7 +499,7 @@ exar_pci_probe(struct pci_dev *pcidev, const struct pci_device_id *ent)
 	uart.port.dev = &pcidev->dev;
 
 	rc = devm_request_irq(&pcidev->dev, uart.port.irq, exar_misc_handler,
-			 IRQF_SHARED, "exar_uart", priv);
+			      IRQF_SHARED | IRQF_USER_DATA, "exar_uart", priv);
 	if (rc)
 		return rc;
 

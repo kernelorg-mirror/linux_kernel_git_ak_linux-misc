@@ -328,7 +328,8 @@ static int pcl726_attach(struct comedi_device *dev,
 	 * user config option is valid and the board supports interrupts.
 	 */
 	if (it->options[1] && (board->irq_mask & (1 << it->options[1]))) {
-		ret = request_irq(it->options[1], pcl726_interrupt, 0,
+		ret = request_irq(it->options[1], pcl726_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0) {
 			/* External trigger source is from Pin-17 of CN3 */

@@ -736,7 +736,7 @@ static void if_cs_prog_firmware(struct lbs_private *priv, int ret,
 
 	/* Now actually get the IRQ */
 	ret = request_irq(card->p_dev->irq, if_cs_interrupt,
-		IRQF_SHARED, DRV_NAME, card);
+			  IRQF_SHARED | IRQF_USER_DATA, DRV_NAME, card);
 	if (ret) {
 		pr_err("error in request_irq\n");
 		return;

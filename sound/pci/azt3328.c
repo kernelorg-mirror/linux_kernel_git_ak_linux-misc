@@ -2455,8 +2455,7 @@ snd_azf3328_create(struct snd_card *card,
 	codec_setup->type = AZF_CODEC_I2S_OUT;
 	codec_setup->name = "I2S_OUT";
 
-	if (request_irq(pci->irq, snd_azf3328_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_azf3328_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		err = -EBUSY;
 		goto out_err;

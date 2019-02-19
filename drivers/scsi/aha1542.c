@@ -782,7 +782,7 @@ static struct Scsi_Host *aha1542_hw_init(struct scsi_host_template *tpnt, struct
 
 	setup_mailboxes(sh);
 
-	if (request_irq(sh->irq, aha1542_interrupt, 0, "aha1542", sh)) {
+	if (request_irq(sh->irq, aha1542_interrupt, IRQF_USER_DATA, "aha1542", sh)) {
 		shost_printk(KERN_ERR, sh, "Unable to allocate IRQ.\n");
 		goto free_ccb;
 	}

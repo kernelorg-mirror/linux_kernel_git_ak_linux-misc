@@ -3469,8 +3469,10 @@ static int pqi_request_irqs(struct pqi_ctrl_info *ctrl_info)
 	ctrl_info->event_irq = pci_irq_vector(pci_dev, 0);
 
 	for (i = 0; i < ctrl_info->num_msix_vectors_enabled; i++) {
-		rc = request_irq(pci_irq_vector(pci_dev, i), pqi_irq_handler, 0,
-			DRIVER_NAME_SHORT, &ctrl_info->queue_groups[i]);
+		rc = request_irq(pci_irq_vector(pci_dev, i), pqi_irq_handler,
+				 IRQF_USER_DATA,
+				 DRIVER_NAME_SHORT,
+				 &ctrl_info->queue_groups[i]);
 		if (rc) {
 			dev_err(&pci_dev->dev,
 				"irq %u init failed with error %d\n",
@@ -7890,8 +7892,9 @@ static __maybe_unused int pqi_resume(struct pci_dev *pci_dev)
 		pqi_free_interrupts(ctrl_info);
 		pqi_change_irq_mode(ctrl_info, IRQ_MODE_INTX);
 		rc = request_irq(pci_irq_vector(pci_dev, 0), pqi_irq_handler,
-			IRQF_SHARED, DRIVER_NAME_SHORT,
-			&ctrl_info->queue_groups[0]);
+				 IRQF_SHARED | IRQF_USER_DATA,
+				 DRIVER_NAME_SHORT,
+				 &ctrl_info->queue_groups[0]);
 		if (rc) {
 			dev_err(&ctrl_info->pci_dev->dev,
 				"irq %u init failed with error %d\n",

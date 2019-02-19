@@ -2420,7 +2420,8 @@ static int pxa_udc_probe(struct platform_device *pdev)
 
 	/* irq setup after old hardware state is cleaned up */
 	retval = devm_request_irq(&pdev->dev, udc->irq, pxa_udc_irq,
-				  IRQF_SHARED, driver_name, udc);
+				  IRQF_SHARED | IRQF_USER_DATA, driver_name,
+				  udc);
 	if (retval != 0) {
 		dev_err(udc->dev, "%s: can't get irq %i, err %d\n",
 			driver_name, udc->irq, retval);

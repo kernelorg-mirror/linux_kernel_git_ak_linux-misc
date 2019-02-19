@@ -570,7 +570,8 @@ static int das6402_attach(struct comedi_device *dev,
 
 	/* IRQs 2,3,5,6,7, 10,11,15 are valid for "enhanced" mode */
 	if ((1 << it->options[1]) & 0x8cec) {
-		ret = request_irq(it->options[1], das6402_interrupt, 0,
+		ret = request_irq(it->options[1], das6402_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0) {
 			dev->irq = it->options[1];

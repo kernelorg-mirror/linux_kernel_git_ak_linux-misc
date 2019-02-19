@@ -637,7 +637,8 @@ static int dt3000_auto_attach(struct comedi_device *dev,
 		return -ENOMEM;
 
 	if (pcidev->irq) {
-		ret = request_irq(pcidev->irq, dt3k_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, dt3k_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;

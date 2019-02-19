@@ -440,8 +440,8 @@ static int men_z135_request_irq(struct men_z135_port *uart)
 	struct uart_port *port = &uart->port;
 	int err = 0;
 
-	err = request_irq(port->irq, men_z135_intr, IRQF_SHARED,
-			"men_z135_intr", uart);
+	err = request_irq(port->irq, men_z135_intr,
+			  IRQF_SHARED | IRQF_USER_DATA, "men_z135_intr", uart);
 	if (err)
 		dev_err(dev, "Error %d getting interrupt\n", err);
 

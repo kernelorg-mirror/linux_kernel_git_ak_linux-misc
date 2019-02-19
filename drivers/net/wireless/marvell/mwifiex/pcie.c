@@ -3033,7 +3033,8 @@ static int mwifiex_pcie_request_irq(struct mwifiex_adapter *adapter)
 				card->msix_ctx[i].msg_id = i;
 
 				ret = request_irq(card->msix_entries[i].vector,
-						  mwifiex_pcie_interrupt, 0,
+						  mwifiex_pcie_interrupt,
+						  IRQF_USER_DATA,
 						  "MWIFIEX_PCIE_MSIX",
 						  &card->msix_ctx[i]);
 				if (ret)
@@ -3064,8 +3065,9 @@ static int mwifiex_pcie_request_irq(struct mwifiex_adapter *adapter)
 
 	card->share_irq_ctx.dev = pdev;
 	card->share_irq_ctx.msg_id = -1;
-	ret = request_irq(pdev->irq, mwifiex_pcie_interrupt, IRQF_SHARED,
-			  "MRVL_PCIE", &card->share_irq_ctx);
+	ret = request_irq(pdev->irq, mwifiex_pcie_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, "MRVL_PCIE",
+			  &card->share_irq_ctx);
 	if (ret) {
 		pr_err("request_irq failed: ret=%d\n", ret);
 		return -1;

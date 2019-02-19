@@ -390,7 +390,8 @@ ultra_open(struct net_device *dev)
 	unsigned char irq2reg[] = {0, 0, 0x04, 0x08, 0, 0x0C, 0, 0x40,
 				   0, 0x04, 0x44, 0x48, 0, 0, 0, 0x4C, };
 
-	retval = request_irq(dev->irq, ei_interrupt, 0, dev->name, dev);
+	retval = request_irq(dev->irq, ei_interrupt,
+			     IRQF_USER_DATA, dev->name, dev);
 	if (retval)
 		return retval;
 

@@ -3621,8 +3621,8 @@ static int et131x_open(struct net_device *netdev)
 		msecs_to_jiffies(TX_ERROR_PERIOD);
 	add_timer(&adapter->error_timer);
 
-	result = request_irq(irq, et131x_isr,
-			     IRQF_SHARED, netdev->name, netdev);
+	result = request_irq(irq, et131x_isr, IRQF_SHARED | IRQF_USER_DATA,
+			     netdev->name, netdev);
 	if (result) {
 		dev_err(&pdev->dev, "could not register IRQ %d\n", irq);
 		return result;

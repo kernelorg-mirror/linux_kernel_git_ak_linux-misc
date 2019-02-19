@@ -4271,8 +4271,7 @@ init_card(struct hfc_multi *hc)
 	disable_hwirq(hc);
 	spin_unlock_irqrestore(&hc->lock, flags);
 
-	if (request_irq(hc->irq, hfcmulti_interrupt, IRQF_SHARED,
-			"HFC-multi", hc)) {
+	if (request_irq(hc->irq, hfcmulti_interrupt, IRQF_SHARED | IRQF_USER_DATA, "HFC-multi", hc)) {
 		printk(KERN_WARNING "mISDN: Could not get interrupt %d.\n",
 		       hc->irq);
 		hc->irq = 0;

@@ -210,7 +210,7 @@ static u_int __init try_irq(int irq)
     u_short cfg;
 
     irq_hits = 0;
-    if (request_irq(irq, tcic_irq_count, 0, "irq scan", tcic_irq_count) != 0)
+    if (request_irq(irq, tcic_irq_count, IRQF_USER_DATA, "irq scan", tcic_irq_count) != 0)
 	return -1;
     mdelay(10);
     if (irq_hits) {
@@ -266,7 +266,7 @@ static u_int __init irq_scan(u_int mask0)
 	/* Fallback: just find interrupts that aren't in use */
 	for (i = 0; i < 16; i++)
 	    if ((mask0 & (1 << i)) &&
-		(request_irq(i, tcic_irq_count, 0, "x", tcic_irq_count) == 0)) {
+		(request_irq(i, tcic_irq_count, IRQF_USER_DATA, "x", tcic_irq_count) == 0)) {
 		mask1 |= (1 << i);
 		free_irq(i, tcic_irq_count);
 	    }
@@ -463,8 +463,7 @@ static int __init init_tcic(void)
 	u_int cs_mask = mask & ((cs_irq) ? (1<<cs_irq) : ~(1<<12));
 	for (i = 15; i > 0; i--)
 	    if ((cs_mask & (1 << i)) &&
-		(request_irq(i, tcic_interrupt, 0, "tcic",
-			     tcic_interrupt) == 0))
+		(request_irq(i, tcic_interrupt, IRQF_USER_DATA, "tcic", tcic_interrupt) == 0))
 		break;
 	cs_irq = i;
 	if (cs_irq == 0) poll_interval = HZ;

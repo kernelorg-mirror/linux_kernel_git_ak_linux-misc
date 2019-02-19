@@ -1341,7 +1341,8 @@ ds1685_rtc_probe(struct platform_device *pdev)
 			/* Request an IRQ. */
 			ret = devm_request_irq(&pdev->dev, rtc->irq_num,
 					       ds1685_rtc_irq_handler,
-					       IRQF_SHARED, pdev->name, pdev);
+					       IRQF_SHARED | IRQF_USER_DATA,
+					       pdev->name, pdev);
 
 			/* Check to see if something came back. */
 			if (unlikely(ret)) {

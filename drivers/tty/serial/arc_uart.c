@@ -339,7 +339,7 @@ static int arc_serial_startup(struct uart_port *port)
 	/* Before we hook up the ISR, Disable all UART Interrupts */
 	UART_ALL_IRQ_DISABLE(port);
 
-	if (request_irq(port->irq, arc_serial_isr, 0, "arc uart rx-tx", port)) {
+	if (request_irq(port->irq, arc_serial_isr, IRQF_USER_DATA, "arc uart rx-tx", port)) {
 		dev_warn(port->dev, "Unable to attach ARC UART intr\n");
 		return -EBUSY;
 	}

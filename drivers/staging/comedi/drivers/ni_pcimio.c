@@ -1360,7 +1360,8 @@ static int pcimio_auto_attach(struct comedi_device *dev,
 
 	irq = pcidev->irq;
 	if (irq) {
-		ret = request_irq(irq, ni_E_interrupt, IRQF_SHARED,
+		ret = request_irq(irq, ni_E_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = irq;

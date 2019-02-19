@@ -400,7 +400,8 @@ static int ring_request_msix(struct tb_ring *ring, bool no_suspend)
 		return ring->irq;
 
 	irqflags = no_suspend ? IRQF_NO_SUSPEND : 0;
-	return request_irq(ring->irq, ring_msix, irqflags, "thunderbolt", ring);
+	return request_irq(ring->irq, ring_msix, irqflags | IRQF_USER_DATA,
+			   "thunderbolt", ring);
 }
 
 static void ring_release_msix(struct tb_ring *ring)
@@ -986,7 +987,8 @@ static int nhi_init_msi(struct tb_nhi *nhi)
 			return irq;
 
 		res = devm_request_irq(&pdev->dev, irq, nhi_msi,
-				       IRQF_NO_SUSPEND, "thunderbolt", nhi);
+				       IRQF_NO_SUSPEND | IRQF_USER_DATA,
+				       "thunderbolt", nhi);
 		if (res) {
 			dev_err(&pdev->dev, "request_irq failed, aborting\n");
 			return res;

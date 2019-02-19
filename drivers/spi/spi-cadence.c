@@ -614,7 +614,8 @@ static int cdns_spi_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(&pdev->dev, irq, cdns_spi_irq,
-			       0, pdev->name, master);
+			       IRQF_USER_DATA, pdev->name,
+			       master);
 	if (ret != 0) {
 		ret = -ENXIO;
 		dev_err(&pdev->dev, "request_irq failed\n");

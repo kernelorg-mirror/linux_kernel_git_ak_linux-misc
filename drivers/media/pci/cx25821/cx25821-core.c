@@ -1319,7 +1319,7 @@ static int cx25821_initdev(struct pci_dev *pci_dev,
 	}
 
 	err = request_irq(pci_dev->irq, cx25821_irq,
-			IRQF_SHARED, dev->name, dev);
+			  IRQF_SHARED | IRQF_USER_DATA, dev->name, dev);
 
 	if (err < 0) {
 		pr_err("%s: can't get IRQ %d\n", dev->name, pci_dev->irq);

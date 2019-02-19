@@ -1177,8 +1177,10 @@ bfad_install_msix_handler(struct bfad_s *bfad)
 				msix_name_cb[i] : msix_name_ct[i]));
 
 		error = request_irq(bfad->msix_tab[i].msix.vector,
-				    (irq_handler_t) bfad_msix, 0,
-				    bfad->msix_tab[i].name, &bfad->msix_tab[i]);
+				    (irq_handler_t)bfad_msix,
+				    IRQF_USER_DATA,
+				    bfad->msix_tab[i].name,
+				    &bfad->msix_tab[i]);
 		bfa_trc(bfad, i);
 		bfa_trc(bfad, bfad->msix_tab[i].msix.vector);
 		if (error) {
@@ -1261,7 +1263,8 @@ bfad_setup_intr(struct bfad_s *bfad)
 
 line_based:
 	error = request_irq(bfad->pcidev->irq, (irq_handler_t)bfad_intx,
-			    BFAD_IRQ_FLAGS, BFAD_DRIVER_NAME, bfad);
+			    BFAD_IRQ_FLAGS | IRQF_USER_DATA, BFAD_DRIVER_NAME,
+			    bfad);
 	if (error)
 		return error;
 

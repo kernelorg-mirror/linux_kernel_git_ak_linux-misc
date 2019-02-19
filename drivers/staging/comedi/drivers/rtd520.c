@@ -1238,7 +1238,8 @@ static int rtd_auto_attach(struct comedi_device *dev,
 	rtd_pci_latency_quirk(dev, pcidev);
 
 	if (pcidev->irq) {
-		ret = request_irq(pcidev->irq, rtd_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, rtd_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;

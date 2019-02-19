@@ -166,7 +166,8 @@ static int pps_gpio_probe(struct platform_device *pdev)
 
 	/* register IRQ interrupt handler */
 	ret = devm_request_irq(&pdev->dev, data->irq, pps_gpio_irq_handler,
-			get_irqf_trigger_flags(data), data->info.name, data);
+			       get_irqf_trigger_flags(data) | IRQF_USER_DATA,
+			       data->info.name, data);
 	if (ret) {
 		pps_unregister_source(data->pps);
 		dev_err(&pdev->dev, "failed to acquire IRQ %d\n", data->irq);

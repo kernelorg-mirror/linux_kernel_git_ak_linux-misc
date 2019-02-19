@@ -654,7 +654,8 @@ static struct spi_master * fsl_spi_probe(struct device *dev,
 
 	/* Register for SPI Interrupt */
 	ret = devm_request_irq(dev, mpc8xxx_spi->irq, fsl_spi_irq,
-			       0, "fsl_spi", mpc8xxx_spi);
+			       IRQF_USER_DATA, "fsl_spi",
+			       mpc8xxx_spi);
 
 	if (ret != 0)
 		goto err_probe;

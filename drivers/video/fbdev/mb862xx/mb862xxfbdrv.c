@@ -740,8 +740,7 @@ static int of_platform_mb862xx_probe(struct platform_device *ofdev)
 	if (mb862xx_gdc_init(par))
 		goto io_unmap;
 
-	if (request_irq(par->irq, mb862xx_intr, 0,
-			DRV_NAME, (void *)par)) {
+	if (request_irq(par->irq, mb862xx_intr, IRQF_USER_DATA, DRV_NAME, (void *)par)) {
 		dev_err(dev, "Cannot request irq\n");
 		goto io_unmap;
 	}
@@ -1077,8 +1076,8 @@ static int mb862xx_pci_probe(struct pci_dev *pdev,
 	if (ret)
 		goto io_unmap;
 
-	ret = request_irq(par->irq, mb862xx_intr, IRQF_SHARED,
-			  DRV_NAME, (void *)par);
+	ret = request_irq(par->irq, mb862xx_intr,
+			  IRQF_SHARED | IRQF_USER_DATA, DRV_NAME, (void *)par);
 	if (ret) {
 		dev_err(dev, "Cannot request irq\n");
 		goto io_unmap;

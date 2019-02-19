@@ -353,7 +353,8 @@ static int isci_setup_interrupts(struct pci_dev *pdev)
 			isr = isci_msix_isr;
 
 		err = devm_request_irq(&pdev->dev, pci_irq_vector(pdev, i),
-				isr, 0, DRV_NAME"-msix", ihost);
+				       isr, IRQF_USER_DATA,
+				       DRV_NAME "-msix", ihost);
 		if (!err)
 			continue;
 
@@ -372,8 +373,9 @@ static int isci_setup_interrupts(struct pci_dev *pdev)
  intx:
 	for_each_isci_host(i, ihost, pdev) {
 		err = devm_request_irq(&pdev->dev, pci_irq_vector(pdev, 0),
-				isci_intx_isr, IRQF_SHARED, DRV_NAME"-intx",
-				ihost);
+				       isci_intx_isr,
+				       IRQF_SHARED | IRQF_USER_DATA,
+				       DRV_NAME "-intx", ihost);
 		if (err)
 			break;
 	}

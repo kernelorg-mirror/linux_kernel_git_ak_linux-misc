@@ -1749,7 +1749,8 @@ static int at86rf230_probe(struct spi_device *spi)
 		irq_type = IRQF_TRIGGER_HIGH;
 
 	rc = devm_request_irq(&spi->dev, spi->irq, at86rf230_isr,
-			      IRQF_SHARED | irq_type, dev_name(&spi->dev), lp);
+			      IRQF_SHARED | irq_type | IRQF_USER_DATA,
+			      dev_name(&spi->dev), lp);
 	if (rc)
 		goto free_dev;
 

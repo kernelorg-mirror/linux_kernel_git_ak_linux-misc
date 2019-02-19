@@ -917,7 +917,7 @@ init_card(struct w6692_hw *card)
 	spin_lock_irqsave(&card->lock, flags);
 	disable_hwirq(card);
 	spin_unlock_irqrestore(&card->lock, flags);
-	if (request_irq(card->irq, w6692_irq, IRQF_SHARED, card->name, card)) {
+	if (request_irq(card->irq, w6692_irq, IRQF_SHARED | IRQF_USER_DATA, card->name, card)) {
 		pr_info("%s: couldn't get interrupt %d\n", card->name,
 			card->irq);
 		return -EIO;

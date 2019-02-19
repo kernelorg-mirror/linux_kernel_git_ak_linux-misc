@@ -1379,8 +1379,7 @@ static int snd_cs4281_create(struct snd_card *card,
 		return -ENOMEM;
 	}
 	
-	if (request_irq(pci->irq, snd_cs4281_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_cs4281_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_cs4281_free(chip);
 		return -ENOMEM;

@@ -1533,7 +1533,8 @@ static int pci9118_common_attach(struct comedi_device *dev,
 	pci9118_reset(dev);
 
 	if (pcidev->irq) {
-		ret = request_irq(pcidev->irq, pci9118_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, pci9118_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0) {
 			dev->irq = pcidev->irq;

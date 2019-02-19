@@ -470,8 +470,8 @@ static int vm_find_vqs(struct virtio_device *vdev, unsigned nvqs,
 	unsigned int irq = platform_get_irq(vm_dev->pdev, 0);
 	int i, err, queue_idx = 0;
 
-	err = request_irq(irq, vm_interrupt, IRQF_SHARED,
-			dev_name(&vdev->dev), vm_dev);
+	err = request_irq(irq, vm_interrupt, IRQF_SHARED | IRQF_USER_DATA,
+			  dev_name(&vdev->dev), vm_dev);
 	if (err)
 		return err;
 

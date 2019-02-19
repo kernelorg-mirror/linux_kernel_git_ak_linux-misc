@@ -764,13 +764,11 @@ static int corkscrew_open(struct net_device *dev)
 		/* Corkscrew: Cannot share ISA resources. */
 		if (dev->irq == 0 ||
 		    dev->dma == 0 ||
-		    request_irq(dev->irq, corkscrew_interrupt, 0,
-				vp->product_name, dev))
+		    request_irq(dev->irq, corkscrew_interrupt, IRQF_USER_DATA, vp->product_name, dev))
 			return -EAGAIN;
 		enable_dma(dev->dma);
 		set_dma_mode(dev->dma, DMA_MODE_CASCADE);
-	} else if (request_irq(dev->irq, corkscrew_interrupt, IRQF_SHARED,
-			       vp->product_name, dev)) {
+	} else if (request_irq(dev->irq, corkscrew_interrupt, IRQF_SHARED | IRQF_USER_DATA, vp->product_name, dev)) {
 		return -EAGAIN;
 	}
 

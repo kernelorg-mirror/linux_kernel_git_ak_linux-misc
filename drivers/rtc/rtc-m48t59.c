@@ -436,8 +436,9 @@ static int m48t59_rtc_probe(struct platform_device *pdev)
 
 	if (m48t59->irq != NO_IRQ) {
 		ret = devm_request_irq(&pdev->dev, m48t59->irq,
-				m48t59_rtc_interrupt, IRQF_SHARED,
-				"rtc-m48t59", &pdev->dev);
+				       m48t59_rtc_interrupt,
+				       IRQF_SHARED | IRQF_USER_DATA,
+				       "rtc-m48t59", &pdev->dev);
 		if (ret)
 			return ret;
 	}

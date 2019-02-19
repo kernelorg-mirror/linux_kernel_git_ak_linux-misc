@@ -529,8 +529,9 @@ static int ipc_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	pmc->ipc_base = pcim_iomap_table(pdev)[0];
 
-	ret = devm_request_irq(&pdev->dev, pdev->irq, ioc, 0, "intel_pmc_ipc",
-				pmc);
+	ret = devm_request_irq(&pdev->dev, pdev->irq, ioc,
+			       IRQF_USER_DATA,
+			       "intel_pmc_ipc", pmc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq\n");
 		return ret;
@@ -951,8 +952,7 @@ static int ipc_plat_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (devm_request_irq(&pdev->dev, ipcdev.irq, ioc, IRQF_NO_SUSPEND,
-			     "intel_pmc_ipc", &ipcdev)) {
+	if (devm_request_irq(&pdev->dev, ipcdev.irq, ioc, IRQF_NO_SUSPEND | IRQF_USER_DATA, "intel_pmc_ipc", &ipcdev)) {
 		dev_err(&pdev->dev, "Failed to request irq\n");
 		ret = -EBUSY;
 		goto err_irq;

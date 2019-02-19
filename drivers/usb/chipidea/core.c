@@ -1060,8 +1060,9 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = devm_request_irq(dev, ci->irq, ci_irq, IRQF_SHARED,
-			ci->platdata->name, ci);
+	ret = devm_request_irq(dev, ci->irq, ci_irq,
+			       IRQF_SHARED | IRQF_USER_DATA,
+			       ci->platdata->name, ci);
 	if (ret)
 		goto stop;
 

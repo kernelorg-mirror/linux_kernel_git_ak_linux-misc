@@ -496,7 +496,7 @@ static int act8945a_charger_config(struct device *dev,
 
 	ret = devm_request_irq(dev, gpiod_to_irq(charger->lbo_gpio),
 			       act8945a_status_changed,
-			       (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING),
+			       (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING) | IRQF_USER_DATA,
 			       "act8945a_lbo_detect", charger);
 	if (ret)
 		dev_info(dev, "failed to request gpio \"lbo\" IRQ\n");
@@ -602,8 +602,8 @@ static int act8945a_charger_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(&pdev->dev, irq, act8945a_status_changed,
-			       IRQF_TRIGGER_FALLING, "act8945a_interrupt",
-			       charger);
+			       IRQF_TRIGGER_FALLING | IRQF_USER_DATA,
+			       "act8945a_interrupt", charger);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request nIRQ pin IRQ\n");
 		return ret;

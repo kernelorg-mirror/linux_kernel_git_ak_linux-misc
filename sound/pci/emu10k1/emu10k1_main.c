@@ -2007,8 +2007,7 @@ int snd_emu10k1_create(struct snd_card *card,
 	emu->fx8010.etram_pages.bytes = 0;
 
 	/* irq handler must be registered after I/O ports are activated */
-	if (request_irq(pci->irq, snd_emu10k1_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, emu)) {
+	if (request_irq(pci->irq, snd_emu10k1_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, emu)) {
 		err = -EBUSY;
 		goto error;
 	}

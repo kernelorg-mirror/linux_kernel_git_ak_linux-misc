@@ -1252,8 +1252,7 @@ static int sis_resume(struct device *dev)
 		goto error;
 	}
 
-	if (request_irq(pci->irq, sis_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, sis)) {
+	if (request_irq(pci->irq, sis_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, sis)) {
 		dev_err(&pci->dev, "unable to regain IRQ %d\n", pci->irq);
 		goto error;
 	}
@@ -1362,8 +1361,8 @@ static int sis_chip_create(struct snd_card *card,
 	if (rc)
 		goto error_out_cleanup;
 
-	rc = request_irq(pci->irq, sis_interrupt, IRQF_SHARED, KBUILD_MODNAME,
-			 sis);
+	rc = request_irq(pci->irq, sis_interrupt,
+			 IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, sis);
 	if (rc) {
 		dev_err(&pci->dev, "unable to allocate irq %d\n", sis->irq);
 		goto error_out_cleanup;

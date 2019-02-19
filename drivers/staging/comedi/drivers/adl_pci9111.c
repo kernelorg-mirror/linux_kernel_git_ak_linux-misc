@@ -643,7 +643,8 @@ static int pci9111_auto_attach(struct comedi_device *dev,
 
 	if (pcidev->irq) {
 		ret = request_irq(pcidev->irq, pci9111_interrupt,
-				  IRQF_SHARED, dev->board_name, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;
 	}

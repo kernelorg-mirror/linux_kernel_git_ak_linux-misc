@@ -2449,7 +2449,8 @@ static int s626_auto_attach(struct comedi_device *dev,
 		return ret;
 
 	if (pcidev->irq) {
-		ret = request_irq(pcidev->irq, s626_irq_handler, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, s626_irq_handler,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 
 		if (ret == 0)

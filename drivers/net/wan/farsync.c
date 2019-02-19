@@ -2466,7 +2466,7 @@ fst_add_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	dbg(DBG_PCI, "kernel mem %p, ctlmem %p\n", card->mem, card->ctlmem);
 
 	/* Register the interrupt handler */
-	if (request_irq(pdev->irq, fst_intr, IRQF_SHARED, FST_DEV_NAME, card)) {
+	if (request_irq(pdev->irq, fst_intr, IRQF_SHARED | IRQF_USER_DATA, FST_DEV_NAME, card)) {
 		pr_err("Unable to register interrupt %d\n", card->irq);
 		err = -ENODEV;
 		goto irq_fail;

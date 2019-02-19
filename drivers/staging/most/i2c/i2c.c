@@ -88,7 +88,8 @@ static int configure_channel(struct most_interface *most_iface,
 				return -ENOENT;
 			}
 			dev->rx.int_disabled = false;
-			ret = request_irq(dev->client->irq, most_irq_handler, 0,
+			ret = request_irq(dev->client->irq, most_irq_handler,
+					  IRQF_USER_DATA,
 					  dev->client->name, dev);
 			if (ret) {
 				pr_err("request_irq(%d) failed: %d\n",

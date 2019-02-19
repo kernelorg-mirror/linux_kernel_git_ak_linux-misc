@@ -263,8 +263,8 @@ static int goldfish_fb_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_fb_set_var_failed;
 
-	ret = request_irq(fb->irq, goldfish_fb_interrupt, IRQF_SHARED,
-							pdev->name, fb);
+	ret = request_irq(fb->irq, goldfish_fb_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, pdev->name, fb);
 	if (ret)
 		goto err_request_irq_failed;
 

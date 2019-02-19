@@ -387,8 +387,7 @@ int pnp_check_irq(struct pnp_dev *dev, struct resource *res)
 	/* check if the resource is already in use, skip if the
 	 * device is active because it itself may be in use */
 	if (!dev->active) {
-		if (request_irq(*irq, pnp_test_handler,
-				IRQF_PROBE_SHARED, "pnp", NULL))
+		if (request_irq(*irq, pnp_test_handler, IRQF_PROBE_SHARED | IRQF_USER_DATA, "pnp", NULL))
 			return 0;
 		free_irq(*irq, NULL);
 	}

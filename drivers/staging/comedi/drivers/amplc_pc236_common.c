@@ -155,8 +155,7 @@ int amplc_pc236_common_attach(struct comedi_device *dev, unsigned long iobase,
 	s->type = COMEDI_SUBD_UNUSED;
 	pc236_intr_update(dev, false);
 	if (irq) {
-		if (request_irq(irq, pc236_interrupt, req_irq_flags,
-				dev->board_name, dev) >= 0) {
+		if (request_irq(irq, pc236_interrupt, req_irq_flags | IRQF_USER_DATA, dev->board_name, dev) >= 0) {
 			dev->irq = irq;
 			s->type = COMEDI_SUBD_DI;
 			s->subdev_flags = SDF_READABLE | SDF_CMD_READ;

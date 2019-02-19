@@ -3676,8 +3676,8 @@ static int rt5663_i2c_probe(struct i2c_client *i2c,
 
 	if (i2c->irq) {
 		ret = request_irq(i2c->irq, rt5663_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-			| IRQF_ONESHOT, "rt5663", rt5663);
+				  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_USER_DATA,
+				  "rt5663", rt5663);
 		if (ret) {
 			dev_err(&i2c->dev, "%s Failed to reguest IRQ: %d\n",
 				__func__, ret);

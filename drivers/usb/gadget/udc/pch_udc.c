@@ -1394,8 +1394,9 @@ static int pch_vbus_gpio_init(struct pch_udc_dev *dev, int vbus_gpio_port)
 	irq_num = gpio_to_irq(vbus_gpio_port);
 	if (irq_num > 0) {
 		irq_set_irq_type(irq_num, IRQ_TYPE_EDGE_BOTH);
-		err = request_irq(irq_num, pch_vbus_gpio_irq, 0,
-			"vbus_detect", dev);
+		err = request_irq(irq_num, pch_vbus_gpio_irq,
+				  IRQF_USER_DATA,
+				  "vbus_detect", dev);
 		if (!err) {
 			dev->vbus_gpio.intr = irq_num;
 			INIT_WORK(&dev->vbus_gpio.irq_work_rise,
@@ -3106,7 +3107,8 @@ static int pch_udc_probe(struct pci_dev *pdev,
 	pci_enable_msi(pdev);
 
 	retval = devm_request_irq(&pdev->dev, pdev->irq, pch_udc_isr,
-				  IRQF_SHARED, KBUILD_MODNAME, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  KBUILD_MODNAME, dev);
 	if (retval) {
 		dev_err(&pdev->dev, "%s: request_irq(%d) fail\n", __func__,
 			pdev->irq);

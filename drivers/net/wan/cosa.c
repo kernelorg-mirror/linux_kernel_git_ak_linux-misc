@@ -541,7 +541,7 @@ static int cosa_probe(int base, int irq, int dma)
 	cosa->usage = 0;
 	cosa->nchannels = 2;	/* FIXME: how to determine this? */
 
-	if (request_irq(cosa->irq, cosa_interrupt, 0, cosa->type, cosa)) {
+	if (request_irq(cosa->irq, cosa_interrupt, IRQF_USER_DATA, cosa->type, cosa)) {
 		err = -1;
 		goto err_out;
 	}

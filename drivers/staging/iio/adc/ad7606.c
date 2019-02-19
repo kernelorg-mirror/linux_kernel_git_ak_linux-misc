@@ -480,7 +480,8 @@ int ad7606_probe(struct device *dev, int irq, void __iomem *base_address,
 	if (ret)
 		dev_warn(st->dev, "failed to RESET: no RESET GPIO specified\n");
 
-	ret = request_irq(irq, ad7606_interrupt, IRQF_TRIGGER_FALLING, name,
+	ret = request_irq(irq, ad7606_interrupt,
+			  IRQF_TRIGGER_FALLING | IRQF_USER_DATA, name,
 			  indio_dev);
 	if (ret)
 		goto error_disable_reg;

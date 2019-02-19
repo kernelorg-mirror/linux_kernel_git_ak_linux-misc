@@ -1095,7 +1095,8 @@ static int qtnf_pcie_pearl_probe(struct qtnf_bus *bus, unsigned int tx_bd_size)
 	qtnf_disable_hdp_irqs(ps);
 
 	ret = devm_request_irq(&pdev->dev, pdev->irq,
-			       &qtnf_pcie_pearl_interrupt, 0,
+			       &qtnf_pcie_pearl_interrupt,
+			       IRQF_USER_DATA,
 			       "qtnf_pearl_irq", (void *)bus);
 	if (ret) {
 		pr_err("failed to request pcie irq %d\n", pdev->irq);

@@ -415,11 +415,9 @@ static int pciefd_pre_cmd(struct peak_canfd_priv *ucan)
 			break;
 
 		/* going into operational mode: setup IRQ handler */
-		err = request_irq(priv->ucan.ndev->irq,
-				  pciefd_irq_handler,
-				  IRQF_SHARED,
-				  PCIEFD_DRV_NAME,
-				  priv);
+		err = request_irq(priv->ucan.ndev->irq, pciefd_irq_handler,
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  PCIEFD_DRV_NAME, priv);
 		if (err)
 			return err;
 

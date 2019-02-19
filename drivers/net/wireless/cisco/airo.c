@@ -1894,8 +1894,8 @@ static int airo_open(struct net_device *dev) {
 		if (IS_ERR(ai->airo_thread_task))
 			return (int)PTR_ERR(ai->airo_thread_task);
 
-		rc = request_irq(dev->irq, airo_interrupt, IRQF_SHARED,
-			dev->name, dev);
+		rc = request_irq(dev->irq, airo_interrupt,
+				 IRQF_SHARED | IRQF_USER_DATA, dev->name, dev);
 		if (rc) {
 			airo_print_err(dev->name,
 				"register interrupt %d failed, rc %d",

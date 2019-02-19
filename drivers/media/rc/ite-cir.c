@@ -1593,8 +1593,7 @@ static int ite_probe(struct pnp_dev *pdev, const struct pnp_device_id
 				dev_desc->io_region_size, ITE_DRIVER_NAME))
 		goto exit_unregister_device;
 
-	if (request_irq(itdev->cir_irq, ite_cir_isr, IRQF_SHARED,
-			ITE_DRIVER_NAME, (void *)itdev))
+	if (request_irq(itdev->cir_irq, ite_cir_isr, IRQF_SHARED | IRQF_USER_DATA, ITE_DRIVER_NAME, (void *)itdev))
 		goto exit_release_cir_addr;
 
 	ite_pr(KERN_NOTICE, "driver has been successfully loaded\n");

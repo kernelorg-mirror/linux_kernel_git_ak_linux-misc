@@ -1168,8 +1168,8 @@ static int fotg210_udc_probe(struct platform_device *pdev)
 
 	fotg210_disable_unplug(fotg210);
 
-	ret = request_irq(ires->start, fotg210_irq, IRQF_SHARED,
-			  udc_name, fotg210);
+	ret = request_irq(ires->start, fotg210_irq,
+			  IRQF_SHARED | IRQF_USER_DATA, udc_name, fotg210);
 	if (ret < 0) {
 		pr_err("request_irq error (%d)\n", ret);
 		goto err_req;

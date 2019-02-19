@@ -607,8 +607,7 @@ static int gsc_hpdi_auto_attach(struct comedi_device *dev,
 	gsc_hpdi_init_plx9080(dev);
 
 	/* get irq */
-	if (request_irq(pcidev->irq, gsc_hpdi_interrupt, IRQF_SHARED,
-			dev->board_name, dev)) {
+	if (request_irq(pcidev->irq, gsc_hpdi_interrupt, IRQF_SHARED | IRQF_USER_DATA, dev->board_name, dev)) {
 		dev_warn(dev->class_dev,
 			 "unable to allocate irq %u\n", pcidev->irq);
 		return -EINVAL;

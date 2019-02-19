@@ -2727,7 +2727,7 @@ _base_request_irq(struct MPT3SAS_ADAPTER *ioc, u8 index)
 		snprintf(reply_q->name, MPT_NAME_LENGTH, "%s%d",
 		    ioc->driver_name, ioc->id);
 	r = request_irq(pci_irq_vector(pdev, index), _base_interrupt,
-			IRQF_SHARED, reply_q->name, reply_q);
+			IRQF_SHARED | IRQF_USER_DATA, reply_q->name, reply_q);
 	if (r) {
 		pr_err("%s: unable to allocate interrupt %d!\n",
 		       reply_q->name, pci_irq_vector(pdev, index));

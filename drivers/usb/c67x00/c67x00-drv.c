@@ -146,7 +146,8 @@ static int c67x00_drv_probe(struct platform_device *pdev)
 	c67x00_ll_init(c67x00);
 	c67x00_ll_hpi_reg_init(c67x00);
 
-	ret = request_irq(res2->start, c67x00_irq, 0, pdev->name, c67x00);
+	ret = request_irq(res2->start, c67x00_irq,
+			  IRQF_USER_DATA, pdev->name, c67x00);
 	if (ret) {
 		dev_err(&pdev->dev, "Cannot claim IRQ\n");
 		goto request_irq_failed;

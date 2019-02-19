@@ -1807,8 +1807,7 @@ static int snd_es18xx_new_device(struct snd_card *card,
 		return -EBUSY;
 	}
 
-	if (request_irq(irq, snd_es18xx_interrupt, 0, "ES18xx",
-			(void *) card)) {
+	if (request_irq(irq, snd_es18xx_interrupt, IRQF_USER_DATA, "ES18xx", (void *)card)) {
 		snd_es18xx_free(card);
 		snd_printk(KERN_ERR PFX "unable to grap IRQ %d\n", irq);
 		return -EBUSY;

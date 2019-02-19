@@ -1158,8 +1158,8 @@ static int inia100_probe_one(struct pci_dev *pdev,
 	shost->sg_tablesize = TOTAL_SG_ENTRY;
 
 	/* Initial orc chip           */
-	error = request_irq(pdev->irq, inia100_intr, IRQF_SHARED,
-			"inia100", shost);
+	error = request_irq(pdev->irq, inia100_intr,
+			    IRQF_SHARED | IRQF_USER_DATA, "inia100", shost);
 	if (error < 0) {
 		printk(KERN_WARNING "inia100: unable to get irq %d\n",
 				pdev->irq);

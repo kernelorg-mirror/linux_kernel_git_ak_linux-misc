@@ -922,7 +922,8 @@ static int vsoc_probe_device(struct pci_dev *pdev,
 			shm_off_to_virtual_addr(region->region_begin_offset) +
 			g_to_h_signal_table->interrupt_signalled_offset;
 		result = request_irq(vsoc_dev.msix_entries[i].vector,
-				     vsoc_interrupt, 0,
+				     vsoc_interrupt,
+				     IRQF_USER_DATA,
 				     vsoc_dev.regions_data[i].name,
 				     vsoc_dev.regions_data + i);
 		if (result) {

@@ -309,8 +309,7 @@ static int flexcop_pci_init(struct flexcop_pci *fc_pci)
 
 	pci_set_drvdata(fc_pci->pdev, fc_pci);
 	spin_lock_init(&fc_pci->irq_lock);
-	if ((ret = request_irq(fc_pci->pdev->irq, flexcop_pci_isr,
-					IRQF_SHARED, DRIVER_NAME, fc_pci)) != 0)
+	if ((ret = request_irq(fc_pci->pdev->irq, flexcop_pci_isr, IRQF_SHARED | IRQF_USER_DATA, DRIVER_NAME, fc_pci)) != 0)
 		goto err_pci_iounmap;
 
 	fc_pci->init_state |= FC_PCI_INIT;

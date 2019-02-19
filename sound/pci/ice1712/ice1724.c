@@ -2576,8 +2576,7 @@ static int snd_vt1724_create(struct snd_card *card,
 	ice->port = pci_resource_start(pci, 0);
 	ice->profi_port = pci_resource_start(pci, 1);
 
-	if (request_irq(pci->irq, snd_vt1724_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, ice)) {
+	if (request_irq(pci->irq, snd_vt1724_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, ice)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_vt1724_free(ice);
 		return -EIO;

@@ -238,7 +238,8 @@ static int apci2032_auto_attach(struct comedi_device *dev,
 
 	if (pcidev->irq > 0) {
 		ret = request_irq(pcidev->irq, apci2032_interrupt,
-				  IRQF_SHARED, dev->board_name, dev);
+				  IRQF_SHARED | IRQF_USER_DATA,
+				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;
 	}

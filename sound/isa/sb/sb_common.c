@@ -237,11 +237,7 @@ int snd_sbdsp_create(struct snd_card *card,
 	chip->dma16 = -1;
 	chip->port = port;
 	
-	if (request_irq(irq, irq_handler,
-			(hardware == SB_HW_ALS4000 ||
-			 hardware == SB_HW_CS5530) ?
-			IRQF_SHARED : 0,
-			"SoundBlaster", (void *) chip)) {
+	if (request_irq(irq, irq_handler, ((hardware == SB_HW_ALS4000 || hardware == SB_HW_CS5530) ? IRQF_SHARED : 0) | IRQF_USER_DATA, "SoundBlaster", (void *)chip)) {
 		snd_printk(KERN_ERR "sb: can't grab irq %d\n", irq);
 		snd_sbdsp_free(chip);
 		return -EBUSY;

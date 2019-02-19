@@ -111,7 +111,7 @@ static struct Scsi_Host *__qlogicfas_detect(struct scsi_host_template *host,
 		qltyp, qbase, qlirq, QL_TURBO_PDMA);
 	host->name = qlogicfas_name;
 
-	if (request_irq(qlirq, qlogicfas408_ihandl, 0, qlogicfas_name, hreg))
+	if (request_irq(qlirq, qlogicfas408_ihandl, IRQF_USER_DATA, qlogicfas_name, hreg))
 		goto free_scsi_host;
 
 	if (scsi_add_host(hreg, NULL))

@@ -101,7 +101,7 @@ static int gpio_ir_recv_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, gpio_dev);
 
 	return devm_request_irq(dev, gpio_dev->irq, gpio_ir_recv_irq,
-				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_USER_DATA,
 				"gpio-ir-recv-irq", gpio_dev);
 }
 

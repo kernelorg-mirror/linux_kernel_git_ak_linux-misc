@@ -116,9 +116,10 @@ int brcmf_sdiod_intr_register(struct brcmf_sdio_dev *sdiodev)
 		spin_lock_init(&sdiodev->irq_en_lock);
 		sdiodev->irq_en = true;
 
-		ret = request_irq(pdata->oob_irq_nr, brcmf_sdiod_oob_irqhandler,
-				  pdata->oob_irq_flags, "brcmf_oob_intr",
-				  &sdiodev->func1->dev);
+		ret = request_irq(pdata->oob_irq_nr,
+				  brcmf_sdiod_oob_irqhandler,
+				  pdata->oob_irq_flags | IRQF_USER_DATA,
+				  "brcmf_oob_intr", &sdiodev->func1->dev);
 		if (ret != 0) {
 			brcmf_err("request_irq failed %d\n", ret);
 			return ret;

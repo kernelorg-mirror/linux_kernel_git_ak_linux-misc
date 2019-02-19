@@ -665,7 +665,9 @@ int snd_es1688_create(struct snd_card *card,
 		goto exit;
 	}
 
-	err = request_irq(irq, snd_es1688_interrupt, 0, "ES1688", (void *) chip);
+	err = request_irq(irq, snd_es1688_interrupt,
+			  IRQF_USER_DATA, "ES1688",
+			  (void *)chip);
 	if (err < 0) {
 		snd_printk(KERN_ERR "es1688: can't grab IRQ %d\n", irq);
 		goto exit;

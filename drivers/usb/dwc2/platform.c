@@ -427,7 +427,8 @@ static int dwc2_driver_probe(struct platform_device *dev)
 	dev_dbg(hsotg->dev, "registering common handler for irq%d\n",
 		hsotg->irq);
 	retval = devm_request_irq(hsotg->dev, hsotg->irq,
-				  dwc2_handle_common_intr, IRQF_SHARED,
+				  dwc2_handle_common_intr,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev_name(hsotg->dev), hsotg);
 	if (retval)
 		return retval;

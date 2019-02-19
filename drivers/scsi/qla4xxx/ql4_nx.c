@@ -4190,13 +4190,15 @@ qla4_8xxx_enable_msix(struct scsi_qla_host *ha)
 	}
 
 	ret = request_irq(pci_irq_vector(ha->pdev, 0),
-			qla4_8xxx_default_intr_handler, 0, "qla4xxx (default)",
-			ha);
+			  qla4_8xxx_default_intr_handler,
+			  IRQF_USER_DATA,
+			  "qla4xxx (default)", ha);
 	if (ret)
 		goto out_free_vectors;
 
-	ret = request_irq(pci_irq_vector(ha->pdev, 1),
-			qla4_8xxx_msix_rsp_q, 0, "qla4xxx (rsp_q)", ha);
+	ret = request_irq(pci_irq_vector(ha->pdev, 1), qla4_8xxx_msix_rsp_q,
+			  IRQF_USER_DATA, "qla4xxx (rsp_q)",
+			  ha);
 	if (ret)
 		goto out_free_default_irq;
 

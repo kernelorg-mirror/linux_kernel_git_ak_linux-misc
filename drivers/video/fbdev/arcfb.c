@@ -550,8 +550,7 @@ static int arcfb_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, info);
 	if (irq) {
 		par->irq = irq;
-		if (request_irq(par->irq, &arcfb_interrupt, IRQF_SHARED,
-				"arcfb", info)) {
+		if (request_irq(par->irq, &arcfb_interrupt, IRQF_SHARED | IRQF_USER_DATA, "arcfb", info)) {
 			printk(KERN_INFO
 				"arcfb: Failed req IRQ %d\n", par->irq);
 			retval = -EBUSY;

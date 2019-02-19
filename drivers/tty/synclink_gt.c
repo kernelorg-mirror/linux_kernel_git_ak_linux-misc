@@ -3635,11 +3635,7 @@ static void device_init(int adapter_num, struct pci_dev *pdev)
 			alloc_dma_bufs(port_array[i]);
 		}
 
-		if (request_irq(port_array[0]->irq_level,
-					slgt_interrupt,
-					port_array[0]->irq_flags,
-					port_array[0]->device_name,
-					port_array[0]) < 0) {
+		if (request_irq(port_array[0]->irq_level, slgt_interrupt, port_array[0]->irq_flags | IRQF_USER_DATA, port_array[0]->device_name, port_array[0]) < 0) {
 			DBGERR(("%s request_irq failed IRQ=%d\n",
 				port_array[0]->device_name,
 				port_array[0]->irq_level));

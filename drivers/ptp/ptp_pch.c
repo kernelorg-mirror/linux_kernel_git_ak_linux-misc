@@ -633,7 +633,8 @@ pch_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	spin_lock_init(&chip->register_lock);
 
-	ret = request_irq(pdev->irq, &isr, IRQF_SHARED, KBUILD_MODNAME, chip);
+	ret = request_irq(pdev->irq, &isr, IRQF_SHARED | IRQF_USER_DATA,
+			  KBUILD_MODNAME, chip);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "failed to get irq %d\n", pdev->irq);
 		goto err_req_irq;

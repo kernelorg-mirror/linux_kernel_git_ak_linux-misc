@@ -1188,8 +1188,8 @@ static bool saa7164_enable_msi(struct pci_dev *pci_dev, struct saa7164_dev *dev)
 	}
 
 	/* no error - so request an msi interrupt */
-	err = request_irq(pci_dev->irq, saa7164_irq, 0,
-						dev->name, dev);
+	err = request_irq(pci_dev->irq, saa7164_irq,
+			  IRQF_USER_DATA, dev->name, dev);
 
 	if (err) {
 		/* fall back to legacy interrupt */
@@ -1256,7 +1256,8 @@ static int saa7164_initdev(struct pci_dev *pci_dev,
 			 or msi is not enabled - fallback to shared interrupt */
 
 		err = request_irq(pci_dev->irq, saa7164_irq,
-				IRQF_SHARED, dev->name, dev);
+				  IRQF_SHARED | IRQF_USER_DATA, dev->name,
+				  dev);
 
 		if (err < 0) {
 			printk(KERN_ERR "%s: can't get IRQ %d\n", dev->name,

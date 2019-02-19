@@ -4696,7 +4696,7 @@ static int mwl8k_start(struct ieee80211_hw *hw)
 	int rc;
 
 	rc = request_irq(priv->pdev->irq, mwl8k_interrupt,
-			 IRQF_SHARED, MWL8K_NAME, hw);
+			 IRQF_SHARED | IRQF_USER_DATA, MWL8K_NAME, hw);
 	if (rc) {
 		priv->irq = -1;
 		wiphy_err(hw->wiphy, "failed to register IRQ handler\n");
@@ -5902,7 +5902,7 @@ static int mwl8k_probe_hw(struct ieee80211_hw *hw)
 		  priv->regs + MWL8K_HIU_A2H_INTERRUPT_STATUS_MASK);
 
 	rc = request_irq(priv->pdev->irq, mwl8k_interrupt,
-			 IRQF_SHARED, MWL8K_NAME, hw);
+			 IRQF_SHARED | IRQF_USER_DATA, MWL8K_NAME, hw);
 	if (rc) {
 		wiphy_err(hw->wiphy, "failed to register IRQ handler\n");
 		goto err_free_queues;

@@ -1180,7 +1180,8 @@ static int c4_add_card(struct capicardparams *p, struct pci_dev *dev,
 	}
 	c4_reset(card);
 
-	retval = request_irq(card->irq, c4_interrupt, IRQF_SHARED, card->name, card);
+	retval = request_irq(card->irq, c4_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, card->name, card);
 	if (retval) {
 		printk(KERN_ERR "c4: unable to get IRQ %d.\n", card->irq);
 		retval = -EBUSY;

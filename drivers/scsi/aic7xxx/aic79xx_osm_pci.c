@@ -383,7 +383,7 @@ ahd_pci_map_int(struct ahd_softc *ahd)
 	int error;
 
 	error = request_irq(ahd->dev_softc->irq, ahd_linux_isr,
-			    IRQF_SHARED, "aic79xx", ahd);
+			    IRQF_SHARED | IRQF_USER_DATA, "aic79xx", ahd);
 	if (!error)
 		ahd->platform_data->irq = ahd->dev_softc->irq;
 	

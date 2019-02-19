@@ -340,9 +340,9 @@ static int tpci200_register(struct tpci200_board *tpci200)
 	for (i = 0; i < TPCI200_NB_SLOT; i++)
 		writew(slot_ctrl, &tpci200->info->interface_regs->control[i]);
 
-	res = request_irq(tpci200->info->pdev->irq,
-			  tpci200_interrupt, IRQF_SHARED,
-			  KBUILD_MODNAME, (void *) tpci200);
+	res = request_irq(tpci200->info->pdev->irq, tpci200_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME,
+			  (void *)tpci200);
 	if (res) {
 		dev_err(&tpci200->info->pdev->dev,
 			"(bn 0x%X, sn 0x%X) unable to register IRQ !",

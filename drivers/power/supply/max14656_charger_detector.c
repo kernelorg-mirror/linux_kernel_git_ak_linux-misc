@@ -281,7 +281,7 @@ static int max14656_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&chip->irq_work, max14656_irq_worker);
 
 	ret = devm_request_irq(dev, chip->irq, max14656_irq,
-			       IRQF_TRIGGER_FALLING,
+			       IRQF_TRIGGER_FALLING | IRQF_USER_DATA,
 			       MAX14656_NAME, chip);
 	if (ret) {
 		dev_err(dev, "request_irq %d failed\n", chip->irq);

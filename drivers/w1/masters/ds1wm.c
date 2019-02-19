@@ -578,7 +578,8 @@ static int ds1wm_probe(struct platform_device *pdev)
 		irq_set_irq_type(ds1wm_data->irq, IRQ_TYPE_LEVEL_LOW);
 
 	ret = devm_request_irq(&pdev->dev, ds1wm_data->irq, ds1wm_isr,
-			IRQF_SHARED, "ds1wm", ds1wm_data);
+			       IRQF_SHARED | IRQF_USER_DATA, "ds1wm",
+			       ds1wm_data);
 	if (ret) {
 		dev_err(&ds1wm_data->pdev->dev,
 			"devm_request_irq %d failed with errno %d\n",

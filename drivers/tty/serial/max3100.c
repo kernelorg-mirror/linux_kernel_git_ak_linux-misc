@@ -603,8 +603,7 @@ static int max3100_startup(struct uart_port *port)
 	}
 	INIT_WORK(&s->work, max3100_work);
 
-	if (request_irq(s->irq, max3100_irq,
-			IRQF_TRIGGER_FALLING, "max3100", s) < 0) {
+	if (request_irq(s->irq, max3100_irq, IRQF_TRIGGER_FALLING | IRQF_USER_DATA, "max3100", s) < 0) {
 		dev_warn(&s->spi->dev, "cannot allocate irq %d\n", s->irq);
 		s->irq = 0;
 		destroy_workqueue(s->workqueue);

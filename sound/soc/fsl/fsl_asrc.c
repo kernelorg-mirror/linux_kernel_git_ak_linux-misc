@@ -839,7 +839,8 @@ static int fsl_asrc_probe(struct platform_device *pdev)
 		return irq;
 	}
 
-	ret = devm_request_irq(&pdev->dev, irq, fsl_asrc_isr, 0,
+	ret = devm_request_irq(&pdev->dev, irq, fsl_asrc_isr,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), asrc_priv);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to claim irq %u: %d\n", irq, ret);

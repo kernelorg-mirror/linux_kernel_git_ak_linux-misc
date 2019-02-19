@@ -581,8 +581,9 @@ static int sja1000_open(struct net_device *dev)
 
 	/* register interrupt handler, if not done by the device driver */
 	if (!(priv->flags & SJA1000_CUSTOM_IRQ_HANDLER)) {
-		err = request_irq(dev->irq, sja1000_interrupt, priv->irq_flags,
-				  dev->name, (void *)dev);
+		err = request_irq(dev->irq, sja1000_interrupt,
+				  priv->irq_flags | IRQF_USER_DATA, dev->name,
+				  (void *)dev);
 		if (err) {
 			close_candev(dev);
 			return -EAGAIN;

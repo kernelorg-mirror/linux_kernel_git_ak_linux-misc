@@ -259,7 +259,8 @@ xpc_create_gru_mq_uv(unsigned int mq_size, int cpu, char *irq_name,
 	if (ret != 0)
 		goto out_4;
 
-	ret = request_irq(mq->irq, irq_handler, 0, irq_name, NULL);
+	ret = request_irq(mq->irq, irq_handler,
+			  IRQF_USER_DATA, irq_name, NULL);
 	if (ret != 0) {
 		dev_err(xpc_part, "request_irq(irq=%d) returned error=%d\n",
 			mq->irq, -ret);

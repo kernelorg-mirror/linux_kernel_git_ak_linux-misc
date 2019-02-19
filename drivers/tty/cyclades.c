@@ -3306,8 +3306,7 @@ static int __init cy_detect_isa(void)
 		}
 
 		/* allocate IRQ */
-		if (request_irq(cy_isa_irq, cyy_interrupt,
-				0, "Cyclom-Y", card)) {
+		if (request_irq(cy_isa_irq, cyy_interrupt, IRQF_USER_DATA, "Cyclom-Y", card)) {
 			printk(KERN_ERR "Cyclom-Y/ISA found at 0x%lx, but "
 				"could not allocate IRQ#%d.\n",
 				(unsigned long)cy_isa_address, cy_isa_irq);
@@ -3790,7 +3789,8 @@ static int cy_pci_probe(struct pci_dev *pdev,
 			device_id == PCI_DEVICE_ID_CYCLOM_Y_Hi) {
 		/* allocate IRQ */
 		retval = request_irq(irq, cyy_interrupt,
-				IRQF_SHARED, "Cyclom-Y", card);
+				     IRQF_SHARED | IRQF_USER_DATA, "Cyclom-Y",
+				     card);
 		if (retval) {
 			dev_err(&pdev->dev, "could not allocate IRQ\n");
 			goto err_unmap;
@@ -3809,7 +3809,8 @@ static int cy_pci_probe(struct pci_dev *pdev,
 		/* allocate IRQ only if board has an IRQ */
 		if (irq != 0 && irq != 255) {
 			retval = request_irq(irq, cyz_interrupt,
-					IRQF_SHARED, "Cyclades-Z", card);
+					     IRQF_SHARED | IRQF_USER_DATA,
+					     "Cyclades-Z", card);
 			if (retval) {
 				dev_err(&pdev->dev, "could not allocate IRQ\n");
 				goto err_unmap;

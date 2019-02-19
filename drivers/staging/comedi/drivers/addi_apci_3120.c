@@ -994,7 +994,8 @@ static int apci3120_auto_attach(struct comedi_device *dev,
 	apci3120_reset(dev);
 
 	if (pcidev->irq > 0) {
-		ret = request_irq(pcidev->irq, apci3120_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, apci3120_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0) {
 			dev->irq = pcidev->irq;

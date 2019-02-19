@@ -751,8 +751,8 @@ static int ns_init_card(int i, struct pci_dev *pcidev)
 	card->efbie = 1;
 
 	card->intcnt = 0;
-	if (request_irq
-	    (pcidev->irq, &ns_irq_handler, IRQF_SHARED, "nicstar", card) != 0) {
+	if (request_irq(pcidev->irq, &ns_irq_handler,
+				IRQF_SHARED | IRQF_USER_DATA, "nicstar", card) != 0) {
 		printk("nicstar%d: can't allocate IRQ %d.\n", i, pcidev->irq);
 		error = 9;
 		ns_init_card_error(card, error);

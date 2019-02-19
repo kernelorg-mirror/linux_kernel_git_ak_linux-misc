@@ -1584,8 +1584,9 @@ static int spmi_regulator_of_parse(struct device_node *node,
 
 	if (vreg->ocp_irq) {
 		ret = devm_request_irq(dev, vreg->ocp_irq,
-			spmi_regulator_vs_ocp_isr, IRQF_TRIGGER_RISING, "ocp",
-			vreg);
+				       spmi_regulator_vs_ocp_isr,
+				       IRQF_TRIGGER_RISING | IRQF_USER_DATA,
+				       "ocp", vreg);
 		if (ret < 0) {
 			dev_err(dev, "failed to request irq %d, ret=%d\n",
 				vreg->ocp_irq, ret);

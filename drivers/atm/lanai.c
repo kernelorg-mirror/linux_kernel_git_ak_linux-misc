@@ -2198,8 +2198,8 @@ static int lanai_dev_open(struct atm_dev *atmdev)
 	conf2_write(lanai);
 	reg_write(lanai, TX_FIFO_DEPTH, TxDepth_Reg);
 	reg_write(lanai, 0, CBR_ICG_Reg);	/* CBR defaults to no limit */
-	if ((result = request_irq(lanai->pci->irq, lanai_int, IRQF_SHARED,
-	    DEV_LABEL, lanai)) != 0) {
+	if ((result = request_irq(lanai->pci->irq, lanai_int,
+				IRQF_SHARED | IRQF_USER_DATA, DEV_LABEL, lanai)) != 0) {
 		printk(KERN_ERR DEV_LABEL ": can't allocate interrupt\n");
 		goto error_vcctable;
 	}

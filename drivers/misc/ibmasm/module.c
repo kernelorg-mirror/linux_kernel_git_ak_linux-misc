@@ -114,7 +114,9 @@ static int ibmasm_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto error_ioremap;
 	}
 
-	result = request_irq(sp->irq, ibmasm_interrupt_handler, IRQF_SHARED, sp->devname, (void*)sp);
+	result = request_irq(sp->irq, ibmasm_interrupt_handler,
+			     IRQF_SHARED | IRQF_USER_DATA, sp->devname,
+			     (void *)sp);
 	if (result) {
 		dev_err(sp->dev, "Failed to register interrupt handler\n");
 		goto error_request_irq;

@@ -4530,8 +4530,9 @@ pmcraid_register_interrupt_handler(struct pmcraid_instance *pinstance)
 
 		vec->hrrq_id = i;
 		vec->drv_inst = pinstance;
-		rc = request_irq(pci_irq_vector(pdev, i), isr, flag,
-				PMCRAID_DRIVER_NAME, vec);
+		rc = request_irq(pci_irq_vector(pdev, i), isr,
+				 flag | IRQF_USER_DATA, PMCRAID_DRIVER_NAME,
+				 vec);
 		if (rc)
 			goto out_unwind;
 	}

@@ -644,8 +644,7 @@ static int lola_create(struct snd_card *card, struct pci_dev *pci,
 	if (err < 0)
 		goto errout;
 
-	if (request_irq(pci->irq, lola_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, lola_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(chip->card->dev, "unable to grab IRQ %d\n", pci->irq);
 		err = -EBUSY;
 		goto errout;

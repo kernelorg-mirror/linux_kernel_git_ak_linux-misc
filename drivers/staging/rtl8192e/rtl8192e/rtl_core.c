@@ -1081,7 +1081,7 @@ static short _rtl92e_init(struct net_device *dev)
 		    0);
 
 	rtl92e_irq_disable(dev);
-	if (request_irq(dev->irq, _rtl92e_irq, IRQF_SHARED, dev->name, dev)) {
+	if (request_irq(dev->irq, _rtl92e_irq, IRQF_SHARED | IRQF_USER_DATA, dev->name, dev)) {
 		netdev_err(dev, "Error allocating IRQ %d", dev->irq);
 		return -1;
 	}

@@ -1251,7 +1251,8 @@ static int fsl_spdif_probe(struct platform_device *pdev)
 		return irq;
 	}
 
-	ret = devm_request_irq(&pdev->dev, irq, spdif_isr, 0,
+	ret = devm_request_irq(&pdev->dev, irq, spdif_isr,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), spdif_priv);
 	if (ret) {
 		dev_err(&pdev->dev, "could not claim irq %u\n", irq);

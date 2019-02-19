@@ -340,8 +340,8 @@ static int pda_power_probe(struct platform_device *pdev)
 
 		if (ac_irq) {
 			ret = request_irq(ac_irq->start, power_changed_isr,
-					  get_irq_flags(ac_irq), ac_irq->name,
-					  pda_psy_ac);
+					  get_irq_flags(ac_irq) | IRQF_USER_DATA,
+					  ac_irq->name, pda_psy_ac);
 			if (ret) {
 				dev_err(dev, "request ac irq failed\n");
 				goto ac_irq_failed;
@@ -364,7 +364,7 @@ static int pda_power_probe(struct platform_device *pdev)
 
 		if (usb_irq) {
 			ret = request_irq(usb_irq->start, power_changed_isr,
-					  get_irq_flags(usb_irq),
+					  get_irq_flags(usb_irq) | IRQF_USER_DATA,
 					  usb_irq->name, pda_psy_usb);
 			if (ret) {
 				dev_err(dev, "request usb irq failed\n");

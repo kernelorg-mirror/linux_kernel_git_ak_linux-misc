@@ -1288,7 +1288,8 @@ static int acp_audio_probe(struct platform_device *pdev)
 	}
 
 	status = devm_request_irq(&pdev->dev, res->start, dma_irq_handler,
-				  0, "ACP_IRQ", &pdev->dev);
+				  IRQF_USER_DATA, "ACP_IRQ",
+				  &pdev->dev);
 	if (status) {
 		dev_err(&pdev->dev, "ACP IRQ request failed\n");
 		return status;

@@ -804,8 +804,9 @@ static int asd_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	if (use_msi)
 		pci_enable_msi(asd_ha->pcidev);
 
-	err = request_irq(asd_ha->pcidev->irq, asd_hw_isr, IRQF_SHARED,
-			  ASD_DRIVER_NAME, asd_ha);
+	err = request_irq(asd_ha->pcidev->irq, asd_hw_isr,
+			  IRQF_SHARED | IRQF_USER_DATA, ASD_DRIVER_NAME,
+			  asd_ha);
 	if (err) {
 		asd_printk("couldn't get irq %d for %s\n",
 			   asd_ha->pcidev->irq, pci_name(asd_ha->pcidev));

@@ -1217,8 +1217,9 @@ int labpc_common_attach(struct comedi_device *dev,
 	}
 
 	if (irq) {
-		ret = request_irq(irq, labpc_interrupt, isr_flags,
-				  dev->board_name, dev);
+		ret = request_irq(irq, labpc_interrupt,
+				  isr_flags | IRQF_USER_DATA, dev->board_name,
+				  dev);
 		if (ret == 0)
 			dev->irq = irq;
 	}

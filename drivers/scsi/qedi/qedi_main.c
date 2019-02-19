@@ -1338,7 +1338,8 @@ static int qedi_request_msix_irq(struct qedi_ctx *qedi)
 	cpu = cpumask_first(cpu_online_mask);
 	for (i = 0; i < qedi->int_info.msix_cnt; i++) {
 		rc = request_irq(qedi->int_info.msix[i].vector,
-				 qedi_msix_handler, 0, "qedi",
+				 qedi_msix_handler,
+				 IRQF_USER_DATA, "qedi",
 				 &qedi->fp_array[i]);
 
 		if (rc) {

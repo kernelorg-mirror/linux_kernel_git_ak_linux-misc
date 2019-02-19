@@ -1045,7 +1045,7 @@ static void dt282x_alloc_dma(struct comedi_device *dev,
 	    dma_chan[1] < 5 || dma_chan[1] > 7)
 		return;
 
-	if (request_irq(irq_num, dt282x_interrupt, 0, dev->board_name, dev))
+	if (request_irq(irq_num, dt282x_interrupt, IRQF_USER_DATA, dev->board_name, dev))
 		return;
 
 	/* DMA uses two 4K buffers with separate DMA channels */

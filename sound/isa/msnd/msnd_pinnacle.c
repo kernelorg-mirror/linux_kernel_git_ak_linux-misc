@@ -546,7 +546,8 @@ static int snd_msnd_attach(struct snd_card *card)
 		.dev_free =      snd_msnd_dev_free,
 		};
 
-	err = request_irq(chip->irq, snd_msnd_interrupt, 0, card->shortname,
+	err = request_irq(chip->irq, snd_msnd_interrupt,
+			  IRQF_USER_DATA, card->shortname,
 			  chip);
 	if (err < 0) {
 		printk(KERN_ERR LOGNAME ": Couldn't grab IRQ %d\n", chip->irq);

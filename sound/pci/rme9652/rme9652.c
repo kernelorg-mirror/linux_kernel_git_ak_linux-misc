@@ -2495,8 +2495,7 @@ static int snd_rme9652_create(struct snd_card *card,
 		return -EBUSY;
 	}
 	
-	if (request_irq(pci->irq, snd_rme9652_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, rme9652)) {
+	if (request_irq(pci->irq, snd_rme9652_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, rme9652)) {
 		dev_err(card->dev, "unable to request IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}

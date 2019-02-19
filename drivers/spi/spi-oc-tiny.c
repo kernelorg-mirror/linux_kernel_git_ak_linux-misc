@@ -277,7 +277,8 @@ static int tiny_spi_probe(struct platform_device *pdev)
 	hw->irq = platform_get_irq(pdev, 0);
 	if (hw->irq >= 0) {
 		init_completion(&hw->done);
-		err = devm_request_irq(&pdev->dev, hw->irq, tiny_spi_irq, 0,
+		err = devm_request_irq(&pdev->dev, hw->irq, tiny_spi_irq,
+				       IRQF_USER_DATA,
 				       pdev->name, hw);
 		if (err)
 			goto exit;

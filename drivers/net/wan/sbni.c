@@ -1175,7 +1175,7 @@ sbni_open( struct net_device  *dev )
 			}
 	}
 
-	if( request_irq(dev->irq, sbni_interrupt, IRQF_SHARED, dev->name, dev) ) {
+	if(request_irq(dev->irq, sbni_interrupt, IRQF_SHARED | IRQF_USER_DATA, dev->name, dev)) {
 		netdev_err(dev, "unable to get IRQ %d\n", dev->irq);
 		return  -EAGAIN;
 	}

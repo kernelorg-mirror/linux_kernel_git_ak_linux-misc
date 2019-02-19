@@ -1619,8 +1619,7 @@ static int snd_atiixp_create(struct snd_card *card,
 		return -EIO;
 	}
 
-	if (request_irq(pci->irq, snd_atiixp_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_atiixp_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_atiixp_free(chip);
 		return -EBUSY;

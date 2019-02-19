@@ -466,8 +466,7 @@ static int snd_nm256_acquire_irq(struct nm256 *chip)
 {
 	mutex_lock(&chip->irq_mutex);
 	if (chip->irq < 0) {
-		if (request_irq(chip->pci->irq, chip->interrupt, IRQF_SHARED,
-				KBUILD_MODNAME, chip)) {
+		if (request_irq(chip->pci->irq, chip->interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 			dev_err(chip->card->dev,
 				"unable to grab IRQ %d\n", chip->pci->irq);
 			mutex_unlock(&chip->irq_mutex);

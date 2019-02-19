@@ -10048,11 +10048,10 @@ static int ipr_request_other_msi_irqs(struct ipr_ioa_cfg *ioa_cfg,
 	int i, rc;
 
 	for (i = 1; i < ioa_cfg->nvectors; i++) {
-		rc = request_irq(pci_irq_vector(pdev, i),
-			ipr_isr_mhrrq,
-			0,
-			ioa_cfg->vectors_info[i].desc,
-			&ioa_cfg->hrrq[i]);
+		rc = request_irq(pci_irq_vector(pdev, i), ipr_isr_mhrrq,
+				 IRQF_USER_DATA,
+				 ioa_cfg->vectors_info[i].desc,
+				 &ioa_cfg->hrrq[i]);
 		if (rc) {
 			while (--i >= 0)
 				free_irq(pci_irq_vector(pdev, i),
@@ -10117,7 +10116,8 @@ static int ipr_test_msi(struct ipr_ioa_cfg *ioa_cfg, struct pci_dev *pdev)
 	int_reg = readl(ioa_cfg->regs.sense_interrupt_mask_reg);
 	spin_unlock_irqrestore(ioa_cfg->host->host_lock, lock_flags);
 
-	rc = request_irq(irq, ipr_test_intr, 0, IPR_NAME, ioa_cfg);
+	rc = request_irq(irq, ipr_test_intr, IRQF_USER_DATA,
+			 IPR_NAME, ioa_cfg);
 	if (rc) {
 		dev_err(&pdev->dev, "Can not assign irq %d\n", irq);
 		return rc;
@@ -10369,15 +10369,16 @@ static int ipr_probe_ioa(struct pci_dev *pdev,
 
 	if (pdev->msi_enabled || pdev->msix_enabled) {
 		name_msi_vectors(ioa_cfg);
-		rc = request_irq(pci_irq_vector(pdev, 0), ipr_isr, 0,
-			ioa_cfg->vectors_info[0].desc,
-			&ioa_cfg->hrrq[0]);
+		rc = request_irq(pci_irq_vector(pdev, 0), ipr_isr,
+				 IRQF_USER_DATA,
+				 ioa_cfg->vectors_info[0].desc,
+				 &ioa_cfg->hrrq[0]);
 		if (!rc)
 			rc = ipr_request_other_msi_irqs(ioa_cfg, pdev);
 	} else {
 		rc = request_irq(pdev->irq, ipr_isr,
-			 IRQF_SHARED,
-			 IPR_NAME, &ioa_cfg->hrrq[0]);
+				 IRQF_SHARED | IRQF_USER_DATA, IPR_NAME,
+				 &ioa_cfg->hrrq[0]);
 	}
 	if (rc) {
 		dev_err(&pdev->dev, "Couldn't register IRQ %d! rc=%d\n",

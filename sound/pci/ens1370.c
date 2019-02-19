@@ -2106,8 +2106,7 @@ static int snd_ensoniq_create(struct snd_card *card,
 		return err;
 	}
 	ensoniq->port = pci_resource_start(pci, 0);
-	if (request_irq(pci->irq, snd_audiopci_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, ensoniq)) {
+	if (request_irq(pci->irq, snd_audiopci_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, ensoniq)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_ensoniq_free(ensoniq);
 		return -EBUSY;

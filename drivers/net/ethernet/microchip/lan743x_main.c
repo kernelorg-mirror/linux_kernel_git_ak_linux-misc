@@ -385,10 +385,9 @@ static int lan743x_intr_register_isr(struct lan743x_adapter *adapter,
 	vector->handler = handler;
 	vector->context = context;
 
-	ret = request_irq(vector->irq,
-			  lan743x_intr_entry_isr,
-			  (flags & LAN743X_VECTOR_FLAG_IRQ_SHARED) ?
-			  IRQF_SHARED : 0, DRIVER_NAME, vector);
+	ret = request_irq(vector->irq, lan743x_intr_entry_isr,
+			  ((flags & LAN743X_VECTOR_FLAG_IRQ_SHARED) ? IRQF_SHARED : 0) | IRQF_USER_DATA,
+			  DRIVER_NAME, vector);
 	if (ret) {
 		vector->handler = NULL;
 		vector->context = NULL;

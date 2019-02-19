@@ -1261,8 +1261,9 @@ static int switchtec_init_isr(struct switchtec_dev *stdev)
 		return event_irq;
 
 	rc = devm_request_irq(&stdev->pdev->dev, event_irq,
-				switchtec_event_isr, 0,
-				KBUILD_MODNAME, stdev);
+			      switchtec_event_isr,
+			      IRQF_USER_DATA, KBUILD_MODNAME,
+			      stdev);
 
 	if (rc)
 		return rc;
@@ -1279,8 +1280,9 @@ static int switchtec_init_isr(struct switchtec_dev *stdev)
 		return dma_mrpc_irq;
 
 	rc = devm_request_irq(&stdev->pdev->dev, dma_mrpc_irq,
-				switchtec_dma_mrpc_isr, 0,
-				KBUILD_MODNAME, stdev);
+			      switchtec_dma_mrpc_isr,
+			      IRQF_USER_DATA, KBUILD_MODNAME,
+			      stdev);
 
 	return rc;
 }

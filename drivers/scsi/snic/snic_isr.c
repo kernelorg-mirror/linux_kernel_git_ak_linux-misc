@@ -136,9 +136,8 @@ snic_request_intr(struct snic *snic)
 	for (i = 0; i < ARRAY_SIZE(snic->msix); i++) {
 		ret = request_irq(pci_irq_vector(snic->pdev, i),
 				  snic->msix[i].isr,
-				  0,
-				  snic->msix[i].devname,
-				  snic->msix[i].devid);
+				  IRQF_USER_DATA,
+				  snic->msix[i].devname, snic->msix[i].devid);
 		if (ret) {
 			SNIC_HOST_ERR(snic->shost,
 				      "MSI-X: request_irq(%d) failed %d\n",

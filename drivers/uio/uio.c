@@ -973,7 +973,8 @@ int __uio_register_device(struct module *owner,
 		 * freed until they are released.
 		 */
 		ret = request_irq(info->irq, uio_interrupt,
-				  info->irq_flags, info->name, idev);
+				  info->irq_flags | IRQF_USER_DATA,
+				  info->name, idev);
 		if (ret) {
 			info->uio_dev = NULL;
 			goto err_request_irq;

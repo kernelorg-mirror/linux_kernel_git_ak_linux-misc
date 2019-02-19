@@ -7994,9 +7994,10 @@ static int hpsa_request_irqs(struct ctlr_info *h,
 		/* If performant mode and MSI-X, use multiple reply queues */
 		for (i = 0; i < h->msix_vectors; i++) {
 			sprintf(h->intrname[i], "%s-msix%d", h->devname, i);
-			rc = request_irq(pci_irq_vector(h->pdev, i), msixhandler,
-					0, h->intrname[i],
-					&h->q[i]);
+			rc = request_irq(pci_irq_vector(h->pdev, i),
+					 msixhandler,
+					 IRQF_USER_DATA,
+					 h->intrname[i], &h->q[i]);
 			if (rc) {
 				int j;
 
@@ -8018,16 +8019,16 @@ static int hpsa_request_irqs(struct ctlr_info *h,
 			sprintf(h->intrname[0], "%s-msi%s", h->devname,
 				h->msix_vectors ? "x" : "");
 			rc = request_irq(pci_irq_vector(h->pdev, 0),
-				msixhandler, 0,
-				h->intrname[0],
-				&h->q[h->intr_mode]);
+					 msixhandler,
+					 IRQF_USER_DATA,
+					 h->intrname[0], &h->q[h->intr_mode]);
 		} else {
 			sprintf(h->intrname[h->intr_mode],
 				"%s-intx", h->devname);
 			rc = request_irq(pci_irq_vector(h->pdev, 0),
-				intxhandler, IRQF_SHARED,
-				h->intrname[0],
-				&h->q[h->intr_mode]);
+					 intxhandler,
+					 IRQF_SHARED | IRQF_USER_DATA,
+					 h->intrname[0], &h->q[h->intr_mode]);
 		}
 	}
 	if (rc) {

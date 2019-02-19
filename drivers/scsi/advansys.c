@@ -11298,8 +11298,8 @@ static int advansys_board_found(struct Scsi_Host *shost, unsigned int iop,
 	/* Register IRQ Number. */
 	ASC_DBG(2, "request_irq(%d, %p)\n", boardp->irq, shost);
 
-	ret = request_irq(boardp->irq, advansys_interrupt, share_irq,
-			  DRV_NAME, shost);
+	ret = request_irq(boardp->irq, advansys_interrupt,
+			  share_irq | IRQF_USER_DATA, DRV_NAME, shost);
 
 	if (ret) {
 		if (ret == -EBUSY) {

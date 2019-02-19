@@ -298,8 +298,7 @@ static int snd_aw2_create(struct snd_card *card,
 	/* (2) initialization of the chip hardware */
 	snd_aw2_saa7146_setup(&chip->saa7146, chip->iobase_virt);
 
-	if (request_irq(pci->irq, snd_aw2_saa7146_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_aw2_saa7146_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "Cannot grab irq %d\n", pci->irq);
 
 		iounmap(chip->iobase_virt);

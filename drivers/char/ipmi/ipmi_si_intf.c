@@ -1266,10 +1266,8 @@ int ipmi_std_irq_setup(struct si_sm_io *io)
 	if (!io->irq)
 		return 0;
 
-	rv = request_irq(io->irq,
-			 ipmi_si_irq_handler,
-			 IRQF_SHARED,
-			 DEVICE_NAME,
+	rv = request_irq(io->irq, ipmi_si_irq_handler,
+			 IRQF_SHARED | IRQF_USER_DATA, DEVICE_NAME,
 			 io->irq_handler_data);
 	if (rv) {
 		dev_warn(io->dev, "%s unable to claim interrupt %d,"

@@ -328,7 +328,8 @@ static int snvs_rtc_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, true);
 
 	ret = devm_request_irq(&pdev->dev, data->irq, snvs_rtc_irq_handler,
-			       IRQF_SHARED, "rtc alarm", &pdev->dev);
+			       IRQF_SHARED | IRQF_USER_DATA, "rtc alarm",
+			       &pdev->dev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request irq %d: %d\n",
 			data->irq, ret);

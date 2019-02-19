@@ -1244,8 +1244,7 @@ static int snd_fm801_create(struct snd_card *card,
 	}
 
 	if ((chip->tea575x_tuner & TUNER_ONLY) == 0) {
-		if (devm_request_irq(&pci->dev, pci->irq, snd_fm801_interrupt,
-				IRQF_SHARED, KBUILD_MODNAME, chip)) {
+		if (devm_request_irq(&pci->dev, pci->irq, snd_fm801_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 			dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 			snd_fm801_free(chip);
 			return -EBUSY;

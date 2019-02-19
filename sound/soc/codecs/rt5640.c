@@ -2833,8 +2833,8 @@ static int rt5640_i2c_probe(struct i2c_client *i2c,
 		return ret;
 
 	ret = devm_request_irq(&i2c->dev, rt5640->irq, rt5640_irq,
-			       IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-			       | IRQF_ONESHOT, "rt5640", rt5640);
+			       IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_USER_DATA,
+			       "rt5640", rt5640);
 	if (ret == 0) {
 		/* Gets re-enabled by rt5640_set_jack() */
 		disable_irq(rt5640->irq);

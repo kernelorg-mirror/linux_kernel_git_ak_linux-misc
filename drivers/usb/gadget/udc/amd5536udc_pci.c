@@ -140,7 +140,7 @@ static int udc_pci_probe(
 	dev->rxfifo = (u32 __iomem *)(dev->virt_addr + UDC_RXFIFO_ADDR);
 	dev->txfifo = (u32 __iomem *)(dev->virt_addr + UDC_TXFIFO_ADDR);
 
-	if (request_irq(pdev->irq, udc_irq, IRQF_SHARED, name, dev) != 0) {
+	if (request_irq(pdev->irq, udc_irq, IRQF_SHARED | IRQF_USER_DATA, name, dev) != 0) {
 		dev_dbg(&pdev->dev, "request_irq(%d) fail\n", pdev->irq);
 		retval = -EBUSY;
 		goto err_irq;

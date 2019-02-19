@@ -865,8 +865,7 @@ static int __init i8042_check_aux(void)
 		goto out;
 	}
 
-	if (request_irq(I8042_AUX_IRQ, i8042_aux_test_irq, IRQF_SHARED,
-			"i8042", i8042_platform_device))
+	if (request_irq(I8042_AUX_IRQ, i8042_aux_test_irq, IRQF_SHARED | IRQF_USER_DATA, "i8042", i8042_platform_device))
 		goto out;
 
 	irq_registered = true;
@@ -1463,8 +1462,9 @@ static int __init i8042_setup_aux(void)
 		aux_enable = i8042_enable_mux_ports;
 	}
 
-	error = request_irq(I8042_AUX_IRQ, i8042_interrupt, IRQF_SHARED,
-			    "i8042", i8042_platform_device);
+	error = request_irq(I8042_AUX_IRQ, i8042_interrupt,
+			    IRQF_SHARED | IRQF_USER_DATA, "i8042",
+			    i8042_platform_device);
 	if (error)
 		goto err_free_ports;
 
@@ -1489,8 +1489,9 @@ static int __init i8042_setup_kbd(void)
 	if (error)
 		return error;
 
-	error = request_irq(I8042_KBD_IRQ, i8042_interrupt, IRQF_SHARED,
-			    "i8042", i8042_platform_device);
+	error = request_irq(I8042_KBD_IRQ, i8042_interrupt,
+			    IRQF_SHARED | IRQF_USER_DATA, "i8042",
+			    i8042_platform_device);
 	if (error)
 		goto err_free_port;
 

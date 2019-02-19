@@ -2078,7 +2078,8 @@ static int xudc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "unable to get irq\n");
 		return irq;
 	}
-	ret = devm_request_irq(&pdev->dev, irq, xudc_irq, 0,
+	ret = devm_request_irq(&pdev->dev, irq, xudc_irq,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), udc);
 	if (ret < 0) {
 		dev_dbg(&pdev->dev, "unable to request irq %d", irq);

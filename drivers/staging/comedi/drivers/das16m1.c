@@ -524,7 +524,8 @@ static int das16m1_attach(struct comedi_device *dev,
 
 	/* only irqs 2, 3, 4, 5, 6, 7, 10, 11, 12, 14, and 15 are valid */
 	if ((1 << it->options[1]) & 0xdcfc) {
-		ret = request_irq(it->options[1], das16m1_interrupt, 0,
+		ret = request_irq(it->options[1], das16m1_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

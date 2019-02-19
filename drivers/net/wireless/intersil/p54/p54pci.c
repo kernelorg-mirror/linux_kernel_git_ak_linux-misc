@@ -435,7 +435,7 @@ static int p54p_open(struct ieee80211_hw *dev)
 
 	init_completion(&priv->boot_comp);
 	err = request_irq(priv->pdev->irq, p54p_interrupt,
-			  IRQF_SHARED, "p54pci", dev);
+			  IRQF_SHARED | IRQF_USER_DATA, "p54pci", dev);
 	if (err) {
 		dev_err(&priv->pdev->dev, "failed to register IRQ handler\n");
 		return err;

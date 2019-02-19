@@ -1079,7 +1079,8 @@ static int zynqmp_qspi_probe(struct platform_device *pdev)
 		goto clk_dis_all;
 	}
 	ret = devm_request_irq(&pdev->dev, xqspi->irq, zynqmp_qspi_irq,
-			       0, pdev->name, master);
+			       IRQF_USER_DATA, pdev->name,
+			       master);
 	if (ret != 0) {
 		ret = -ENXIO;
 		dev_err(dev, "request_irq failed\n");

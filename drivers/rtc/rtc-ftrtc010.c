@@ -181,7 +181,7 @@ static int ftrtc010_rtc_probe(struct platform_device *pdev)
 	rtc->rtc_dev->range_max = U32_MAX + rtc->rtc_dev->range_min;
 
 	ret = devm_request_irq(dev, rtc->rtc_irq, ftrtc010_rtc_interrupt,
-			       IRQF_SHARED, pdev->name, dev);
+			       IRQF_SHARED | IRQF_USER_DATA, pdev->name, dev);
 	if (unlikely(ret))
 		return ret;
 

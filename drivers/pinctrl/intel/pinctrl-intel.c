@@ -1192,7 +1192,7 @@ static int intel_gpio_probe(struct intel_pinctrl *pctrl, int irq)
 	 * controllers share the same interrupt line.
 	 */
 	ret = devm_request_irq(pctrl->dev, irq, intel_gpio_irq,
-			       IRQF_SHARED | IRQF_NO_THREAD,
+			       IRQF_SHARED | IRQF_NO_THREAD | IRQF_USER_DATA,
 			       dev_name(pctrl->dev), pctrl);
 	if (ret) {
 		dev_err(pctrl->dev, "failed to request interrupt\n");

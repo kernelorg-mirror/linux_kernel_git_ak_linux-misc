@@ -766,8 +766,9 @@ static int vmd_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 		INIT_LIST_HEAD(&vmd->irqs[i].irq_list);
 		err = devm_request_irq(&dev->dev, pci_irq_vector(dev, i),
-				       vmd_irq, IRQF_NO_THREAD,
-				       "vmd", &vmd->irqs[i]);
+				       vmd_irq,
+				       IRQF_NO_THREAD | IRQF_USER_DATA, "vmd",
+				       &vmd->irqs[i]);
 		if (err)
 			return err;
 	}
@@ -825,9 +826,9 @@ static int vmd_resume(struct device *dev)
 	int err, i;
 
 	for (i = 0; i < vmd->msix_count; i++) {
-		err = devm_request_irq(dev, pci_irq_vector(pdev, i),
-				       vmd_irq, IRQF_NO_THREAD,
-				       "vmd", &vmd->irqs[i]);
+		err = devm_request_irq(dev, pci_irq_vector(pdev, i), vmd_irq,
+				       IRQF_NO_THREAD | IRQF_USER_DATA, "vmd",
+				       &vmd->irqs[i]);
 		if (err)
 			return err;
 	}

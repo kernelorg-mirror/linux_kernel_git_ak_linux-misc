@@ -401,7 +401,8 @@ int ndev_init_isr(struct intel_ntb_dev *ndev,
 	for (i = 0; i < msix_count; ++i) {
 		ndev->vec[i].ndev = ndev;
 		ndev->vec[i].num = i;
-		rc = request_irq(ndev->msix[i].vector, ndev_vec_isr, 0,
+		rc = request_irq(ndev->msix[i].vector, ndev_vec_isr,
+				 IRQF_USER_DATA,
 				 "ndev_vec_isr", &ndev->vec[i]);
 		if (rc)
 			goto err_msix_request;
@@ -430,8 +431,9 @@ err_msix_vec_alloc:
 	if (rc)
 		goto err_msi_enable;
 
-	rc = request_irq(pdev->irq, ndev_irq_isr, 0,
-			 "ndev_irq_isr", ndev);
+	rc = request_irq(pdev->irq, ndev_irq_isr,
+			 IRQF_USER_DATA, "ndev_irq_isr",
+			 ndev);
 	if (rc)
 		goto err_msi_request;
 
@@ -448,8 +450,8 @@ err_msi_enable:
 
 	pci_intx(pdev, 1);
 
-	rc = request_irq(pdev->irq, ndev_irq_isr, IRQF_SHARED,
-			 "ndev_irq_isr", ndev);
+	rc = request_irq(pdev->irq, ndev_irq_isr,
+			 IRQF_SHARED | IRQF_USER_DATA, "ndev_irq_isr", ndev);
 	if (rc)
 		goto err_intx_request;
 

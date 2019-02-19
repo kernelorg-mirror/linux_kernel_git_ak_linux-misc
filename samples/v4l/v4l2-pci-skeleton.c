@@ -779,8 +779,9 @@ static int skeleton_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 
 	/* Allocate the interrupt */
-	ret = devm_request_irq(&pdev->dev, pdev->irq,
-			       skeleton_irq, 0, KBUILD_MODNAME, skel);
+	ret = devm_request_irq(&pdev->dev, pdev->irq, skeleton_irq,
+			       IRQF_USER_DATA,
+			       KBUILD_MODNAME, skel);
 	if (ret) {
 		dev_err(&pdev->dev, "request_irq failed\n");
 		goto disable_pci;

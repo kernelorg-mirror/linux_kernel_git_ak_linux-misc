@@ -119,7 +119,7 @@ static struct Scsi_Host *qlogic_detect(struct scsi_host_template *host,
 	priv->shost = shost;
 	priv->int_type = INT_TYPE;					
 
-	if (request_irq(qlirq, qlogicfas408_ihandl, 0, qlogic_name, shost))
+	if (request_irq(qlirq, qlogicfas408_ihandl, IRQF_USER_DATA, qlogic_name, shost))
 		goto free_scsi_host;
 
 	sprintf(priv->qinfo,

@@ -405,7 +405,9 @@ static int t1isa_probe(struct pci_dev *pdev, int cardnr)
 		retval = -EBUSY;
 		goto err_free;
 	}
-	retval = request_irq(card->irq, t1isa_interrupt, 0, card->name, card);
+	retval = request_irq(card->irq, t1isa_interrupt,
+			     IRQF_USER_DATA, card->name,
+			     card);
 	if (retval) {
 		printk(KERN_INFO "t1isa: unable to get IRQ %d.\n", card->irq);
 		retval = -EBUSY;

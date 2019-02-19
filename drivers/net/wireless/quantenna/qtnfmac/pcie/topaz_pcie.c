@@ -1120,7 +1120,8 @@ static int qtnf_pcie_topaz_probe(struct qtnf_bus *bus, unsigned int tx_bd_num)
 
 	ret = devm_request_irq(&pdev->dev, pdev->irq,
 			       &qtnf_pcie_topaz_interrupt,
-			       irqflags, "qtnf_topaz_irq", (void *)bus);
+			       irqflags | IRQF_USER_DATA, "qtnf_topaz_irq",
+			       (void *)bus);
 	if (ret) {
 		pr_err("failed to request pcie irq %d\n", pdev->irq);
 		return ret;

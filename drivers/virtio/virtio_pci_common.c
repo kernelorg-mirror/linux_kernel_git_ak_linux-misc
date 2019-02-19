@@ -144,8 +144,8 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 	snprintf(vp_dev->msix_names[v], sizeof *vp_dev->msix_names,
 		 "%s-config", name);
 	err = request_irq(pci_irq_vector(vp_dev->pci_dev, v),
-			  vp_config_changed, 0, vp_dev->msix_names[v],
-			  vp_dev);
+			  vp_config_changed, IRQF_USER_DATA,
+			  vp_dev->msix_names[v], vp_dev);
 	if (err)
 		goto error;
 	++vp_dev->msix_used_vectors;
@@ -163,8 +163,9 @@ static int vp_request_msix_vectors(struct virtio_device *vdev, int nvectors,
 		snprintf(vp_dev->msix_names[v], sizeof *vp_dev->msix_names,
 			 "%s-virtqueues", name);
 		err = request_irq(pci_irq_vector(vp_dev->pci_dev, v),
-				  vp_vring_interrupt, 0, vp_dev->msix_names[v],
-				  vp_dev);
+				  vp_vring_interrupt,
+				  IRQF_USER_DATA,
+				  vp_dev->msix_names[v], vp_dev);
 		if (err)
 			goto error;
 		++vp_dev->msix_used_vectors;
@@ -338,9 +339,9 @@ static int vp_find_vqs_msix(struct virtio_device *vdev, unsigned nvqs,
 			 "%s-%s",
 			 dev_name(&vp_dev->vdev.dev), names[i]);
 		err = request_irq(pci_irq_vector(vp_dev->pci_dev, msix_vec),
-				  vring_interrupt, 0,
-				  vp_dev->msix_names[msix_vec],
-				  vqs[i]);
+				  vring_interrupt,
+				  IRQF_USER_DATA,
+				  vp_dev->msix_names[msix_vec], vqs[i]);
 		if (err)
 			goto error_find;
 	}
@@ -362,8 +363,9 @@ static int vp_find_vqs_intx(struct virtio_device *vdev, unsigned nvqs,
 	if (!vp_dev->vqs)
 		return -ENOMEM;
 
-	err = request_irq(vp_dev->pci_dev->irq, vp_interrupt, IRQF_SHARED,
-			dev_name(&vdev->dev), vp_dev);
+	err = request_irq(vp_dev->pci_dev->irq, vp_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, dev_name(&vdev->dev),
+			  vp_dev);
 	if (err)
 		goto out_del_vqs;
 

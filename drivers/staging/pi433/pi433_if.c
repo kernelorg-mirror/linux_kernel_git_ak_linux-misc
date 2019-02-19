@@ -1036,10 +1036,8 @@ static int setup_gpio(struct pi433_device *device)
 			device->gpiod[i] = ERR_PTR(-EINVAL);
 			return device->irq_num[i];
 		}
-		retval = request_irq(device->irq_num[i],
-				     DIO_irq_handler[i],
-				     0, /* flags */
-				     name,
+		retval = request_irq(device->irq_num[i], DIO_irq_handler[i],
+				     IRQF_USER_DATA, name,
 				     device);
 
 		if (retval)

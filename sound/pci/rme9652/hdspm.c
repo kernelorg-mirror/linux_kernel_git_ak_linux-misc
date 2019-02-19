@@ -6629,8 +6629,7 @@ static int snd_hdspm_create(struct snd_card *card,
 			(unsigned long)hdspm->iobase, hdspm->port,
 			hdspm->port + io_extent - 1);
 
-	if (request_irq(pci->irq, snd_hdspm_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, hdspm)) {
+	if (request_irq(pci->irq, snd_hdspm_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, hdspm)) {
 		dev_err(card->dev, "unable to use IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}

@@ -522,7 +522,8 @@ static int spi_engine_probe(struct platform_device *pdev)
 	writel_relaxed(0xff, spi_engine->base + SPI_ENGINE_REG_INT_PENDING);
 	writel_relaxed(0x00, spi_engine->base + SPI_ENGINE_REG_INT_ENABLE);
 
-	ret = request_irq(irq, spi_engine_irq, 0, pdev->name, master);
+	ret = request_irq(irq, spi_engine_irq,
+			  IRQF_USER_DATA, pdev->name, master);
 	if (ret)
 		goto err_ref_clk_disable;
 

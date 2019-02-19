@@ -3837,10 +3837,9 @@ static int device_init(int adapter_num, struct pci_dev *pdev)
 		}
 
 		rc = request_irq(port_array[0]->irq_level,
-					synclinkmp_interrupt,
-					port_array[0]->irq_flags,
-					port_array[0]->device_name,
-					port_array[0]);
+				 synclinkmp_interrupt,
+				 port_array[0]->irq_flags | IRQF_USER_DATA,
+				 port_array[0]->device_name, port_array[0]);
 		if ( rc ) {
 			printk( "%s(%d):%s Can't request interrupt, IRQ=%d\n",
 				__FILE__,__LINE__,

@@ -191,7 +191,8 @@ mt76x0e_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	dev_info(dev->mt76.dev, "ASIC revision: %08x\n", dev->mt76.rev);
 
 	ret = devm_request_irq(dev->mt76.dev, pdev->irq, mt76x02_irq_handler,
-			       IRQF_SHARED, KBUILD_MODNAME, dev);
+			       IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME,
+			       dev);
 	if (ret)
 		goto error;
 

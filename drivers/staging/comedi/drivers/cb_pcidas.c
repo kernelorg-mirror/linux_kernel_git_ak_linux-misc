@@ -1280,8 +1280,8 @@ static int cb_pcidas_auto_attach(struct comedi_device *dev,
 	outl(INTCSR_INBOX_INTR_STATUS,
 	     devpriv->amcc + AMCC_OP_REG_INTCSR);
 
-	ret = request_irq(pcidev->irq, cb_pcidas_interrupt, IRQF_SHARED,
-			  dev->board_name, dev);
+	ret = request_irq(pcidev->irq, cb_pcidas_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, dev->board_name, dev);
 	if (ret) {
 		dev_dbg(dev->class_dev, "unable to allocate irq %d\n",
 			pcidev->irq);

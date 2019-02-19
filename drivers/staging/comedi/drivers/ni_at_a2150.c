@@ -649,7 +649,7 @@ static void a2150_alloc_irq_and_dma(struct comedi_device *dev,
 	    !((1 << irq_num) & 0xdef8) || !((1 << dma_chan) & 0xef))
 		return;
 
-	if (request_irq(irq_num, a2150_interrupt, 0, dev->board_name, dev))
+	if (request_irq(irq_num, a2150_interrupt, IRQF_USER_DATA, dev->board_name, dev))
 		return;
 
 	/* DMA uses 1 buffer */

@@ -1157,8 +1157,8 @@ static int alsa_card_saa7134_create(struct saa7134_dev *dev, int devnum)
 
 
 	err = request_irq(dev->pci->irq, saa7134_alsa_irq,
-				IRQF_SHARED, dev->name,
-				(void*) &dev->dmasound);
+			  IRQF_SHARED | IRQF_USER_DATA, dev->name,
+			  (void *)&dev->dmasound);
 
 	if (err < 0) {
 		pr_err("%s: can't get IRQ %d for ALSA\n",

@@ -682,7 +682,8 @@ static int apci1564_auto_attach(struct comedi_device *dev,
 	apci1564_reset(dev);
 
 	if (pcidev->irq > 0) {
-		ret = request_irq(pcidev->irq, apci1564_interrupt, IRQF_SHARED,
+		ret = request_irq(pcidev->irq, apci1564_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = pcidev->irq;

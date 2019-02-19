@@ -179,7 +179,8 @@ static int aio_iiro_16_attach(struct comedi_device *dev,
 	 * using IRQ 2-7, 10-12, 14, or 15.
 	 */
 	if ((1 << it->options[1]) & 0xdcfc) {
-		ret = request_irq(it->options[1], aio_iiro_16_cos, 0,
+		ret = request_irq(it->options[1], aio_iiro_16_cos,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

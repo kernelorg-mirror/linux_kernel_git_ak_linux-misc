@@ -1994,8 +1994,7 @@ static bool __init blogic_getres(struct blogic_adapter *adapter)
 	/*
 	   Acquire shared access to the IRQ Channel.
 	 */
-	if (request_irq(adapter->irq_ch, blogic_inthandler, IRQF_SHARED,
-				adapter->full_model, adapter) < 0) {
+	if (request_irq(adapter->irq_ch, blogic_inthandler, IRQF_SHARED | IRQF_USER_DATA, adapter->full_model, adapter) < 0) {
 		blogic_err("UNABLE TO ACQUIRE IRQ CHANNEL %d - DETACHING\n",
 				adapter, adapter->irq_ch);
 		return false;

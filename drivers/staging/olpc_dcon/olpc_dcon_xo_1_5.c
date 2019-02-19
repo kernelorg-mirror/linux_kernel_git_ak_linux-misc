@@ -71,7 +71,7 @@ static int dcon_init_xo_1_5(struct dcon_priv *dcon)
 
 	/* we're sharing the IRQ with ACPI */
 	irq = acpi_gbl_FADT.sci_interrupt;
-	if (request_irq(irq, &dcon_interrupt, IRQF_SHARED, "DCON", dcon)) {
+	if (request_irq(irq, &dcon_interrupt, IRQF_SHARED | IRQF_USER_DATA, "DCON", dcon)) {
 		pr_err("DCON (IRQ%d) allocation failed\n", irq);
 		return 1;
 	}

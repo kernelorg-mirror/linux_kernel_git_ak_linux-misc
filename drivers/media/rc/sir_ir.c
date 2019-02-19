@@ -355,7 +355,8 @@ static int sir_ir_probe(struct platform_device *dev)
 		pr_err("i/o port 0x%.4x already in use.\n", io);
 		return -EBUSY;
 	}
-	retval = devm_request_irq(&sir_ir_dev->dev, irq, sir_interrupt, 0,
+	retval = devm_request_irq(&sir_ir_dev->dev, irq, sir_interrupt,
+				  IRQF_USER_DATA,
 				  KBUILD_MODNAME, NULL);
 	if (retval < 0) {
 		pr_err("IRQ %d already in use.\n", irq);

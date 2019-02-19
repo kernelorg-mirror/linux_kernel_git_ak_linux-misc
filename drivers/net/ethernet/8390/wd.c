@@ -310,7 +310,8 @@ static int __init wd_probe1(struct net_device *dev, int ioaddr)
 
 	/* Snarf the interrupt now.  There's no point in waiting since we cannot
 	   share and the board will usually be enabled. */
-	i = request_irq(dev->irq, ei_interrupt, 0, DRV_NAME, dev);
+	i = request_irq(dev->irq, ei_interrupt,
+			IRQF_USER_DATA, DRV_NAME, dev);
 	if (i) {
 		pr_cont(" unable to get IRQ %d.\n", dev->irq);
 		return i;

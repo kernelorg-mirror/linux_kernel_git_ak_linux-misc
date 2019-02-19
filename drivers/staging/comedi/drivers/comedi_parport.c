@@ -232,7 +232,8 @@ static int parport_attach(struct comedi_device *dev,
 		return ret;
 
 	if (it->options[1]) {
-		ret = request_irq(it->options[1], parport_interrupt, 0,
+		ret = request_irq(it->options[1], parport_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

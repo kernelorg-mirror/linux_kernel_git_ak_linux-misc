@@ -2636,8 +2636,7 @@ static int intel8x0_resume(struct device *dev)
 	int i;
 
 	snd_intel8x0_chip_init(chip, 0);
-	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_intel8x0_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(dev, "unable to grab IRQ %d, disabling device\n",
 			pci->irq);
 		snd_card_disconnect(card);
@@ -3119,8 +3118,7 @@ static int snd_intel8x0_create(struct snd_card *card,
 	}
 
 	/* request irq after initializaing int_sta_mask, etc */
-	if (request_irq(pci->irq, snd_intel8x0_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_intel8x0_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_intel8x0_free(chip);
 		return -EBUSY;

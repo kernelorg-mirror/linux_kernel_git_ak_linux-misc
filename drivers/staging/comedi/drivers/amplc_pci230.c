@@ -2470,7 +2470,8 @@ static int pci230_auto_attach(struct comedi_device *dev,
 	     devpriv->daqio + PCI230_ADCCON);
 
 	if (pci_dev->irq) {
-		rc = request_irq(pci_dev->irq, pci230_interrupt, IRQF_SHARED,
+		rc = request_irq(pci_dev->irq, pci230_interrupt,
+				 IRQF_SHARED | IRQF_USER_DATA,
 				 dev->board_name, dev);
 		if (rc == 0)
 			dev->irq = pci_dev->irq;

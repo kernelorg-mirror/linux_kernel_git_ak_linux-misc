@@ -780,15 +780,18 @@ static int fcpcipnp_setup(struct fritz_adapter *adapter)
 
 	switch (adapter->type) {
 	case AVM_FRITZ_PCIV2:
-		retval = request_irq(adapter->irq, fcpci2_irq, IRQF_SHARED,
-				     "fcpcipnp", adapter);
+		retval = request_irq(adapter->irq, fcpci2_irq,
+				     IRQF_SHARED | IRQF_USER_DATA, "fcpcipnp",
+				     adapter);
 		break;
 	case AVM_FRITZ_PCI:
-		retval = request_irq(adapter->irq, fcpci_irq, IRQF_SHARED,
-				     "fcpcipnp", adapter);
+		retval = request_irq(adapter->irq, fcpci_irq,
+				     IRQF_SHARED | IRQF_USER_DATA, "fcpcipnp",
+				     adapter);
 		break;
 	case AVM_FRITZ_PNP:
-		retval = request_irq(adapter->irq, fcpci_irq, 0,
+		retval = request_irq(adapter->irq, fcpci_irq,
+				     IRQF_USER_DATA,
 				     "fcpcipnp", adapter);
 		break;
 	}

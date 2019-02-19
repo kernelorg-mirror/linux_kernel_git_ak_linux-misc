@@ -860,8 +860,7 @@ msi_int1:
 
 	acb->vector_count = nvec;
 	for (i = 0; i < nvec; i++) {
-		if (request_irq(pci_irq_vector(pdev, i), arcmsr_do_interrupt,
-				flags, "arcmsr", acb)) {
+		if (request_irq(pci_irq_vector(pdev, i), arcmsr_do_interrupt, flags | IRQF_USER_DATA, "arcmsr", acb)) {
 			pr_warn("arcmsr%d: request_irq =%d failed!\n",
 				acb->host->host_no, pci_irq_vector(pdev, i));
 			goto out_free_irq;

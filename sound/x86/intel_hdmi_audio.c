@@ -1786,8 +1786,9 @@ static int hdmi_lpe_audio_probe(struct platform_device *pdev)
 	}
 
 	/* setup interrupt handler */
-	ret = request_irq(irq, display_pipe_interrupt_handler, 0,
-			  pdev->name, card_ctx);
+	ret = request_irq(irq, display_pipe_interrupt_handler,
+			  IRQF_USER_DATA, pdev->name,
+			  card_ctx);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "request_irq failed\n");
 		goto err;

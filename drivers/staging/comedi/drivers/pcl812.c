@@ -1152,7 +1152,8 @@ static int pcl812_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 			return -ENOMEM;
 
 		if ((1 << it->options[1]) & board->irq_bits) {
-			ret = request_irq(it->options[1], pcl812_interrupt, 0,
+			ret = request_irq(it->options[1], pcl812_interrupt,
+					  IRQF_USER_DATA,
 					  dev->board_name, dev);
 			if (ret == 0)
 				dev->irq = it->options[1];

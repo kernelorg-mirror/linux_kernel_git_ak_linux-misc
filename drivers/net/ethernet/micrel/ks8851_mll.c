@@ -924,7 +924,8 @@ static int ks_net_open(struct net_device *netdev)
 	netif_dbg(ks, ifup, ks->netdev, "%s - entry\n", __func__);
 
 	/* reset the HW */
-	err = request_irq(netdev->irq, ks_irq, KS_INT_FLAGS, DRV_NAME, netdev);
+	err = request_irq(netdev->irq, ks_irq, KS_INT_FLAGS | IRQF_USER_DATA,
+			  DRV_NAME, netdev);
 
 	if (err) {
 		pr_err("Failed to request IRQ: %d: %d\n", netdev->irq, err);

@@ -2884,13 +2884,9 @@ static int ca8210_interrupt_init(struct spi_device *spi)
 		return pdata->irq_id;
 	}
 
-	ret = request_irq(
-		pdata->irq_id,
-		ca8210_interrupt_handler,
-		IRQF_TRIGGER_FALLING,
-		"ca8210-irq",
-		spi_get_drvdata(spi)
-	);
+	ret = request_irq(pdata->irq_id, ca8210_interrupt_handler,
+			  IRQF_TRIGGER_FALLING | IRQF_USER_DATA, "ca8210-irq",
+			  spi_get_drvdata(spi));
 	if (ret) {
 		dev_crit(&spi->dev, "request_irq %d failed\n", pdata->irq_id);
 		gpio_unexport(pdata->gpio_irq);

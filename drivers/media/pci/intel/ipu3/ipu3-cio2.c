@@ -1814,7 +1814,7 @@ static int cio2_pci_probe(struct pci_dev *pci_dev,
 		goto fail_cio2_queue_exit;
 
 	r = devm_request_irq(&pci_dev->dev, pci_dev->irq, cio2_irq,
-			     IRQF_SHARED, CIO2_NAME, cio2);
+			     IRQF_SHARED | IRQF_USER_DATA, CIO2_NAME, cio2);
 	if (r) {
 		dev_err(&pci_dev->dev, "failed to request IRQ (%d)\n", r);
 		goto fail;

@@ -2675,8 +2675,9 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 
 		snprintf(hcd->irq_descr, sizeof(hcd->irq_descr), "%s:usb%d",
 				hcd->driver->description, hcd->self.busnum);
-		retval = request_irq(irqnum, &usb_hcd_irq, irqflags,
-				hcd->irq_descr, hcd);
+		retval = request_irq(irqnum, &usb_hcd_irq,
+				     irqflags | IRQF_USER_DATA,
+				     hcd->irq_descr, hcd);
 		if (retval != 0) {
 			dev_err(hcd->self.controller,
 					"request interrupt %d failed\n",

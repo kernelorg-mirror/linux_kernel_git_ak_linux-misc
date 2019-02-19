@@ -2259,7 +2259,8 @@ net2272_probe_fin(struct net2272 *dev, unsigned int irqflags)
 	net2272_usb_reset(dev);
 	net2272_usb_reinit(dev);
 
-	ret = request_irq(dev->irq, net2272_irq, irqflags, driver_name, dev);
+	ret = request_irq(dev->irq, net2272_irq, irqflags | IRQF_USER_DATA,
+			  driver_name, dev);
 	if (ret) {
 		dev_err(dev->dev, "request interrupt %i failed\n", dev->irq);
 		goto err;

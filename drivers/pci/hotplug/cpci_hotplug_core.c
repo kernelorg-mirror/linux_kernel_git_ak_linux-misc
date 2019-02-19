@@ -525,11 +525,7 @@ cpci_hp_register_controller(struct cpci_hp_controller *new_controller)
 		if (!(new_controller->ops->enable_irq &&
 		     new_controller->ops->disable_irq))
 			status = -EINVAL;
-		if (request_irq(new_controller->irq,
-			       cpci_hp_intr,
-			       new_controller->irq_flags,
-			       MY_NAME,
-			       new_controller->dev_id)) {
+		if (request_irq(new_controller->irq, cpci_hp_intr, new_controller->irq_flags | IRQF_USER_DATA, MY_NAME, new_controller->dev_id)) {
 			err("Can't get irq %d for the hotplug cPCI controller",
 			    new_controller->irq);
 			status = -ENODEV;

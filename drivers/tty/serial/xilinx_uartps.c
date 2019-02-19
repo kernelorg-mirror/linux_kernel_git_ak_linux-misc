@@ -861,7 +861,9 @@ static int cdns_uart_startup(struct uart_port *port)
 
 	spin_unlock_irqrestore(&port->lock, flags);
 
-	ret = request_irq(port->irq, cdns_uart_isr, 0, CDNS_UART_NAME, port);
+	ret = request_irq(port->irq, cdns_uart_isr,
+			  IRQF_USER_DATA, CDNS_UART_NAME,
+			  port);
 	if (ret) {
 		dev_err(port->dev, "request_irq '%d' failed with %d\n",
 			port->irq, ret);

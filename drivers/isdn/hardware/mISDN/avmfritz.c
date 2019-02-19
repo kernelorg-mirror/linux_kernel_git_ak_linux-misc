@@ -794,10 +794,10 @@ init_card(struct fritzcard *fc)
 	reset_avm(fc); /* disable IRQ */
 	if (fc->type == AVM_FRITZ_PCIV2)
 		ret = request_irq(fc->irq, avm_fritzv2_interrupt,
-				  IRQF_SHARED, fc->name, fc);
+				  IRQF_SHARED | IRQF_USER_DATA, fc->name, fc);
 	else
 		ret = request_irq(fc->irq, avm_fritz_interrupt,
-				  IRQF_SHARED, fc->name, fc);
+				  IRQF_SHARED | IRQF_USER_DATA, fc->name, fc);
 	if (ret) {
 		pr_info("%s: couldn't get interrupt %d\n",
 			fc->name, fc->irq);

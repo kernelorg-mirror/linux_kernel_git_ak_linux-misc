@@ -316,10 +316,9 @@ static int tsi148_irq_init(struct vme_bridge *tsi148_bridge)
 
 	bridge = tsi148_bridge->driver_priv;
 
-	result = request_irq(pdev->irq,
-			     tsi148_irqhandler,
-			     IRQF_SHARED,
-			     driver_name, tsi148_bridge);
+	result = request_irq(pdev->irq, tsi148_irqhandler,
+			     IRQF_SHARED | IRQF_USER_DATA, driver_name,
+			     tsi148_bridge);
 	if (result) {
 		dev_err(tsi148_bridge->parent, "Can't get assigned pci irq "
 			"vector %02X\n", pdev->irq);

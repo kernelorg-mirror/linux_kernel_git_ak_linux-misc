@@ -641,8 +641,7 @@ add_card(struct pci_dev *dev, const struct pci_device_id *unused)
 
 	run_pcl(lynx, lynx->rcv_start_pcl_bus, 0);
 
-	if (request_irq(dev->irq, irq_handler, IRQF_SHARED,
-			driver_name, lynx)) {
+	if (request_irq(dev->irq, irq_handler, IRQF_SHARED | IRQF_USER_DATA, driver_name, lynx)) {
 		dev_err(&dev->dev,
 			"Failed to allocate shared interrupt %d\n", dev->irq);
 		ret = -EIO;

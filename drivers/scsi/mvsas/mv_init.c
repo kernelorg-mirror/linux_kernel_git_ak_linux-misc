@@ -589,8 +589,8 @@ static int mvs_pci_init(struct pci_dev *pdev, const struct pci_device_id *ent)
 	rc = sas_register_ha(SHOST_TO_SAS_HA(shost));
 	if (rc)
 		goto err_out_shost;
-	rc = request_irq(pdev->irq, irq_handler, IRQF_SHARED,
-		DRV_NAME, SHOST_TO_SAS_HA(shost));
+	rc = request_irq(pdev->irq, irq_handler, IRQF_SHARED | IRQF_USER_DATA,
+			 DRV_NAME, SHOST_TO_SAS_HA(shost));
 	if (rc)
 		goto err_not_sas;
 

@@ -214,8 +214,9 @@ static int ca91cx42_irq_init(struct vme_bridge *ca91cx42_bridge)
 	/* Clear Any Pending PCI Interrupts */
 	iowrite32(0x00FFFFFF, bridge->base + LINT_STAT);
 
-	result = request_irq(pdev->irq, ca91cx42_irqhandler, IRQF_SHARED,
-			driver_name, ca91cx42_bridge);
+	result = request_irq(pdev->irq, ca91cx42_irqhandler,
+			     IRQF_SHARED | IRQF_USER_DATA, driver_name,
+			     ca91cx42_bridge);
 	if (result) {
 		dev_err(&pdev->dev, "Can't get assigned pci irq vector %02X\n",
 		       pdev->irq);

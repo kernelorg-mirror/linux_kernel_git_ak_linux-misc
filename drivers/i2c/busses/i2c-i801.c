@@ -1659,7 +1659,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		init_waitqueue_head(&priv->waitq);
 
 		err = devm_request_irq(&dev->dev, dev->irq, i801_isr,
-				       IRQF_SHARED,
+				       IRQF_SHARED | IRQF_USER_DATA,
 				       dev_driver_string(&dev->dev), priv);
 		if (err) {
 			dev_err(&dev->dev, "Failed to allocate irq %d: %d\n",

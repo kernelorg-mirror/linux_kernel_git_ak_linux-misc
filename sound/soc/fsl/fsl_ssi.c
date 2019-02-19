@@ -1572,7 +1572,8 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 	}
 
 	if (ssi->use_dma) {
-		ret = devm_request_irq(dev, ssi->irq, fsl_ssi_isr, 0,
+		ret = devm_request_irq(dev, ssi->irq, fsl_ssi_isr,
+				       IRQF_USER_DATA,
 				       dev_name(dev), ssi);
 		if (ret < 0) {
 			dev_err(dev, "failed to claim irq %u\n", ssi->irq);

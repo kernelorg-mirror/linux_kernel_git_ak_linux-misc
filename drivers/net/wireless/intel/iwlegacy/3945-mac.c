@@ -3729,7 +3729,8 @@ il3945_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_enable_msi(il->pci_dev);
 
-	err = request_irq(il->pci_dev->irq, il_isr, IRQF_SHARED, DRV_NAME, il);
+	err = request_irq(il->pci_dev->irq, il_isr,
+			  IRQF_SHARED | IRQF_USER_DATA, DRV_NAME, il);
 	if (err) {
 		IL_ERR("Error allocating IRQ %d\n", il->pci_dev->irq);
 		goto out_disable_msi;

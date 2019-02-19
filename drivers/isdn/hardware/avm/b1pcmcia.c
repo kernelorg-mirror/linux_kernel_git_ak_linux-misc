@@ -82,7 +82,8 @@ static int b1pcmcia_add_card(unsigned int port, unsigned irq,
 	card->irq = irq;
 	card->cardtype = cardtype;
 
-	retval = request_irq(card->irq, b1_interrupt, IRQF_SHARED, card->name, card);
+	retval = request_irq(card->irq, b1_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, card->name, card);
 	if (retval) {
 		printk(KERN_ERR "b1pcmcia: unable to get IRQ %d.\n",
 		       card->irq);

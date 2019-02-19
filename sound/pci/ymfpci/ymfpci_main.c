@@ -2402,8 +2402,7 @@ int snd_ymfpci_create(struct snd_card *card,
 		err = -EBUSY;
 		goto free_chip;
 	}
-	if (request_irq(pci->irq, snd_ymfpci_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_ymfpci_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(chip->card->dev, "unable to grab IRQ %d\n", pci->irq);
 		err = -EBUSY;
 		goto free_chip;

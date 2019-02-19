@@ -1297,8 +1297,8 @@ static int i2c_pxa_probe(struct platform_device *dev)
 	} else {
 		i2c->adap.algo = &i2c_pxa_algorithm;
 		ret = devm_request_irq(&dev->dev, irq, i2c_pxa_handler,
-				IRQF_SHARED | IRQF_NO_SUSPEND,
-				dev_name(&dev->dev), i2c);
+				       IRQF_SHARED | IRQF_NO_SUSPEND | IRQF_USER_DATA,
+				       dev_name(&dev->dev), i2c);
 		if (ret) {
 			dev_err(&dev->dev, "failed to request irq: %d\n", ret);
 			goto ereqirq;

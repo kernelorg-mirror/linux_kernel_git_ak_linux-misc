@@ -543,7 +543,7 @@ static int serial_ir_probe(struct platform_device *dev)
 	timer_setup(&serial_ir.timeout_timer, serial_ir_timeout, 0);
 
 	result = devm_request_irq(&dev->dev, irq, serial_ir_irq_handler,
-				  share_irq ? IRQF_SHARED : 0,
+				  (share_irq ? IRQF_SHARED : 0) | IRQF_USER_DATA,
 				  KBUILD_MODNAME, &hardware);
 	if (result < 0) {
 		if (result == -EBUSY)

@@ -197,7 +197,8 @@ int viafb_request_dma(void)
 	viafb_dma_users++;
 	if (viafb_dma_users == 1) {
 		ret = request_irq(global_dev.pdev->irq, viafb_dma_irq,
-				IRQF_SHARED, "via-dma", &viafb_dma_users);
+				  IRQF_SHARED | IRQF_USER_DATA, "via-dma",
+				  &viafb_dma_users);
 		if (ret)
 			viafb_dma_users--;
 		else

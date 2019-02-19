@@ -206,7 +206,7 @@ static int vfio_intx_set_signal(struct vfio_pci_device *vdev, int fd)
 		irqflags = 0;
 
 	ret = request_irq(pdev->irq, vfio_intx_handler,
-			  irqflags, vdev->ctx[0].name, vdev);
+			  irqflags | IRQF_USER_DATA, vdev->ctx[0].name, vdev);
 	if (ret) {
 		vdev->ctx[0].trigger = NULL;
 		kfree(vdev->ctx[0].name);
@@ -333,7 +333,8 @@ static int vfio_msi_set_vector_signal(struct vfio_pci_device *vdev,
 		pci_write_msi_msg(irq, &msg);
 	}
 
-	ret = request_irq(irq, vfio_msihandler, 0,
+	ret = request_irq(irq, vfio_msihandler,
+			  IRQF_USER_DATA,
 			  vdev->ctx[vector].name, trigger);
 	if (ret) {
 		kfree(vdev->ctx[vector].name);

@@ -1440,8 +1440,7 @@ setup_instance(hfc4s8s_hw *hw)
 
 	INIT_WORK(&hw->tqueue, hfc4s8s_bh);
 
-	if (request_irq
-	    (hw->irq, hfc4s8s_interrupt, IRQF_SHARED, hw->card_name, hw)) {
+	if (request_irq(hw->irq, hfc4s8s_interrupt, IRQF_SHARED | IRQF_USER_DATA, hw->card_name, hw)) {
 		printk(KERN_INFO
 		       "HFC-4S/8S: unable to alloc irq %d, card ignored\n",
 		       hw->irq);

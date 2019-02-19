@@ -1370,7 +1370,7 @@ static int pch_spi_pd_probe(struct platform_device *plat_dev)
 	}
 
 	ret = request_irq(board_dat->pdev->irq, pch_spi_handler,
-			  IRQF_SHARED, KBUILD_MODNAME, data);
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, data);
 	if (ret) {
 		dev_err(&plat_dev->dev,
 			"%s request_irq failed\n", __func__);
@@ -1503,7 +1503,8 @@ static int pch_spi_pd_resume(struct platform_device *pd_dev)
 	if (!data->irq_reg_sts) {
 		/* register IRQ */
 		retval = request_irq(board_dat->pdev->irq, pch_spi_handler,
-				     IRQF_SHARED, KBUILD_MODNAME, data);
+				     IRQF_SHARED | IRQF_USER_DATA,
+				     KBUILD_MODNAME, data);
 		if (retval < 0) {
 			dev_err(&pd_dev->dev,
 				"%s request_irq failed\n", __func__);

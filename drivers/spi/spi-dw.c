@@ -489,8 +489,8 @@ int dw_spi_add_host(struct device *dev, struct dw_spi *dws)
 
 	spi_controller_set_devdata(master, dws);
 
-	ret = request_irq(dws->irq, dw_spi_irq, IRQF_SHARED, dev_name(dev),
-			  master);
+	ret = request_irq(dws->irq, dw_spi_irq, IRQF_SHARED | IRQF_USER_DATA,
+			  dev_name(dev), master);
 	if (ret < 0) {
 		dev_err(dev, "can not get IRQ\n");
 		goto err_free_master;

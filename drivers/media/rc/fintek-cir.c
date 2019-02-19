@@ -552,8 +552,7 @@ static int fintek_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id
 			    fintek->cir_port_len, FINTEK_DRIVER_NAME))
 		goto exit_free_dev_rdev;
 
-	if (request_irq(fintek->cir_irq, fintek_cir_isr, IRQF_SHARED,
-			FINTEK_DRIVER_NAME, (void *)fintek))
+	if (request_irq(fintek->cir_irq, fintek_cir_isr, IRQF_SHARED | IRQF_USER_DATA, FINTEK_DRIVER_NAME, (void *)fintek))
 		goto exit_free_cir_addr;
 
 	ret = rc_register_device(rdev);

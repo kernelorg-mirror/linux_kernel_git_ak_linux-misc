@@ -929,7 +929,7 @@ nj_init_card(struct tiger_hw *card)
 	spin_unlock_irqrestore(&card->lock, flags);
 
 	card->irq = card->pdev->irq;
-	if (request_irq(card->irq, nj_irq, IRQF_SHARED, card->name, card)) {
+	if (request_irq(card->irq, nj_irq, IRQF_SHARED | IRQF_USER_DATA, card->name, card)) {
 		pr_info("%s: couldn't get interrupt %d\n",
 			card->name, card->irq);
 		card->irq = -1;

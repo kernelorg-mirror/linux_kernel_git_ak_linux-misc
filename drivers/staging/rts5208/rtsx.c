@@ -243,9 +243,7 @@ static int rtsx_acquire_irq(struct rtsx_dev *dev)
 	dev_info(&dev->pci->dev, "%s: chip->msi_en = %d, pci->irq = %d\n",
 		 __func__, chip->msi_en, dev->pci->irq);
 
-	if (request_irq(dev->pci->irq, rtsx_interrupt,
-			chip->msi_en ? 0 : IRQF_SHARED,
-			CR_DRIVER_NAME, dev)) {
+	if (request_irq(dev->pci->irq, rtsx_interrupt, (chip->msi_en ? 0 : IRQF_SHARED) | IRQF_USER_DATA, CR_DRIVER_NAME, dev)) {
 		dev_err(&dev->pci->dev,
 			"rtsx: unable to grab IRQ %d, disabling device\n",
 			dev->pci->irq);

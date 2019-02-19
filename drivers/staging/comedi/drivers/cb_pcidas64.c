@@ -4034,8 +4034,9 @@ static int auto_attach(struct comedi_device *dev,
 	init_plx9080(dev);
 	init_stc_registers(dev);
 
-	retval = request_irq(pcidev->irq, handle_interrupt, IRQF_SHARED,
-			     dev->board_name, dev);
+	retval = request_irq(pcidev->irq, handle_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, dev->board_name,
+			     dev);
 	if (retval) {
 		dev_dbg(dev->class_dev, "unable to allocate irq %u\n",
 			pcidev->irq);

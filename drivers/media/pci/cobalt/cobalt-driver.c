@@ -383,8 +383,7 @@ static int cobalt_setup_pci(struct cobalt *cobalt, struct pci_dev *pci_dev,
 	msi_config_show(cobalt, pci_dev);
 
 	/* Register IRQ */
-	if (request_irq(pci_dev->irq, cobalt_irq_handler, IRQF_SHARED,
-			cobalt->v4l2_dev.name, (void *)cobalt)) {
+	if (request_irq(pci_dev->irq, cobalt_irq_handler, IRQF_SHARED | IRQF_USER_DATA, cobalt->v4l2_dev.name, (void *)cobalt)) {
 		cobalt_err("Failed to register irq %d\n", pci_dev->irq);
 		ret = -EIO;
 		goto err_msi;

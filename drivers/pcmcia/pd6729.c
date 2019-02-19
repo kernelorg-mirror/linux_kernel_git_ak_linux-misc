@@ -580,7 +580,8 @@ static int pd6729_check_irq(int irq)
 {
 	int ret;
 
-	ret = request_irq(irq, pd6729_test, IRQF_PROBE_SHARED, "x",
+	ret = request_irq(irq, pd6729_test,
+			  IRQF_PROBE_SHARED | IRQF_USER_DATA, "x",
 			  pd6729_test);
 	if (ret)
 		return -1;
@@ -698,8 +699,9 @@ static int pd6729_pci_probe(struct pci_dev *dev,
 	pci_set_drvdata(dev, socket);
 	if (irq_mode == 1) {
 		/* Register the interrupt handler */
-		ret = request_irq(dev->irq, pd6729_interrupt, IRQF_SHARED,
-				  "pd6729", socket);
+		ret = request_irq(dev->irq, pd6729_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA, "pd6729",
+				  socket);
 		if (ret) {
 			dev_err(&dev->dev, "Failed to register irq %d\n",
 				dev->irq);

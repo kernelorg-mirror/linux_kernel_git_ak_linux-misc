@@ -3542,7 +3542,7 @@ static struct myrb_hba *myrb_detect(struct pci_dev *pdev,
 	if (privdata->hw_init(pdev, cb, cb->io_base))
 		goto failure;
 
-	if (request_irq(pdev->irq, irq_handler, IRQF_SHARED, "myrb", cb) < 0) {
+	if (request_irq(pdev->irq, irq_handler, IRQF_SHARED | IRQF_USER_DATA, "myrb", cb) < 0) {
 		dev_err(&pdev->dev,
 			"Unable to acquire IRQ Channel %d\n", pdev->irq);
 		goto failure;

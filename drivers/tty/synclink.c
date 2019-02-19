@@ -4032,8 +4032,7 @@ static int mgsl_claim_resources(struct mgsl_struct *info)
 	}
 	info->io_addr_requested = true;
 	
-	if ( request_irq(info->irq_level,mgsl_interrupt,info->irq_flags,
-		info->device_name, info ) < 0 ) {
+	if (request_irq(info->irq_level, mgsl_interrupt, info->irq_flags | IRQF_USER_DATA, info->device_name, info) < 0 ) {
 		printk( "%s(%d):Can't request interrupt on device %s IRQ=%d\n",
 			__FILE__,__LINE__,info->device_name, info->irq_level );
 		goto errout;

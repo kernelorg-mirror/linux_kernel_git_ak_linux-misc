@@ -901,8 +901,7 @@ static struct memstick_host *jmb38x_ms_alloc_host(struct jmb38x_ms *jm, int cnt)
 
 	timer_setup(&host->timer, jmb38x_ms_abort, 0);
 
-	if (!request_irq(host->irq, jmb38x_ms_isr, IRQF_SHARED, host->host_id,
-			 msh))
+	if (!request_irq(host->irq, jmb38x_ms_isr, IRQF_SHARED | IRQF_USER_DATA, host->host_id, msh))
 		return msh;
 
 	iounmap(host->addr);

@@ -900,8 +900,9 @@ static u32 pm8001_setup_msix(struct pm8001_hba_info *pm8001_ha)
 		pm8001_ha->irq_vector[i].drv_inst = pm8001_ha;
 
 		rc = request_irq(pci_irq_vector(pm8001_ha->pdev, i),
-			pm8001_interrupt_handler_msix, flag,
-			intr_drvname[i], &(pm8001_ha->irq_vector[i]));
+				 pm8001_interrupt_handler_msix,
+				 flag | IRQF_USER_DATA, intr_drvname[i],
+				 &(pm8001_ha->irq_vector[i]));
 		if (rc) {
 			for (j = 0; j < i; j++) {
 				free_irq(pci_irq_vector(pm8001_ha->pdev, i),
@@ -941,8 +942,9 @@ intx:
 	/* initialize the INT-X interrupt */
 	pm8001_ha->irq_vector[0].irq_id = 0;
 	pm8001_ha->irq_vector[0].drv_inst = pm8001_ha;
-	rc = request_irq(pdev->irq, pm8001_interrupt_handler_intx, IRQF_SHARED,
-		DRV_NAME, SHOST_TO_SAS_HA(pm8001_ha->shost));
+	rc = request_irq(pdev->irq, pm8001_interrupt_handler_intx,
+			 IRQF_SHARED | IRQF_USER_DATA, DRV_NAME,
+			 SHOST_TO_SAS_HA(pm8001_ha->shost));
 	return rc;
 }
 

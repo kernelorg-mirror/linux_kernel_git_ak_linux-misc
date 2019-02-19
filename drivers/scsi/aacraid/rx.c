@@ -649,8 +649,7 @@ int _aac_rx_init(struct aac_dev *dev)
 	aac_adapter_comm(dev, dev->comm_interface);
 	dev->sync_mode = 0;	/* sync. mode not supported */
 	dev->msi = aac_msi && !pci_enable_msi(dev->pdev);
-	if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr,
-			IRQF_SHARED, "aacraid", dev) < 0) {
+	if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr, IRQF_SHARED | IRQF_USER_DATA, "aacraid", dev) < 0) {
 		if (dev->msi)
 			pci_disable_msi(dev->pdev);
 		printk(KERN_ERR "%s%d: Interrupt unavailable.\n",

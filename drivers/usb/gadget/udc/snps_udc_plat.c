@@ -193,8 +193,8 @@ static int udc_plat_probe(struct platform_device *pdev)
 			goto exit_extcon;
 	}
 
-	ret = devm_request_irq(dev, udc->irq, udc_irq, IRQF_SHARED,
-			       "snps-udc", udc);
+	ret = devm_request_irq(dev, udc->irq, udc_irq,
+			       IRQF_SHARED | IRQF_USER_DATA, "snps-udc", udc);
 	if (ret < 0) {
 		dev_err(dev, "Request irq %d failed for UDC\n", udc->irq);
 		goto exit_dma;

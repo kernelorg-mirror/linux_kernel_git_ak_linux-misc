@@ -11686,7 +11686,8 @@ static int ipw_pci_probe(struct pci_dev *pdev,
 
 	ipw_sw_reset(priv, 1);
 
-	err = request_irq(pdev->irq, ipw_isr, IRQF_SHARED, DRV_NAME, priv);
+	err = request_irq(pdev->irq, ipw_isr, IRQF_SHARED | IRQF_USER_DATA,
+			  DRV_NAME, priv);
 	if (err) {
 		IPW_ERROR("Error allocating IRQ %d\n", pdev->irq);
 		goto out_iounmap;

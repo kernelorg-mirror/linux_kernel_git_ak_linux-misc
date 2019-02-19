@@ -3713,8 +3713,7 @@ static int net2280_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		if (pci_enable_msi(pdev))
 			ep_err(dev, "Failed to enable MSI mode\n");
 
-	if (request_irq(pdev->irq, net2280_irq, IRQF_SHARED,
-							driver_name, dev)) {
+	if (request_irq(pdev->irq, net2280_irq, IRQF_SHARED | IRQF_USER_DATA, driver_name, dev)) {
 		ep_err(dev, "request interrupt %d failed\n", pdev->irq);
 		retval = -EBUSY;
 		goto done;

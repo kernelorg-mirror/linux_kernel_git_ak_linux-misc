@@ -485,8 +485,7 @@ int asihpi_adapter_probe(struct pci_dev *pci_dev,
 		}
 
 		/* Note: request_irq calls asihpi_isr here */
-		if (request_irq(pci_dev->irq, asihpi_isr, IRQF_SHARED,
-				"asihpi", &adapters[adapter_index])) {
+		if (request_irq(pci_dev->irq, asihpi_isr, IRQF_SHARED | IRQF_USER_DATA, "asihpi", &adapters[adapter_index])) {
 			dev_err(&pci_dev->dev, "request_irq(%d) failed\n",
 				pci_dev->irq);
 			goto err;

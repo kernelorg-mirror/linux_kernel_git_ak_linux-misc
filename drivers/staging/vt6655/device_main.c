@@ -1227,7 +1227,7 @@ static int vnt_start(struct ieee80211_hw *hw)
 		return -ENOMEM;
 
 	ret = request_irq(priv->pcid->irq, vnt_interrupt,
-			  IRQF_SHARED, "vt6655", priv);
+			  IRQF_SHARED | IRQF_USER_DATA, "vt6655", priv);
 	if (ret) {
 		dev_dbg(&priv->pcid->dev, "failed to start irq\n");
 		goto err_free_rings;

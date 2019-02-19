@@ -407,9 +407,8 @@ static int request_msix_data_irqs(struct adapter *adap)
 
 		for (j = 0; j < nqsets; ++j) {
 			err = request_irq(adap->msix_info[qidx + 1].vec,
-					  t3_intr_handler(adap,
-							  adap->sge.qs[qidx].
-							  rspq.polling), 0,
+					  t3_intr_handler(adap, adap->sge.qs[qidx].rspq.polling),
+					  IRQF_USER_DATA,
 					  adap->msix_info[qidx + 1].desc,
 					  &adap->sge.qs[qidx]);
 			if (err) {
@@ -1264,7 +1263,8 @@ static int cxgb_up(struct adapter *adap)
 	if (adap->flags & USING_MSIX) {
 		name_msix_vecs(adap);
 		err = request_irq(adap->msix_info[0].vec,
-				  t3_async_intr_handler, 0,
+				  t3_async_intr_handler,
+				  IRQF_USER_DATA,
 				  adap->msix_info[0].desc, adap);
 		if (err)
 			goto irq_err;
@@ -1274,13 +1274,7 @@ static int cxgb_up(struct adapter *adap)
 			free_irq(adap->msix_info[0].vec, adap);
 			goto irq_err;
 		}
-	} else if ((err = request_irq(adap->pdev->irq,
-				      t3_intr_handler(adap,
-						      adap->sge.qs[0].rspq.
-						      polling),
-				      (adap->flags & USING_MSI) ?
-				       0 : IRQF_SHARED,
-				      adap->name, adap)))
+	} else if ((err = request_irq(adap->pdev->irq, t3_intr_handler(adap, adap->sge.qs[0].rspq.polling), ((adap->flags & USING_MSI) ? 0 : IRQF_SHARED) | IRQF_USER_DATA, adap->name, adap)))
 		goto irq_err;
 
 	enable_all_napi(adap);

@@ -103,7 +103,8 @@ static int t1pci_add_card(struct capicardparams *p, struct pci_dev *pdev)
 	}
 	b1dma_reset(card);
 
-	retval = request_irq(card->irq, b1dma_interrupt, IRQF_SHARED, card->name, card);
+	retval = request_irq(card->irq, b1dma_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, card->name, card);
 	if (retval) {
 		printk(KERN_ERR "t1pci: unable to get IRQ %d.\n", card->irq);
 		retval = -EBUSY;

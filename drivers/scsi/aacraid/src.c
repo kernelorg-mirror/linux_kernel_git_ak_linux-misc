@@ -986,8 +986,7 @@ int aac_src_init(struct aac_dev *dev)
 	dev->aac_msix[0].vector_no = 0;
 	dev->aac_msix[0].dev = dev;
 
-	if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr,
-			IRQF_SHARED, "aacraid", &(dev->aac_msix[0]))  < 0) {
+	if (request_irq(dev->pdev->irq, dev->a_ops.adapter_intr, IRQF_SHARED | IRQF_USER_DATA, "aacraid", &(dev->aac_msix[0]))  < 0) {
 
 		if (dev->msi)
 			pci_disable_msi(dev->pdev);

@@ -708,14 +708,15 @@ static int tsi721_request_msix(struct tsi721_device *priv)
 	int err = 0;
 
 	err = request_irq(priv->msix[TSI721_VECT_IDB].vector,
-			tsi721_sr2pc_ch_msix, 0,
-			priv->msix[TSI721_VECT_IDB].irq_name, (void *)priv);
+			  tsi721_sr2pc_ch_msix,
+			  IRQF_USER_DATA,
+			  priv->msix[TSI721_VECT_IDB].irq_name, (void *)priv);
 	if (err)
 		return err;
 
 	err = request_irq(priv->msix[TSI721_VECT_PWRX].vector,
-			tsi721_srio_msix, 0,
-			priv->msix[TSI721_VECT_PWRX].irq_name, (void *)priv);
+			  tsi721_srio_msix, IRQF_USER_DATA,
+			  priv->msix[TSI721_VECT_PWRX].irq_name, (void *)priv);
 	if (err) {
 		free_irq(priv->msix[TSI721_VECT_IDB].vector, (void *)priv);
 		return err;
@@ -844,8 +845,8 @@ static int tsi721_request_irq(struct tsi721_device *priv)
 	else
 #endif
 		err = request_irq(priv->pdev->irq, tsi721_irqhandler,
-			  (priv->flags & TSI721_USING_MSI) ? 0 : IRQF_SHARED,
-			  DRV_NAME, (void *)priv);
+				  ((priv->flags & TSI721_USING_MSI) ? 0 : IRQF_SHARED) | IRQF_USER_DATA,
+				  DRV_NAME, (void *)priv);
 
 	if (err)
 		tsi_err(&priv->pdev->dev,
@@ -1977,7 +1978,8 @@ static int tsi721_open_outb_mbox(struct rio_mport *mport, void *dev_id,
 		int idx = TSI721_VECT_OMB0_DONE + mbox;
 
 		/* Request interrupt service if we are in MSI-X mode */
-		rc = request_irq(priv->msix[idx].vector, tsi721_omsg_msix, 0,
+		rc = request_irq(priv->msix[idx].vector, tsi721_omsg_msix,
+				 IRQF_USER_DATA,
 				 priv->msix[idx].irq_name, (void *)priv);
 
 		if (rc) {
@@ -1988,7 +1990,8 @@ static int tsi721_open_outb_mbox(struct rio_mport *mport, void *dev_id,
 		}
 
 		idx = TSI721_VECT_OMB0_INT + mbox;
-		rc = request_irq(priv->msix[idx].vector, tsi721_omsg_msix, 0,
+		rc = request_irq(priv->msix[idx].vector, tsi721_omsg_msix,
+				 IRQF_USER_DATA,
 				 priv->msix[idx].irq_name, (void *)priv);
 
 		if (rc)	{
@@ -2292,7 +2295,8 @@ static int tsi721_open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		int idx = TSI721_VECT_IMB0_RCV + mbox;
 
 		/* Request interrupt service if we are in MSI-X mode */
-		rc = request_irq(priv->msix[idx].vector, tsi721_imsg_msix, 0,
+		rc = request_irq(priv->msix[idx].vector, tsi721_imsg_msix,
+				 IRQF_USER_DATA,
 				 priv->msix[idx].irq_name, (void *)priv);
 
 		if (rc) {
@@ -2303,7 +2307,8 @@ static int tsi721_open_inb_mbox(struct rio_mport *mport, void *dev_id,
 		}
 
 		idx = TSI721_VECT_IMB0_INT + mbox;
-		rc = request_irq(priv->msix[idx].vector, tsi721_imsg_msix, 0,
+		rc = request_irq(priv->msix[idx].vector, tsi721_imsg_msix,
+				 IRQF_USER_DATA,
 				 priv->msix[idx].irq_name, (void *)priv);
 
 		if (rc)	{

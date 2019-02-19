@@ -2190,8 +2190,7 @@ struct parport *parport_pc_probe_port(unsigned long int base,
 		EPP_res = NULL;
 	}
 	if (p->irq != PARPORT_IRQ_NONE) {
-		if (request_irq(p->irq, parport_irq_handler,
-				 irqflags, p->name, p)) {
+		if (request_irq(p->irq, parport_irq_handler, irqflags | IRQF_USER_DATA, p->name, p)) {
 			printk(KERN_WARNING "%s: irq %d in use, "
 				"resorting to polled operation\n",
 				p->name, p->irq);

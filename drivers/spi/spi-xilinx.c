@@ -473,8 +473,9 @@ static int xilinx_spi_probe(struct platform_device *pdev)
 		goto put_master;
 	} else if (xspi->irq >= 0) {
 		/* Register for SPI Interrupt */
-		ret = devm_request_irq(&pdev->dev, xspi->irq, xilinx_spi_irq, 0,
-				dev_name(&pdev->dev), xspi);
+		ret = devm_request_irq(&pdev->dev, xspi->irq, xilinx_spi_irq,
+				       IRQF_USER_DATA,
+				       dev_name(&pdev->dev), xspi);
 		if (ret)
 			goto put_master;
 	}

@@ -3054,8 +3054,7 @@ static int snd_cmipci_create(struct snd_card *card, struct pci_dev *pci,
 	}
 	cm->iobase = pci_resource_start(pci, 0);
 
-	if (request_irq(pci->irq, snd_cmipci_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, cm)) {
+	if (request_irq(pci->irq, snd_cmipci_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, cm)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_cmipci_free(cm);
 		return -EBUSY;

@@ -237,8 +237,9 @@ int whcrc_setup_rc_umc(struct whcrc *whcrc)
 		goto error_ioremap_nocache;
 	}
 
-	result = request_irq(umc_dev->irq, whcrc_irq_cb, IRQF_SHARED,
-			     KBUILD_MODNAME, whcrc);
+	result = request_irq(umc_dev->irq, whcrc_irq_cb,
+			     IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME,
+			     whcrc);
 	if (result < 0) {
 		dev_err(dev, "can't allocate IRQ %d: %d\n",
 			umc_dev->irq, result);

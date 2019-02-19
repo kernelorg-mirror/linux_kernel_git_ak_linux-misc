@@ -496,7 +496,8 @@ static int digicolor_uart_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&dp->rx_poll_work, digicolor_rx_poll);
 
-	ret = devm_request_irq(&pdev->dev, dp->port.irq, digicolor_uart_int, 0,
+	ret = devm_request_irq(&pdev->dev, dp->port.irq, digicolor_uart_int,
+			       IRQF_USER_DATA,
 			       dev_name(&pdev->dev), &dp->port);
 	if (ret)
 		return ret;

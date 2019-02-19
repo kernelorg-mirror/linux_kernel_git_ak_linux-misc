@@ -245,7 +245,8 @@ static int dt2814_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 	i = inb(dev->iobase + DT2814_DATA);
 
 	if (it->options[1]) {
-		ret = request_irq(it->options[1], dt2814_interrupt, 0,
+		ret = request_irq(it->options[1], dt2814_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = it->options[1];

@@ -167,9 +167,9 @@ int rt2x00mmio_initialize(struct rt2x00_dev *rt2x00dev)
 	/*
 	 * Register interrupt handler.
 	 */
-	status = request_irq(rt2x00dev->irq,
-			     rt2x00dev->ops->lib->irq_handler,
-			     IRQF_SHARED, rt2x00dev->name, rt2x00dev);
+	status = request_irq(rt2x00dev->irq, rt2x00dev->ops->lib->irq_handler,
+			     IRQF_SHARED | IRQF_USER_DATA, rt2x00dev->name,
+			     rt2x00dev);
 	if (status) {
 		rt2x00_err(rt2x00dev, "IRQ %d allocation failed (error %d)\n",
 			   rt2x00dev->irq, status);

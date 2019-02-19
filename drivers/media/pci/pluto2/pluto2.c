@@ -623,7 +623,8 @@ static int pluto2_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_set_drvdata(pdev, pluto);
 
-	ret = request_irq(pdev->irq, pluto_irq, IRQF_SHARED, DRIVER_NAME, pluto);
+	ret = request_irq(pdev->irq, pluto_irq, IRQF_SHARED | IRQF_USER_DATA,
+			  DRIVER_NAME, pluto);
 	if (ret < 0)
 		goto err_pci_iounmap;
 

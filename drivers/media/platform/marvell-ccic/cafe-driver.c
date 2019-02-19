@@ -508,7 +508,8 @@ static int cafe_pci_probe(struct pci_dev *pdev,
 		goto out_disable;
 	}
 	mcam->regs_size = pci_resource_len(pdev, 0);
-	ret = request_irq(pdev->irq, cafe_irq, IRQF_SHARED, "cafe-ccic", cam);
+	ret = request_irq(pdev->irq, cafe_irq, IRQF_SHARED | IRQF_USER_DATA,
+			  "cafe-ccic", cam);
 	if (ret)
 		goto out_iounmap;
 

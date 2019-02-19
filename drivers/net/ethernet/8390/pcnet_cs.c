@@ -905,7 +905,8 @@ static int pcnet_open(struct net_device *dev)
     set_misc_reg(dev);
 
     outb_p(0xFF, nic_base + EN0_ISR); /* Clear bogus intr. */
-    ret = request_irq(dev->irq, ei_irq_wrapper, IRQF_SHARED, dev->name, dev);
+    ret = request_irq(dev->irq, ei_irq_wrapper, IRQF_SHARED | IRQF_USER_DATA,
+                      dev->name, dev);
     if (ret)
 	    return ret;
 

@@ -3590,8 +3590,7 @@ int snd_trident_create(struct snd_card *card,
 	}
 	trident->port = pci_resource_start(pci, 0);
 
-	if (request_irq(pci->irq, snd_trident_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, trident)) {
+	if (request_irq(pci->irq, snd_trident_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, trident)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_trident_free(trident);
 		return -EBUSY;

@@ -133,7 +133,7 @@ static int sim710_probe_common(struct device *dev, unsigned long base_addr,
 	host->this_id = scsi_id;
 	host->base = base_addr;
 	host->irq = irq;
-	if (request_irq(irq, NCR_700_intr, IRQF_SHARED, "sim710", host)) {
+	if (request_irq(irq, NCR_700_intr, IRQF_SHARED | IRQF_USER_DATA, "sim710", host)) {
 		printk(KERN_ERR "sim710: request_irq failed\n");
 		goto out_put_host;
 	}

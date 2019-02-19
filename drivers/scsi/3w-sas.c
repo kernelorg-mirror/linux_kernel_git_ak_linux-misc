@@ -1662,7 +1662,8 @@ static int twl_probe(struct pci_dev *pdev, const struct pci_device_id *dev_id)
 		set_bit(TW_USING_MSI, &tw_dev->flags);
 
 	/* Now setup the interrupt handler */
-	retval = request_irq(pdev->irq, twl_interrupt, IRQF_SHARED, "3w-sas", tw_dev);
+	retval = request_irq(pdev->irq, twl_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, "3w-sas", tw_dev);
 	if (retval) {
 		TW_PRINTK(tw_dev->host, TW_DRIVER, 0x1f, "Error requesting IRQ");
 		goto out_remove_host;
@@ -1819,7 +1820,8 @@ static int twl_resume(struct pci_dev *pdev)
 	}
 
 	/* Now setup the interrupt handler */
-	retval = request_irq(pdev->irq, twl_interrupt, IRQF_SHARED, "3w-sas", tw_dev);
+	retval = request_irq(pdev->irq, twl_interrupt,
+			     IRQF_SHARED | IRQF_USER_DATA, "3w-sas", tw_dev);
 	if (retval) {
 		TW_PRINTK(tw_dev->host, TW_DRIVER, 0x26, "Error requesting IRQ during resume");
 		retval = -ENODEV;

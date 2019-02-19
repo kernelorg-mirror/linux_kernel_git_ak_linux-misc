@@ -1028,7 +1028,8 @@ int bind_evtchn_to_irqhandler(unsigned int evtchn,
 	irq = bind_evtchn_to_irq(evtchn);
 	if (irq < 0)
 		return irq;
-	retval = request_irq(irq, handler, irqflags, devname, dev_id);
+	retval = request_irq(irq, handler, irqflags | IRQF_USER_DATA, devname,
+			     dev_id);
 	if (retval != 0) {
 		unbind_from_irq(irq);
 		return retval;
@@ -1051,7 +1052,8 @@ int bind_interdomain_evtchn_to_irqhandler(unsigned int remote_domain,
 	if (irq < 0)
 		return irq;
 
-	retval = request_irq(irq, handler, irqflags, devname, dev_id);
+	retval = request_irq(irq, handler, irqflags | IRQF_USER_DATA, devname,
+			     dev_id);
 	if (retval != 0) {
 		unbind_from_irq(irq);
 		return retval;
@@ -1070,7 +1072,8 @@ int bind_virq_to_irqhandler(unsigned int virq, unsigned int cpu,
 	irq = bind_virq_to_irq(virq, cpu, irqflags & IRQF_PERCPU);
 	if (irq < 0)
 		return irq;
-	retval = request_irq(irq, handler, irqflags, devname, dev_id);
+	retval = request_irq(irq, handler, irqflags | IRQF_USER_DATA, devname,
+			     dev_id);
 	if (retval != 0) {
 		unbind_from_irq(irq);
 		return retval;
@@ -1094,7 +1097,8 @@ int bind_ipi_to_irqhandler(enum ipi_vector ipi,
 		return irq;
 
 	irqflags |= IRQF_NO_SUSPEND | IRQF_FORCE_RESUME | IRQF_EARLY_RESUME;
-	retval = request_irq(irq, handler, irqflags, devname, dev_id);
+	retval = request_irq(irq, handler, irqflags | IRQF_USER_DATA, devname,
+			     dev_id);
 	if (retval != 0) {
 		unbind_from_irq(irq);
 		return retval;

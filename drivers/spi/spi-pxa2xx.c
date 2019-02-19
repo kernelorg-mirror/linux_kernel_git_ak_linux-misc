@@ -1681,8 +1681,8 @@ static int pxa2xx_spi_probe(struct platform_device *pdev)
 						| SSSR_ROR | SSSR_TUR;
 	}
 
-	status = request_irq(ssp->irq, ssp_int, IRQF_SHARED, dev_name(dev),
-			drv_data);
+	status = request_irq(ssp->irq, ssp_int, IRQF_SHARED | IRQF_USER_DATA,
+			     dev_name(dev), drv_data);
 	if (status < 0) {
 		dev_err(&pdev->dev, "cannot get IRQ %d\n", ssp->irq);
 		goto out_error_master_alloc;

@@ -1567,7 +1567,8 @@ try_msi:
 	ret = pci_alloc_irq_vectors(ha->pdev, 1, 1, PCI_IRQ_MSI);
 	if (ret > 0) {
 		ret = request_irq(ha->pdev->irq, qla4_8xxx_msi_handler,
-			0, DRIVER_NAME, ha);
+				  IRQF_USER_DATA,
+				  DRIVER_NAME, ha);
 		if (!ret) {
 			DEBUG2(ql4_printk(KERN_INFO, ha, "MSI: Enabled.\n"));
 			goto irq_attached;
@@ -1588,7 +1589,7 @@ try_intx:
 
 	/* Trying INTx */
 	ret = request_irq(ha->pdev->irq, ha->isp_ops->intr_handler,
-	    IRQF_SHARED, DRIVER_NAME, ha);
+			  IRQF_SHARED | IRQF_USER_DATA, DRIVER_NAME, ha);
 	if (!ret) {
 		DEBUG2(ql4_printk(KERN_INFO, ha, "INTx: Enabled.\n"));
 		goto irq_attached;

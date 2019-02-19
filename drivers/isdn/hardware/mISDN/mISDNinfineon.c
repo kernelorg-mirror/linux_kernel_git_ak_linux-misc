@@ -611,7 +611,8 @@ init_irq(struct inf_hw *hw)
 
 	if (!hw->ci->irqfunc)
 		return -EINVAL;
-	ret = request_irq(hw->irq, hw->ci->irqfunc, IRQF_SHARED, hw->name, hw);
+	ret = request_irq(hw->irq, hw->ci->irqfunc,
+			  IRQF_SHARED | IRQF_USER_DATA, hw->name, hw);
 	if (ret) {
 		pr_info("%s: couldn't get interrupt %d\n", hw->name, hw->irq);
 		return ret;

@@ -1332,8 +1332,7 @@ static int ngene_start(struct ngene *dev)
 	ngene_init(dev);
 
 	stat = request_irq(dev->pci_dev->irq, irq_handler,
-			   IRQF_SHARED, "nGene",
-			   (void *)dev);
+			   IRQF_SHARED | IRQF_USER_DATA, "nGene", (void *)dev);
 	if (stat < 0)
 		return stat;
 
@@ -1372,7 +1371,7 @@ static int ngene_start(struct ngene *dev)
 			dev->msi_enabled = true;
 		}
 		stat = request_irq(dev->pci_dev->irq, irq_handler,
-					flags, "nGene", dev);
+				   flags | IRQF_USER_DATA, "nGene", dev);
 		if (stat < 0)
 			goto fail2;
 		ngwritel(1, NGENE_INT_ENABLE);

@@ -401,8 +401,8 @@ static int ni6527_auto_attach(struct comedi_device *dev,
 
 	ni6527_reset(dev);
 
-	ret = request_irq(pcidev->irq, ni6527_interrupt, IRQF_SHARED,
-			  dev->board_name, dev);
+	ret = request_irq(pcidev->irq, ni6527_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, dev->board_name, dev);
 	if (ret == 0)
 		dev->irq = pcidev->irq;
 

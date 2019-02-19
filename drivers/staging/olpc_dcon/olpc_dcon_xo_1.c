@@ -98,7 +98,7 @@ static int dcon_init_xo_1(struct dcon_priv *dcon)
 	outb(lob, 0x4d0);
 
 	/* Register the interrupt handler */
-	if (request_irq(DCON_IRQ, &dcon_interrupt, 0, "DCON", dcon)) {
+	if (request_irq(DCON_IRQ, &dcon_interrupt, IRQF_USER_DATA, "DCON", dcon)) {
 		pr_err("failed to request DCON's irq\n");
 		return -EIO;
 	}

@@ -2323,7 +2323,7 @@ static struct myrs_hba *myrs_detect(struct pci_dev *pdev,
 		goto Failure;
 
 	/* Acquire shared access to the IRQ Channel. */
-	if (request_irq(pdev->irq, irq_handler, IRQF_SHARED, "myrs", cs) < 0) {
+	if (request_irq(pdev->irq, irq_handler, IRQF_SHARED | IRQF_USER_DATA, "myrs", cs) < 0) {
 		dev_err(&pdev->dev,
 			"Unable to acquire IRQ Channel %d\n", pdev->irq);
 		goto Failure;

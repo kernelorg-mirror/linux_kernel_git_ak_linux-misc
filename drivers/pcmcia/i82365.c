@@ -63,7 +63,7 @@
 static irqreturn_t i365_count_irq(int, void *);
 static inline int _check_irq(int irq, int flags)
 {
-    if (request_irq(irq, i365_count_irq, flags, "x", i365_count_irq) != 0)
+    if (request_irq(irq, i365_count_irq, flags | IRQF_USER_DATA, "x", i365_count_irq) != 0)
 	return -1;
     free_irq(irq, i365_count_irq);
     return 0;
@@ -489,8 +489,7 @@ static irqreturn_t i365_count_irq(int irq, void *dev)
 static u_int __init test_irq(u_short sock, int irq)
 {
     pr_debug("i82365:  testing ISA irq %d\n", irq);
-    if (request_irq(irq, i365_count_irq, IRQF_PROBE_SHARED, "scan",
-			i365_count_irq) != 0)
+    if (request_irq(irq, i365_count_irq, IRQF_PROBE_SHARED | IRQF_USER_DATA, "scan", i365_count_irq) != 0)
 	return 1;
     irq_hits = 0; irq_sock = sock;
     msleep(10);
@@ -1270,7 +1269,9 @@ static int __init init_i82365(void)
 
     /* Set up interrupt handler(s) */
     if (grab_irq != 0)
-	ret = request_irq(cs_irq, pcic_interrupt, 0, "i82365", pcic_interrupt);
+	ret = request_irq(cs_irq, pcic_interrupt,
+                          IRQF_USER_DATA, "i82365",
+                          pcic_interrupt);
 
     if (ret)
 	goto err_socket_release;

@@ -1496,8 +1496,7 @@ static int es1938_resume(struct device *dev)
 	struct es1938 *chip = card->private_data;
 	unsigned char *s, *d;
 
-	if (request_irq(pci->irq, snd_es1938_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_es1938_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(dev, "unable to grab IRQ %d, disabling device\n",
 			pci->irq);
 		snd_card_disconnect(card);
@@ -1625,8 +1624,7 @@ static int snd_es1938_create(struct snd_card *card,
 	chip->vc_port = pci_resource_start(pci, 2);
 	chip->mpu_port = pci_resource_start(pci, 3);
 	chip->game_port = pci_resource_start(pci, 4);
-	if (request_irq(pci->irq, snd_es1938_interrupt, IRQF_SHARED,
-			KBUILD_MODNAME, chip)) {
+	if (request_irq(pci->irq, snd_es1938_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		snd_es1938_free(chip);
 		return -EBUSY;

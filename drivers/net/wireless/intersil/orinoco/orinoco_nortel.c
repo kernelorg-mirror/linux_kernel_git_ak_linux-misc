@@ -194,8 +194,8 @@ static int orinoco_nortel_init_one(struct pci_dev *pdev,
 
 	hermes_struct_init(&priv->hw, hermes_io, HERMES_16BIT_REGSPACING);
 
-	err = request_irq(pdev->irq, orinoco_interrupt, IRQF_SHARED,
-			  DRIVER_NAME, priv);
+	err = request_irq(pdev->irq, orinoco_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, DRIVER_NAME, priv);
 	if (err) {
 		printk(KERN_ERR PFX "Cannot allocate IRQ %d\n", pdev->irq);
 		err = -EBUSY;

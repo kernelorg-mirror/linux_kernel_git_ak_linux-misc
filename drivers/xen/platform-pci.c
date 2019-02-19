@@ -83,8 +83,8 @@ static irqreturn_t do_hvm_evtchn_intr(int irq, void *dev_id)
 static int xen_allocate_irq(struct pci_dev *pdev)
 {
 	return request_irq(pdev->irq, do_hvm_evtchn_intr,
-			IRQF_NOBALANCING | IRQF_TRIGGER_RISING,
-			"xen-platform-pci", pdev);
+			   IRQF_NOBALANCING | IRQF_TRIGGER_RISING | IRQF_USER_DATA,
+			   "xen-platform-pci", pdev);
 }
 
 static int platform_pci_resume(struct pci_dev *pdev)

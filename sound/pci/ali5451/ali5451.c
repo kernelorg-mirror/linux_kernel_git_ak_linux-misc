@@ -2066,8 +2066,7 @@ static int snd_ali_resources(struct snd_ali *codec)
 		return err;
 	codec->port = pci_resource_start(codec->pci, 0);
 
-	if (request_irq(codec->pci->irq, snd_ali_card_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, codec)) {
+	if (request_irq(codec->pci->irq, snd_ali_card_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, codec)) {
 		dev_err(codec->card->dev, "Unable to request irq.\n");
 		return -EBUSY;
 	}

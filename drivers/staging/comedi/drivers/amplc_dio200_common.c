@@ -841,8 +841,7 @@ int amplc_dio200_common_attach(struct comedi_device *dev, unsigned int irq,
 	}
 
 	if (irq && dev->read_subdev) {
-		if (request_irq(irq, dio200_interrupt, req_irq_flags,
-				dev->board_name, dev) >= 0) {
+		if (request_irq(irq, dio200_interrupt, req_irq_flags | IRQF_USER_DATA, dev->board_name, dev) >= 0) {
 			dev->irq = irq;
 		} else {
 			dev_warn(dev->class_dev,

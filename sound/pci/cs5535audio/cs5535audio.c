@@ -309,8 +309,7 @@ static int snd_cs5535audio_create(struct snd_card *card,
 
 	cs5535au->port = pci_resource_start(pci, 0);
 
-	if (request_irq(pci->irq, snd_cs5535audio_interrupt,
-			IRQF_SHARED, KBUILD_MODNAME, cs5535au)) {
+	if (request_irq(pci->irq, snd_cs5535audio_interrupt, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, cs5535au)) {
 		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
 		err = -EBUSY;
 		goto sndfail;

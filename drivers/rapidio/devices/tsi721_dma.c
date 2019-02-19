@@ -161,7 +161,8 @@ static int tsi721_bdma_ch_init(struct tsi721_bdma_chan *bdma_chan, int bd_num)
 
 		idx = TSI721_VECT_DMA0_DONE + bdma_chan->id;
 
-		rc = request_irq(priv->msix[idx].vector, tsi721_bdma_msix, 0,
+		rc = request_irq(priv->msix[idx].vector, tsi721_bdma_msix,
+				 IRQF_USER_DATA,
 				 priv->msix[idx].irq_name, (void *)bdma_chan);
 
 		if (rc) {
@@ -173,8 +174,9 @@ static int tsi721_bdma_ch_init(struct tsi721_bdma_chan *bdma_chan, int bd_num)
 
 		idx = TSI721_VECT_DMA0_INT + bdma_chan->id;
 
-		rc = request_irq(priv->msix[idx].vector, tsi721_bdma_msix, 0,
-				priv->msix[idx].irq_name, (void *)bdma_chan);
+		rc = request_irq(priv->msix[idx].vector, tsi721_bdma_msix,
+				 IRQF_USER_DATA,
+				 priv->msix[idx].irq_name, (void *)bdma_chan);
 
 		if (rc)	{
 			tsi_debug(DMA, &bdma_chan->dchan.dev->device,

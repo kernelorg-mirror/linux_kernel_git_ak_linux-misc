@@ -78,9 +78,9 @@ static void xen_pcibk_control_isr(struct pci_dev *dev, int reset)
 		if (dev->msi_enabled || dev->msix_enabled)
 			goto out;
 
-		rc = request_irq(dev_data->irq,
-				xen_pcibk_guest_interrupt, IRQF_SHARED,
-				dev_data->irq_name, dev);
+		rc = request_irq(dev_data->irq, xen_pcibk_guest_interrupt,
+				 IRQF_SHARED | IRQF_USER_DATA,
+				 dev_data->irq_name, dev);
 		if (rc) {
 			dev_err(&dev->dev, "%s: failed to install fake IRQ " \
 				"handler for IRQ %d! (rc:%d)\n",

@@ -392,7 +392,8 @@ static int __init rtc7301_rtc_probe(struct platform_device *dev)
 
 	if (priv->irq > 0) {
 		ret = devm_request_irq(&dev->dev, priv->irq,
-				       rtc7301_irq_handler, IRQF_SHARED,
+				       rtc7301_irq_handler,
+				       IRQF_SHARED | IRQF_USER_DATA,
 				       dev_name(&dev->dev), rtc);
 		if (ret) {
 			priv->irq = 0;

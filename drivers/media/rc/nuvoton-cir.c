@@ -1049,7 +1049,8 @@ static int nvt_probe(struct pnp_dev *pdev, const struct pnp_device_id *dev_id)
 		return -EBUSY;
 
 	ret = devm_request_irq(&pdev->dev, nvt->cir_irq, nvt_cir_isr,
-			       IRQF_SHARED, NVT_DRIVER_NAME, nvt);
+			       IRQF_SHARED | IRQF_USER_DATA, NVT_DRIVER_NAME,
+			       nvt);
 	if (ret)
 		return ret;
 

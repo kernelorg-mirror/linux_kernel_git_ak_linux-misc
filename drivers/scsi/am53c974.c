@@ -448,8 +448,8 @@ static int pci_esp_probe_one(struct pci_dev *pdev,
 
 	pci_set_drvdata(pdev, pep);
 
-	err = request_irq(pdev->irq, scsi_esp_intr, IRQF_SHARED,
-			  DRV_MODULE_NAME, esp);
+	err = request_irq(pdev->irq, scsi_esp_intr,
+			  IRQF_SHARED | IRQF_USER_DATA, DRV_MODULE_NAME, esp);
 	if (err < 0) {
 		dev_printk(KERN_ERR, &pdev->dev, "failed to register IRQ\n");
 		goto fail_unmap_command_block;

@@ -1600,8 +1600,9 @@ static int aspeed_video_init(struct aspeed_video *video)
 		return -ENODEV;
 	}
 
-	rc = devm_request_irq(dev, irq, aspeed_video_irq, IRQF_SHARED,
-			      DEVICE_NAME, video);
+	rc = devm_request_irq(dev, irq, aspeed_video_irq,
+			      IRQF_SHARED | IRQF_USER_DATA, DEVICE_NAME,
+			      video);
 	if (rc < 0) {
 		dev_err(dev, "Unable to request IRQ %d\n", irq);
 		return rc;

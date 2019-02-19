@@ -824,9 +824,9 @@ static int goldfish_pipe_device_init(struct platform_device *pdev,
 	tasklet_init(&dev->irq_tasklet, &goldfish_interrupt_task,
 		     (unsigned long)dev);
 
-	err = devm_request_irq(&pdev->dev, dev->irq,
-			       goldfish_pipe_interrupt,
-			       IRQF_SHARED, "goldfish_pipe", dev);
+	err = devm_request_irq(&pdev->dev, dev->irq, goldfish_pipe_interrupt,
+			       IRQF_SHARED | IRQF_USER_DATA, "goldfish_pipe",
+			       dev);
 	if (err) {
 		dev_err(&pdev->dev, "unable to allocate IRQ for v2\n");
 		return err;

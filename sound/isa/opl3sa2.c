@@ -667,8 +667,8 @@ static int snd_opl3sa2_probe(struct snd_card *card, int dev)
 	err = snd_opl3sa2_detect(card);
 	if (err < 0)
 		return err;
-	err = request_irq(xirq, snd_opl3sa2_interrupt, 0,
-			  "OPL3-SA2", card);
+	err = request_irq(xirq, snd_opl3sa2_interrupt,
+			  IRQF_USER_DATA, "OPL3-SA2", card);
 	if (err) {
 		snd_printk(KERN_ERR PFX "can't grab IRQ %d\n", xirq);
 		return -ENODEV;

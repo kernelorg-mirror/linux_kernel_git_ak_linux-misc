@@ -305,8 +305,8 @@ static int gpio_vbus_probe(struct platform_device *pdev)
 		gpio_direction_output(gpio, pdata->gpio_pullup_inverted);
 	}
 
-	err = devm_request_irq(&pdev->dev, irq, gpio_vbus_irq, irqflags,
-			       "vbus_detect", pdev);
+	err = devm_request_irq(&pdev->dev, irq, gpio_vbus_irq,
+			       irqflags | IRQF_USER_DATA, "vbus_detect", pdev);
 	if (err) {
 		dev_err(&pdev->dev, "can't request irq %i, err: %d\n",
 			irq, err);

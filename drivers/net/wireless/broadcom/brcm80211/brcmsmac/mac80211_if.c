@@ -1167,8 +1167,7 @@ static struct brcms_info *brcms_attach(struct bcma_device *pdev)
 	wl->pub->ieee_hw = hw;
 
 	/* register our interrupt handler */
-	if (request_irq(pdev->irq, brcms_isr,
-			IRQF_SHARED, KBUILD_MODNAME, wl)) {
+	if (request_irq(pdev->irq, brcms_isr, IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, wl)) {
 		wiphy_err(wl->wiphy, "wl%d: request_irq() failed\n", unit);
 		goto fail;
 	}

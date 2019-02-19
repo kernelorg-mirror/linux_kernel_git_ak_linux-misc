@@ -983,7 +983,8 @@ static int axis_fifo_probe(struct platform_device *pdev)
 
 	/* request IRQ */
 	fifo->irq = r_irq->start;
-	rc = request_irq(fifo->irq, &axis_fifo_irq, 0, DRIVER_NAME, fifo);
+	rc = request_irq(fifo->irq, &axis_fifo_irq,
+			 IRQF_USER_DATA, DRIVER_NAME, fifo);
 	if (rc) {
 		dev_err(fifo->dt_device, "couldn't allocate interrupt %i\n",
 			fifo->irq);

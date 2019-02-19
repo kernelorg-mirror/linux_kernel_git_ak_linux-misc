@@ -563,7 +563,8 @@ static int qcom_slim_probe(struct platform_device *pdev)
 	qcom_slim_prg_slew(pdev, ctrl);
 
 	ret = devm_request_irq(&pdev->dev, ctrl->irq, qcom_slim_interrupt,
-				IRQF_TRIGGER_HIGH, "qcom_slim_irq", ctrl);
+			       IRQF_TRIGGER_HIGH | IRQF_USER_DATA,
+			       "qcom_slim_irq", ctrl);
 	if (ret) {
 		dev_err(&pdev->dev, "request IRQ failed\n");
 		goto err_request_irq_failed;

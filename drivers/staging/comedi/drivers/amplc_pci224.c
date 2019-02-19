@@ -1082,7 +1082,8 @@ pci224_auto_attach(struct comedi_device *dev, unsigned long context_model)
 		return ret;
 
 	if (irq) {
-		ret = request_irq(irq, pci224_interrupt, IRQF_SHARED,
+		ret = request_irq(irq, pci224_interrupt,
+				  IRQF_SHARED | IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret < 0) {
 			dev_err(dev->class_dev,

@@ -719,7 +719,8 @@ static int ds1305_probe(struct spi_device *spi)
 	if (spi->irq) {
 		INIT_WORK(&ds1305->work, ds1305_work);
 		status = devm_request_irq(&spi->dev, spi->irq, ds1305_irq,
-				0, dev_name(&ds1305->rtc->dev), ds1305);
+					  IRQF_USER_DATA,
+					  dev_name(&ds1305->rtc->dev), ds1305);
 		if (status < 0) {
 			dev_err(&spi->dev, "request_irq %d --> %d\n",
 					spi->irq, status);

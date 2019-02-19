@@ -782,8 +782,8 @@ static int cc770_open(struct net_device *dev)
 	if (err)
 		return err;
 
-	err = request_irq(dev->irq, &cc770_interrupt, priv->irq_flags,
-			  dev->name, dev);
+	err = request_irq(dev->irq, &cc770_interrupt,
+			  priv->irq_flags | IRQF_USER_DATA, dev->name, dev);
 	if (err) {
 		close_candev(dev);
 		return -EAGAIN;

@@ -387,8 +387,8 @@ csio_request_irqs(struct csio_hw *hw)
 
 	if (hw->intr_mode != CSIO_IM_MSIX) {
 		rv = request_irq(pci_irq_vector(pdev, 0), csio_fcoe_isr,
-				hw->intr_mode == CSIO_IM_MSI ? 0 : IRQF_SHARED,
-				KBUILD_MODNAME, hw);
+				 (hw->intr_mode == CSIO_IM_MSI ? 0 : IRQF_SHARED) | IRQF_USER_DATA,
+				 KBUILD_MODNAME, hw);
 		if (rv) {
 			csio_err(hw, "Failed to allocate interrupt line.\n");
 			goto out_free_irqs;
@@ -400,8 +400,8 @@ csio_request_irqs(struct csio_hw *hw)
 	/* Add the MSIX vector descriptions */
 	csio_add_msix_desc(hw);
 
-	rv = request_irq(pci_irq_vector(pdev, k), csio_nondata_isr, 0,
-			 entryp[k].desc, hw);
+	rv = request_irq(pci_irq_vector(pdev, k), csio_nondata_isr,
+			 IRQF_USER_DATA, entryp[k].desc, hw);
 	if (rv) {
 		csio_err(hw, "IRQ request failed for vec %d err:%d\n",
 			 pci_irq_vector(pdev, k), rv);
@@ -410,8 +410,8 @@ csio_request_irqs(struct csio_hw *hw)
 
 	entryp[k++].dev_id = hw;
 
-	rv = request_irq(pci_irq_vector(pdev, k), csio_fwevt_isr, 0,
-			 entryp[k].desc, hw);
+	rv = request_irq(pci_irq_vector(pdev, k), csio_fwevt_isr,
+			 IRQF_USER_DATA, entryp[k].desc, hw);
 	if (rv) {
 		csio_err(hw, "IRQ request failed for vec %d err:%d\n",
 			 pci_irq_vector(pdev, k), rv);
@@ -427,7 +427,9 @@ csio_request_irqs(struct csio_hw *hw)
 			struct csio_scsi_qset *sqset = &hw->sqset[i][j];
 			struct csio_q *q = hw->wrm.q_arr[sqset->iq_idx];
 
-			rv = request_irq(pci_irq_vector(pdev, k), csio_scsi_isr, 0,
+			rv = request_irq(pci_irq_vector(pdev, k),
+					 csio_scsi_isr,
+					 IRQF_USER_DATA,
 					 entryp[k].desc, q);
 			if (rv) {
 				csio_err(hw,

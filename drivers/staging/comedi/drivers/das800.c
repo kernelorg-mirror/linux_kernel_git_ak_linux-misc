@@ -668,8 +668,9 @@ static int das800_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 	dev->board_name = board->name;
 
 	if (irq > 1 && irq <= 7) {
-		ret = request_irq(irq, das800_interrupt, 0, dev->board_name,
-				  dev);
+		ret = request_irq(irq, das800_interrupt,
+				  IRQF_USER_DATA,
+				  dev->board_name, dev);
 		if (ret == 0)
 			dev->irq = irq;
 	}

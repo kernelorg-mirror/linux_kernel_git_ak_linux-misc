@@ -669,8 +669,8 @@ int oxygen_pci_probe(struct pci_dev *pci, int index, char *id,
 	oxygen_init(chip);
 	chip->model.init(chip);
 
-	err = request_irq(pci->irq, oxygen_interrupt, IRQF_SHARED,
-			  KBUILD_MODNAME, chip);
+	err = request_irq(pci->irq, oxygen_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, KBUILD_MODNAME, chip);
 	if (err < 0) {
 		dev_err(card->dev, "cannot grab interrupt %d\n", pci->irq);
 		goto err_card;

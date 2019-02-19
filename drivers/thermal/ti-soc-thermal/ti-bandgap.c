@@ -772,8 +772,10 @@ static int ti_bandgap_tshut_init(struct ti_bandgap *bgp,
 		return status;
 	}
 
-	status = request_irq(gpio_to_irq(gpio_nr), ti_bandgap_tshut_irq_handler,
-			     IRQF_TRIGGER_RISING, "tshut", NULL);
+	status = request_irq(gpio_to_irq(gpio_nr),
+			     ti_bandgap_tshut_irq_handler,
+			     IRQF_TRIGGER_RISING | IRQF_USER_DATA, "tshut",
+			     NULL);
 	if (status) {
 		gpio_free(gpio_nr);
 		dev_err(bgp->dev, "request irq failed for TSHUT");

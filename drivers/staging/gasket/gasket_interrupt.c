@@ -206,7 +206,8 @@ gasket_interrupt_msix_init(struct gasket_interrupt_data *interrupt_data)
 
 	for (i = 0; i < interrupt_data->num_interrupts; i++) {
 		ret = request_irq(interrupt_data->msix_entries[i].vector,
-				  gasket_msix_interrupt_handler, 0,
+				  gasket_msix_interrupt_handler,
+				  IRQF_USER_DATA,
 				  interrupt_data->name, interrupt_data);
 
 		if (ret) {

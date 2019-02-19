@@ -130,8 +130,9 @@ static void start_serial_interrupt(int irq)
 	if (!synth->read_buff_add)
 		return;
 
-	rv = request_irq(irq, synth_readbuf_handler, IRQF_SHARED,
-			 "serial", (void *)synth_readbuf_handler);
+	rv = request_irq(irq, synth_readbuf_handler,
+			 IRQF_SHARED | IRQF_USER_DATA, "serial",
+			 (void *)synth_readbuf_handler);
 
 	if (rv)
 		pr_err("Unable to request Speakup serial I R Q\n");

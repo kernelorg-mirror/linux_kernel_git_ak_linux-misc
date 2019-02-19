@@ -2593,8 +2593,8 @@ static int bcm2048_i2c_driver_probe(struct i2c_client *client)
 	INIT_WORK(&bdev->work, bcm2048_work);
 
 	if (client->irq) {
-		err = request_irq(client->irq,
-				  bcm2048_handler, IRQF_TRIGGER_FALLING,
+		err = request_irq(client->irq, bcm2048_handler,
+				  IRQF_TRIGGER_FALLING | IRQF_USER_DATA,
 				  client->name, bdev);
 		if (err < 0) {
 			dev_err(&client->dev, "Could not request IRQ\n");

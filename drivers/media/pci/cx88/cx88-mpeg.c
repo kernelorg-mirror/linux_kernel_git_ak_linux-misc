@@ -416,7 +416,7 @@ static int cx8802_init_common(struct cx8802_dev *dev)
 
 	/* get irq */
 	err = request_irq(dev->pci->irq, cx8802_irq,
-			  IRQF_SHARED, dev->core->name, dev);
+			  IRQF_SHARED | IRQF_USER_DATA, dev->core->name, dev);
 	if (err < 0) {
 		pr_err("can't get IRQ %d\n", dev->pci->irq);
 		return err;

@@ -559,8 +559,8 @@ static int solo_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* PLL locking time of 1ms */
 	mdelay(1);
 
-	ret = request_irq(pdev->irq, solo_isr, IRQF_SHARED, SOLO6X10_NAME,
-			  solo_dev);
+	ret = request_irq(pdev->irq, solo_isr, IRQF_SHARED | IRQF_USER_DATA,
+			  SOLO6X10_NAME, solo_dev);
 	if (ret)
 		goto fail_probe;
 

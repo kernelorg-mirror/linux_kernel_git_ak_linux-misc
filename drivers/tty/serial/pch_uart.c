@@ -1326,8 +1326,8 @@ static int pch_uart_startup(struct uart_port *port)
 	if (ret < 0)
 		return ret;
 
-	ret = request_irq(priv->port.irq, pch_uart_interrupt, IRQF_SHARED,
-			priv->irq_name, priv);
+	ret = request_irq(priv->port.irq, pch_uart_interrupt,
+			  IRQF_SHARED | IRQF_USER_DATA, priv->irq_name, priv);
 	if (ret < 0)
 		return ret;
 

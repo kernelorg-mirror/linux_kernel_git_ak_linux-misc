@@ -1458,7 +1458,8 @@ int isp1760_udc_register(struct isp1760_device *isp, int irq,
 	if (!udc->irqname)
 		return -ENOMEM;
 
-	ret = request_irq(irq, isp1760_udc_irq, IRQF_SHARED | irqflags,
+	ret = request_irq(irq, isp1760_udc_irq,
+			  IRQF_SHARED | irqflags | IRQF_USER_DATA,
 			  udc->irqname, udc);
 	if (ret < 0)
 		goto error;

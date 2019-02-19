@@ -1167,7 +1167,8 @@ static int if_spi_probe(struct spi_device *spi)
 	INIT_WORK(&card->resume_work, if_spi_resume_worker);
 
 	err = request_irq(spi->irq, if_spi_host_interrupt,
-			IRQF_TRIGGER_FALLING, "libertas_spi", card);
+			  IRQF_TRIGGER_FALLING | IRQF_USER_DATA,
+			  "libertas_spi", card);
 	if (err) {
 		pr_err("can't get host irq line-- request_irq failed\n");
 		goto terminate_workqueue;

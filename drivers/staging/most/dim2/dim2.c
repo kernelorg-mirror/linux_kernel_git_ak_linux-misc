@@ -802,7 +802,8 @@ static int dim2_probe(struct platform_device *pdev)
 		goto err_shutdown_dim;
 	}
 
-	ret = devm_request_irq(&pdev->dev, irq, dim2_ahb_isr, 0,
+	ret = devm_request_irq(&pdev->dev, irq, dim2_ahb_isr,
+			       IRQF_USER_DATA,
 			       "dim2_ahb0_int", dev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request ahb0_int irq %d\n", irq);
@@ -816,7 +817,8 @@ static int dim2_probe(struct platform_device *pdev)
 		goto err_shutdown_dim;
 	}
 
-	ret = devm_request_irq(&pdev->dev, irq, dim2_mlb_isr, 0,
+	ret = devm_request_irq(&pdev->dev, irq, dim2_mlb_isr,
+			       IRQF_USER_DATA,
 			       "dim2_mlb_int", dev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request mlb_int irq %d\n", irq);

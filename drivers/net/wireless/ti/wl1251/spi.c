@@ -307,8 +307,9 @@ static int wl1251_spi_probe(struct spi_device *spi)
 	}
 
 	irq_set_status_flags(wl->irq, IRQ_NOAUTOEN);
-	ret = devm_request_irq(&spi->dev, wl->irq, wl1251_irq, 0,
-							DRIVER_NAME, wl);
+	ret = devm_request_irq(&spi->dev, wl->irq, wl1251_irq,
+			       IRQF_USER_DATA, DRIVER_NAME,
+			       wl);
 	if (ret < 0) {
 		wl1251_error("request_irq() failed: %d", ret);
 		goto out_free;

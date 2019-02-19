@@ -2246,8 +2246,7 @@ static int mv_udc_probe(struct platform_device *pdev)
 		goto err_destroy_dma;
 	}
 	udc->irq = r->start;
-	if (devm_request_irq(&pdev->dev, udc->irq, mv_udc_irq,
-		IRQF_SHARED, driver_name, udc)) {
+	if (devm_request_irq(&pdev->dev, udc->irq, mv_udc_irq, IRQF_SHARED | IRQF_USER_DATA, driver_name, udc)) {
 		dev_err(&pdev->dev, "Request irq %d for UDC failed\n",
 			udc->irq);
 		retval = -ENODEV;

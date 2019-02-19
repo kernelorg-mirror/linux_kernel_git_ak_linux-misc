@@ -1197,7 +1197,8 @@ static int das1800_attach(struct comedi_device *dev,
 
 	if (irq == 3 || irq == 5 || irq == 7 || irq == 10 || irq == 11 ||
 	    irq == 15) {
-		ret = request_irq(irq, das1800_interrupt, 0,
+		ret = request_irq(irq, das1800_interrupt,
+				  IRQF_USER_DATA,
 				  dev->board_name, dev);
 		if (ret == 0) {
 			dev->irq = irq;

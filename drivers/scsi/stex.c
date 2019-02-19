@@ -1635,8 +1635,8 @@ static int stex_request_irq(struct st_hba *hba)
 		hba->msi_enabled = 0;
 
 	status = request_irq(pdev->irq,
-		(hba->cardtype == st_yel || hba->cardtype == st_P3) ?
-		stex_ss_intr : stex_intr, IRQF_SHARED, DRV_NAME, hba);
+			     (hba->cardtype == st_yel || hba->cardtype == st_P3) ? stex_ss_intr : stex_intr,
+			     IRQF_SHARED | IRQF_USER_DATA, DRV_NAME, hba);
 
 	if (status != 0) {
 		if (hba->msi_enabled)
