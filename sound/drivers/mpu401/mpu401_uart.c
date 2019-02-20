@@ -36,6 +36,7 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>
+#include <linux/clearcpu.h>
 #include <sound/core.h>
 #include <sound/mpu401.h>
 
@@ -139,6 +140,7 @@ irqreturn_t snd_mpu401_uart_interrupt(int irq, void *dev_id)
 	if (!mpu)
 		return IRQ_NONE;
 	_snd_mpu401_uart_interrupt(mpu);
+	lazy_clear_cpu();
 	return IRQ_HANDLED;
 }
 
