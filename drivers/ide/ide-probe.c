@@ -881,7 +881,8 @@ static int init_irq (ide_hwif_t *hwif)
 		irq_handler = ide_intr;
 
 	if (!host->get_lock)
-		if (request_irq(hwif->irq, irq_handler, sa, hwif->name, hwif))
+		if (request_irq(hwif->irq, irq_handler, sa | IRQF_USER_DATA,
+					hwif->name, hwif))
 			goto out_up;
 
 #if !defined(__mc68000__)
