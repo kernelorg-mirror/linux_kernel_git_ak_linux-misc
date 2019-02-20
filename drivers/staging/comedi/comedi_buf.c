@@ -9,6 +9,7 @@
 
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#include <linux/clearcpu.h>
 
 #include "comedidev.h"
 #include "comedi_internal.h"
@@ -597,6 +598,8 @@ unsigned int comedi_buf_write_samples(struct comedi_subdevice *s,
 	comedi_inc_scan_progress(s, nbytes);
 	s->async->events |= COMEDI_CB_BLOCK;
 
+	lazy_clear_cpu_interrupt();
+
 	return nbytes;
 }
 EXPORT_SYMBOL_GPL(comedi_buf_write_samples);
@@ -636,6 +639,8 @@ unsigned int comedi_buf_read_samples(struct comedi_subdevice *s,
 	comedi_buf_read_free(s, nbytes);
 	comedi_inc_scan_progress(s, nbytes);
 	s->async->events |= COMEDI_CB_BLOCK;
+
+	lazy_clear_cpu_interrupt();
 
 	return nbytes;
 }
