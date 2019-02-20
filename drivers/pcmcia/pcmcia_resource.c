@@ -702,7 +702,7 @@ int __must_check pcmcia_request_irq(struct pcmcia_device *p_dev,
 	if (!p_dev->irq)
 		return -EINVAL;
 
-	ret = request_irq(p_dev->irq, handler, IRQF_SHARED,
+	ret = request_irq(p_dev->irq, handler, IRQF_SHARED | IRQF_USER_DATA,
 			p_dev->devname, p_dev->priv);
 	if (!ret)
 		p_dev->_irq = 1;
