@@ -29,6 +29,7 @@
 #include <linux/workqueue.h>
 #include <linux/pm_runtime.h>
 #include <linux/types.h>
+#include <linux/clearcpu.h>
 
 #include <linux/phy/phy.h>
 #include <linux/usb.h>
@@ -769,6 +770,8 @@ void usb_hcd_poll_rh_status(struct usb_hcd *hcd)
 			hcd->status_urb = NULL;
 			urb->actual_length = length;
 			memcpy(urb->transfer_buffer, buffer, length);
+
+			lazy_clear_cpu_interrupt();
 
 			usb_hcd_unlink_urb_from_ep(hcd, urb);
 			usb_hcd_giveback_urb(hcd, urb, 0);
