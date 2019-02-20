@@ -1357,6 +1357,7 @@ static void ena_setup_mgmnt_intr(struct ena_adapter *adapter)
 	snprintf(adapter->irq_tbl[ENA_MGMNT_IRQ_IDX].name,
 		 ENA_IRQNAME_SIZE, "ena-mgmnt@pci:%s",
 		 pci_name(adapter->pdev));
+	adapter->irq_tbl[ENA_MGMNT_IRQ_IDX].flags = IRQF_USER_DATA;
 	adapter->irq_tbl[ENA_MGMNT_IRQ_IDX].handler =
 		ena_intr_msix_mgmnt;
 	adapter->irq_tbl[ENA_MGMNT_IRQ_IDX].data = adapter;
@@ -1381,6 +1382,7 @@ static void ena_setup_io_intr(struct ena_adapter *adapter)
 
 		snprintf(adapter->irq_tbl[irq_idx].name, ENA_IRQNAME_SIZE,
 			 "%s-Tx-Rx-%d", netdev->name, i);
+		adapter->irq_tbl[irq_idx].flags = 0;
 		adapter->irq_tbl[irq_idx].handler = ena_intr_msix_io;
 		adapter->irq_tbl[irq_idx].data = &adapter->ena_napi[i];
 		adapter->irq_tbl[irq_idx].vector =
@@ -1394,12 +1396,11 @@ static void ena_setup_io_intr(struct ena_adapter *adapter)
 
 static int ena_request_mgmnt_irq(struct ena_adapter *adapter)
 {
-	unsigned long flags = 0;
 	struct ena_irq *irq;
 	int rc;
 
 	irq = &adapter->irq_tbl[ENA_MGMNT_IRQ_IDX];
-	rc = request_irq(irq->vector, irq->handler, flags, irq->name,
+	rc = request_irq(irq->vector, irq->handler, irq->flags, irq->name,
 			 irq->data);
 	if (rc) {
 		netif_err(adapter, probe, adapter->netdev,

@@ -140,6 +140,7 @@
 
 struct ena_irq {
 	irq_handler_t handler;
+	unsigned flags;
 	void *data;
 	int cpu;
 	u32 vector;
