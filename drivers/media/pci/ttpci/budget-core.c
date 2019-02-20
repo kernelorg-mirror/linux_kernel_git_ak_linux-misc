@@ -528,7 +528,8 @@ int ttpci_budget_init(struct budget *budget, struct saa7146_dev *dev,
 	/* upload all */
 	saa7146_write(dev, GPIO_CTRL, 0x000000);
 
-	tasklet_init(&budget->vpe_tasklet, vpeirq, (unsigned long) budget);
+	tasklet_init_flags(&budget->vpe_tasklet, vpeirq,
+			   (unsigned long)budget, TASKLET_USER_DATA);
 
 	/* frontend power on */
 	if (bi->type != BUDGET_FS_ACTIVY)

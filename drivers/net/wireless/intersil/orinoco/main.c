@@ -2198,8 +2198,8 @@ struct orinoco_private
 	INIT_WORK(&priv->wevent_work, orinoco_send_wevents);
 
 	INIT_LIST_HEAD(&priv->rx_list);
-	tasklet_init(&priv->rx_tasklet, orinoco_rx_isr_tasklet,
-		     (unsigned long) priv);
+	tasklet_init_flags(&priv->rx_tasklet, orinoco_rx_isr_tasklet,
+			   (unsigned long)priv, TASKLET_USER_DATA);
 
 	spin_lock_init(&priv->scan_lock);
 	INIT_LIST_HEAD(&priv->scan_list);

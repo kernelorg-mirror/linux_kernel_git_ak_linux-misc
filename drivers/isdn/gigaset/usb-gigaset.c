@@ -590,8 +590,8 @@ static int gigaset_initcshw(struct cardstate *cs)
 	ucs->bulk_out_buffer = NULL;
 	ucs->bulk_out_urb = NULL;
 	ucs->read_urb = NULL;
-	tasklet_init(&cs->write_tasklet,
-		     gigaset_modem_fill, (unsigned long) cs);
+	tasklet_init_flags(&cs->write_tasklet, gigaset_modem_fill,
+			   (unsigned long)cs, TASKLET_USER_DATA);
 
 	return 0;
 }

@@ -1018,15 +1018,15 @@ static void _rtl92e_init_priv_task(struct net_device *dev)
 			      (void *)rtl92e_hw_wakeup_wq, dev);
 	INIT_DELAYED_WORK_RSL(&priv->rtllib->hw_sleep_wq,
 			      (void *)rtl92e_hw_sleep_wq, dev);
-	tasklet_init(&priv->irq_rx_tasklet,
-		     (void(*)(unsigned long))_rtl92e_irq_rx_tasklet,
-		     (unsigned long)priv);
-	tasklet_init(&priv->irq_tx_tasklet,
-		     (void(*)(unsigned long))_rtl92e_irq_tx_tasklet,
-		     (unsigned long)priv);
-	tasklet_init(&priv->irq_prepare_beacon_tasklet,
-		     (void(*)(unsigned long))_rtl92e_prepare_beacon,
-		     (unsigned long)priv);
+	tasklet_init_flags(&priv->irq_rx_tasklet,
+			   (void(*)(unsigned long))_rtl92e_irq_rx_tasklet,
+			   (unsigned long)priv, TASKLET_USER_DATA);
+	tasklet_init_flags(&priv->irq_tx_tasklet,
+			   (void(*)(unsigned long))_rtl92e_irq_tx_tasklet,
+			   (unsigned long)priv, TASKLET_USER_DATA);
+	tasklet_init_flags(&priv->irq_prepare_beacon_tasklet,
+			   (void(*)(unsigned long))_rtl92e_prepare_beacon,
+			   (unsigned long)priv, TASKLET_USER_DATA);
 }
 
 static short _rtl92e_get_channel_map(struct net_device *dev)

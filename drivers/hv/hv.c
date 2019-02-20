@@ -209,8 +209,8 @@ int hv_synic_alloc(void)
 	for_each_present_cpu(cpu) {
 		hv_cpu = per_cpu_ptr(hv_context.cpu_context, cpu);
 
-		tasklet_init(&hv_cpu->msg_dpc,
-			     vmbus_on_msg_dpc, (unsigned long) hv_cpu);
+		tasklet_init_flags(&hv_cpu->msg_dpc, vmbus_on_msg_dpc,
+				   (unsigned long)hv_cpu, TASKLET_USER_DATA);
 
 		hv_cpu->clk_evt = kzalloc(sizeof(struct clock_event_device),
 					  GFP_KERNEL);

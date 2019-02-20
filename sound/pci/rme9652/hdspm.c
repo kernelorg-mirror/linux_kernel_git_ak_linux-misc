@@ -6856,8 +6856,8 @@ static int snd_hdspm_create(struct snd_card *card,
 
 	}
 
-	tasklet_init(&hdspm->midi_tasklet,
-			hdspm_midi_tasklet, (unsigned long) hdspm);
+	tasklet_init_flags(&hdspm->midi_tasklet, hdspm_midi_tasklet,
+			   (unsigned long)hdspm, TASKLET_USER_DATA);
 
 
 	if (hdspm->io_type != MADIface) {

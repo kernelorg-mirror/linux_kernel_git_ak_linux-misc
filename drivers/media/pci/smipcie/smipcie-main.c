@@ -431,7 +431,8 @@ static int smi_port_init(struct smi_port *port, int dmaChanUsed)
 	}
 
 	smi_port_disableInterrupt(port);
-	tasklet_init(&port->tasklet, smi_dma_xfer, (unsigned long)port);
+	tasklet_init_flags(&port->tasklet, smi_dma_xfer, (unsigned long)port,
+			   TASKLET_USER_DATA);
 	tasklet_disable(&port->tasklet);
 	port->enable = 1;
 	return 0;

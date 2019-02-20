@@ -6112,9 +6112,11 @@ static int mwl8k_firmware_load_success(struct mwl8k_priv *priv)
 	INIT_WORK(&priv->fw_reload, mwl8k_hw_restart_work);
 
 	/* TX reclaim and RX tasklets.  */
-	tasklet_init(&priv->poll_tx_task, mwl8k_tx_poll, (unsigned long)hw);
+	tasklet_init_flags(&priv->poll_tx_task, mwl8k_tx_poll,
+			   (unsigned long)hw, TASKLET_USER_DATA);
 	tasklet_disable(&priv->poll_tx_task);
-	tasklet_init(&priv->poll_rx_task, mwl8k_rx_poll, (unsigned long)hw);
+	tasklet_init_flags(&priv->poll_rx_task, mwl8k_rx_poll,
+			   (unsigned long)hw, TASKLET_USER_DATA);
 	tasklet_disable(&priv->poll_rx_task);
 
 	/* Power management cookie */

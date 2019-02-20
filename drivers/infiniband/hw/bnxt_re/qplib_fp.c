@@ -380,8 +380,8 @@ int bnxt_qplib_nq_start_irq(struct bnxt_qplib_nq *nq, int nq_indx,
 
 	nq->vector = msix_vector;
 	if (need_init)
-		tasklet_init(&nq->worker, bnxt_qplib_service_nq,
-			     (unsigned long)nq);
+		tasklet_init_flags(&nq->worker, bnxt_qplib_service_nq,
+				   (unsigned long)nq, TASKLET_USER_DATA);
 	else
 		tasklet_enable(&nq->worker);
 

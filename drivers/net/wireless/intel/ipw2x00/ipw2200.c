@@ -10694,8 +10694,9 @@ static int ipw_setup_deferred_work(struct ipw_priv *priv)
 	INIT_WORK(&priv->qos_activate, ipw_bg_qos_activate);
 #endif				/* CONFIG_IPW2200_QOS */
 
-	tasklet_init(&priv->irq_tasklet, (void (*)(unsigned long))
-		     ipw_irq_tasklet, (unsigned long)priv);
+	tasklet_init_flags(&priv->irq_tasklet,
+			   (void(*)(unsigned long))ipw_irq_tasklet,
+			   (unsigned long)priv, TASKLET_USER_DATA);
 
 	return ret;
 }

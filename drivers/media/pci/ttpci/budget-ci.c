@@ -243,8 +243,9 @@ static int msp430_ir_init(struct budget_ci *budget_ci)
 
 	budget_ci->ir.dev = dev;
 
-	tasklet_init(&budget_ci->ir.msp430_irq_tasklet, msp430_ir_interrupt,
-		     (unsigned long) budget_ci);
+	tasklet_init_flags(&budget_ci->ir.msp430_irq_tasklet,
+			   msp430_ir_interrupt, (unsigned long)budget_ci,
+			   TASKLET_USER_DATA);
 
 	SAA7146_IER_ENABLE(saa, MASK_06);
 	saa7146_setgpio(saa, 3, SAA7146_GPIO_IRQHI);
@@ -505,7 +506,9 @@ static int ciintf_init(struct budget_ci *budget_ci)
 
 	// Setup CI slot IRQ
 	if (budget_ci->ci_irq) {
-		tasklet_init(&budget_ci->ciintf_irq_tasklet, ciintf_interrupt, (unsigned long) budget_ci);
+		tasklet_init_flags(&budget_ci->ciintf_irq_tasklet,
+				   ciintf_interrupt, (unsigned long)budget_ci,
+				   TASKLET_USER_DATA);
 		if (budget_ci->slot_status != SLOTSTATUS_NONE) {
 			saa7146_setgpio(saa, 0, SAA7146_GPIO_IRQLO);
 		} else {

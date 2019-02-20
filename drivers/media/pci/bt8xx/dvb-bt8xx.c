@@ -787,7 +787,8 @@ static int dvb_bt8xx_load_card(struct dvb_bt8xx_card *card, u32 type)
 		goto err_disconnect_frontend;
 	}
 
-	tasklet_init(&card->bt->tasklet, dvb_bt8xx_task, (unsigned long) card);
+	tasklet_init_flags(&card->bt->tasklet, dvb_bt8xx_task,
+			   (unsigned long)card, TASKLET_USER_DATA);
 
 	frontend_init(card, type);
 

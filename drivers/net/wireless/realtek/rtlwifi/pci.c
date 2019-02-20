@@ -1213,12 +1213,12 @@ static void _rtl_pci_init_struct(struct ieee80211_hw *hw,
 	rtlpci->acm_method = EACMWAY2_SW;
 
 	/*task */
-	tasklet_init(&rtlpriv->works.irq_tasklet,
-		     (void (*)(unsigned long))_rtl_pci_irq_tasklet,
-		     (unsigned long)hw);
-	tasklet_init(&rtlpriv->works.irq_prepare_bcn_tasklet,
-		     (void (*)(unsigned long))_rtl_pci_prepare_bcn_tasklet,
-		     (unsigned long)hw);
+	tasklet_init_flags(&rtlpriv->works.irq_tasklet,
+			   (void(*)(unsigned long))_rtl_pci_irq_tasklet,
+			   (unsigned long)hw, TASKLET_USER_DATA);
+	tasklet_init_flags(&rtlpriv->works.irq_prepare_bcn_tasklet,
+			   (void(*)(unsigned long))_rtl_pci_prepare_bcn_tasklet,
+			   (unsigned long)hw, TASKLET_USER_DATA);
 	INIT_WORK(&rtlpriv->works.lps_change_work,
 		  rtl_lps_change_work_callback);
 }

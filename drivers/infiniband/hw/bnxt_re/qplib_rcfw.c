@@ -654,8 +654,8 @@ int bnxt_qplib_rcfw_start_irq(struct bnxt_qplib_rcfw *rcfw, int msix_vector,
 
 	rcfw->vector = msix_vector;
 	if (need_init)
-		tasklet_init(&rcfw->worker,
-			     bnxt_qplib_service_creq, (unsigned long)rcfw);
+		tasklet_init_flags(&rcfw->worker, bnxt_qplib_service_creq,
+				   (unsigned long)rcfw, TASKLET_USER_DATA);
 	else
 		tasklet_enable(&rcfw->worker);
 	rc = request_irq(rcfw->vector, bnxt_qplib_creq_irq, 0,

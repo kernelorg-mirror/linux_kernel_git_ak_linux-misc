@@ -779,7 +779,8 @@ int cdc_ncm_bind_common(struct usbnet *dev, struct usb_interface *intf, u8 data_
 
 	hrtimer_init(&ctx->tx_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	ctx->tx_timer.function = &cdc_ncm_tx_timer_cb;
-	tasklet_init(&ctx->bh, cdc_ncm_txpath_bh, (unsigned long)dev);
+	tasklet_init_flags(&ctx->bh, cdc_ncm_txpath_bh, (unsigned long)dev,
+			   TASKLET_USER_DATA);
 	atomic_set(&ctx->stop, 0);
 	spin_lock_init(&ctx->mtx);
 

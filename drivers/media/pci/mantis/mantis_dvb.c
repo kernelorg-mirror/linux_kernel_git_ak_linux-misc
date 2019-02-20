@@ -217,7 +217,8 @@ int mantis_dvb_init(struct mantis_pci *mantis)
 	}
 
 	dvb_net_init(&mantis->dvb_adapter, &mantis->dvbnet, &mantis->demux.dmx);
-	tasklet_init(&mantis->tasklet, mantis_dma_xfer, (unsigned long) mantis);
+	tasklet_init_flags(&mantis->tasklet, mantis_dma_xfer,
+			   (unsigned long)mantis, TASKLET_USER_DATA);
 	tasklet_disable(&mantis->tasklet);
 	if (mantis->hwconfig) {
 		result = config->frontend_init(mantis, mantis->fe);

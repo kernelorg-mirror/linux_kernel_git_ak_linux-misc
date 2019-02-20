@@ -4131,8 +4131,8 @@ static int macb_probe(struct platform_device *pdev)
 		goto err_out_unregister_mdio;
 	}
 
-	tasklet_init(&bp->hresp_err_tasklet, macb_hresp_error_task,
-		     (unsigned long)bp);
+	tasklet_init_flags(&bp->hresp_err_tasklet, macb_hresp_error_task,
+			   (unsigned long)bp, TASKLET_USER_DATA);
 
 	phy_attached_info(phydev);
 

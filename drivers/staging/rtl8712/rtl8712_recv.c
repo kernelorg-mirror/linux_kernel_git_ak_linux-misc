@@ -66,9 +66,9 @@ int r8712_init_recv_priv(struct recv_priv *precvpriv, struct _adapter *padapter)
 		precvbuf++;
 	}
 	precvpriv->free_recv_buf_queue_cnt = NR_RECVBUFF;
-	tasklet_init(&precvpriv->recv_tasklet,
-	     (void(*)(unsigned long))recv_tasklet,
-	     (unsigned long)padapter);
+	tasklet_init_flags(&precvpriv->recv_tasklet,
+			   (void(*)(unsigned long))recv_tasklet,
+			   (unsigned long)padapter, TASKLET_USER_DATA);
 	skb_queue_head_init(&precvpriv->rx_skb_queue);
 
 	skb_queue_head_init(&precvpriv->free_recv_skb_queue);

@@ -181,7 +181,8 @@ ppp_sync_open(struct tty_struct *tty)
 	ap->raccm = ~0U;
 
 	skb_queue_head_init(&ap->rqueue);
-	tasklet_init(&ap->tsk, ppp_sync_process, (unsigned long) ap);
+	tasklet_init_flags(&ap->tsk, ppp_sync_process, (unsigned long)ap,
+			   TASKLET_USER_DATA);
 
 	refcount_set(&ap->refcnt, 1);
 	init_completion(&ap->dead_cmp);

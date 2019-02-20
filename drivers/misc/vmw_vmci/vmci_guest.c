@@ -467,10 +467,10 @@ static int vmci_guest_probe_device(struct pci_dev *pdev,
 	vmci_dev->exclusive_vectors = false;
 	vmci_dev->iobase = iobase;
 
-	tasklet_init(&vmci_dev->datagram_tasklet,
-		     vmci_dispatch_dgs, (unsigned long)vmci_dev);
-	tasklet_init(&vmci_dev->bm_tasklet,
-		     vmci_process_bitmap, (unsigned long)vmci_dev);
+	tasklet_init_flags(&vmci_dev->datagram_tasklet, vmci_dispatch_dgs,
+			   (unsigned long)vmci_dev, TASKLET_USER_DATA);
+	tasklet_init_flags(&vmci_dev->bm_tasklet, vmci_process_bitmap,
+			   (unsigned long)vmci_dev, TASKLET_USER_DATA);
 
 	vmci_dev->data_buffer = vmalloc(VMCI_MAX_DG_SIZE);
 	if (!vmci_dev->data_buffer) {

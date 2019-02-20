@@ -107,7 +107,8 @@ int rxe_cq_from_init(struct rxe_dev *rxe, struct rxe_cq *cq, int cqe,
 
 	cq->is_dying = false;
 
-	tasklet_init(&cq->comp_task, rxe_send_complete, (unsigned long)cq);
+	tasklet_init_flags(&cq->comp_task, rxe_send_complete,
+			   (unsigned long)cq, TASKLET_USER_DATA);
 
 	spin_lock_init(&cq->cq_lock);
 	cq->ibcq.cqe = cqe;

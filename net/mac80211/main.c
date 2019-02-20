@@ -694,16 +694,16 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 		skb_queue_head_init(&local->pending[i]);
 		atomic_set(&local->agg_queue_stop[i], 0);
 	}
-	tasklet_init(&local->tx_pending_tasklet, ieee80211_tx_pending,
-		     (unsigned long)local);
+	tasklet_init_flags(&local->tx_pending_tasklet, ieee80211_tx_pending,
+			   (unsigned long)local, TASKLET_USER_DATA);
 
 	if (ops->wake_tx_queue)
-		tasklet_init(&local->wake_txqs_tasklet, ieee80211_wake_txqs,
-			     (unsigned long)local);
+		tasklet_init_flags(&local->wake_txqs_tasklet,
+				   ieee80211_wake_txqs, (unsigned long)local,
+				   TASKLET_USER_DATA);
 
-	tasklet_init(&local->tasklet,
-		     ieee80211_tasklet_handler,
-		     (unsigned long) local);
+	tasklet_init_flags(&local->tasklet, ieee80211_tasklet_handler,
+			   (unsigned long)local, TASKLET_USER_DATA);
 
 	skb_queue_head_init(&local->skb_queue);
 	skb_queue_head_init(&local->skb_queue_unreliable);

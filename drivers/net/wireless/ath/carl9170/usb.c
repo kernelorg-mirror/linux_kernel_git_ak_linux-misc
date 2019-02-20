@@ -1085,8 +1085,8 @@ static int carl9170_usb_probe(struct usb_interface *intf,
 	init_completion(&ar->cmd_wait);
 	init_completion(&ar->fw_boot_wait);
 	init_completion(&ar->fw_load_wait);
-	tasklet_init(&ar->usb_tasklet, carl9170_usb_tasklet,
-		     (unsigned long)ar);
+	tasklet_init_flags(&ar->usb_tasklet, carl9170_usb_tasklet,
+			   (unsigned long)ar, TASKLET_USER_DATA);
 
 	atomic_set(&ar->tx_cmd_urbs, 0);
 	atomic_set(&ar->tx_anch_urbs, 0);

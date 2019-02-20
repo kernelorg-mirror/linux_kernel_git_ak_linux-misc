@@ -760,7 +760,8 @@ ioat_init_channel(struct ioatdma_device *ioat_dma,
 	list_add_tail(&ioat_chan->dma_chan.device_node, &dma->channels);
 	ioat_dma->idx[idx] = ioat_chan;
 	timer_setup(&ioat_chan->timer, ioat_timer_event, 0);
-	tasklet_init(&ioat_chan->cleanup_task, ioat_cleanup_event, data);
+	tasklet_init_flags(&ioat_chan->cleanup_task, ioat_cleanup_event, data,
+			   TASKLET_USER_DATA);
 }
 
 #define IOAT_NUM_SRC_TEST 6 /* must be <= 8 */

@@ -403,8 +403,8 @@ static int gigaset_initcshw(struct cardstate *cs)
 		return rc;
 	}
 
-	tasklet_init(&cs->write_tasklet,
-		     gigaset_modem_fill, (unsigned long) cs);
+	tasklet_init_flags(&cs->write_tasklet, gigaset_modem_fill,
+			   (unsigned long)cs, TASKLET_USER_DATA);
 	return 0;
 }
 

@@ -1118,10 +1118,10 @@ int rds_ib_conn_alloc(struct rds_connection *conn, gfp_t gfp)
 	}
 
 	INIT_LIST_HEAD(&ic->ib_node);
-	tasklet_init(&ic->i_send_tasklet, rds_ib_tasklet_fn_send,
-		     (unsigned long)ic);
-	tasklet_init(&ic->i_recv_tasklet, rds_ib_tasklet_fn_recv,
-		     (unsigned long)ic);
+	tasklet_init_flags(&ic->i_send_tasklet, rds_ib_tasklet_fn_send,
+			   (unsigned long)ic, TASKLET_USER_DATA);
+	tasklet_init_flags(&ic->i_recv_tasklet, rds_ib_tasklet_fn_recv,
+			   (unsigned long)ic, TASKLET_USER_DATA);
 	mutex_init(&ic->i_recv_mutex);
 #ifndef KERNEL_HAS_ATOMIC64
 	spin_lock_init(&ic->i_ack_lock);

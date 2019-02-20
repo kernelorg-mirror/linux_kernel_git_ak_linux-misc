@@ -1069,8 +1069,10 @@ int usbatm_usb_probe(struct usb_interface *intf, const struct usb_device_id *id,
 
 	usbatm_init_channel(&instance->rx_channel);
 	usbatm_init_channel(&instance->tx_channel);
-	tasklet_init(&instance->rx_channel.tasklet, usbatm_rx_process, (unsigned long)instance);
-	tasklet_init(&instance->tx_channel.tasklet, usbatm_tx_process, (unsigned long)instance);
+	tasklet_init_flags(&instance->rx_channel.tasklet, usbatm_rx_process,
+			   (unsigned long)instance, TASKLET_USER_DATA);
+	tasklet_init_flags(&instance->tx_channel.tasklet, usbatm_tx_process,
+			   (unsigned long)instance, TASKLET_USER_DATA);
 	instance->rx_channel.stride = ATM_CELL_SIZE + driver->rx_padding;
 	instance->tx_channel.stride = ATM_CELL_SIZE + driver->tx_padding;
 	instance->rx_channel.usbatm = instance->tx_channel.usbatm = instance;

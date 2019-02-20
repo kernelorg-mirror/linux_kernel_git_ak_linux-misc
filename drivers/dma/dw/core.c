@@ -1271,7 +1271,8 @@ int dw_dma_probe(struct dw_dma_chip *chip)
 		goto err_pdata;
 	}
 
-	tasklet_init(&dw->tasklet, dw_dma_tasklet, (unsigned long)dw);
+	tasklet_init_flags(&dw->tasklet, dw_dma_tasklet, (unsigned long)dw,
+			   TASKLET_USER_DATA);
 
 	err = request_irq(chip->irq, dw_dma_interrupt, IRQF_SHARED,
 			  dw->name, dw);

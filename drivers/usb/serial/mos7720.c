@@ -716,8 +716,8 @@ static int mos7715_parport_init(struct usb_serial *serial)
 	INIT_LIST_HEAD(&mos_parport->deferred_urbs);
 	usb_set_serial_data(serial, mos_parport); /* hijack private pointer */
 	mos_parport->serial = serial;
-	tasklet_init(&mos_parport->urb_tasklet, send_deferred_urbs,
-		     (unsigned long) mos_parport);
+	tasklet_init_flags(&mos_parport->urb_tasklet, send_deferred_urbs,
+			   (unsigned long)mos_parport, TASKLET_USER_DATA);
 	init_completion(&mos_parport->syncmsg_compl);
 
 	/* cycle parallel port reset bit */

@@ -283,9 +283,10 @@ static int adf_setup_bh(struct adf_accel_dev *accel_dev)
 	int i;
 
 	for (i = 0; i < hw_data->num_banks; i++)
-		tasklet_init(&priv_data->banks[i].resp_handler,
-			     adf_response_handler,
-			     (unsigned long)&priv_data->banks[i]);
+		tasklet_init_flags(&priv_data->banks[i].resp_handler,
+				   adf_response_handler,
+				   (unsigned long)&priv_data->banks[i],
+				   TASKLET_USER_DATA);
 	return 0;
 }
 

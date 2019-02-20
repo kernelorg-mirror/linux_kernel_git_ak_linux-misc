@@ -1067,8 +1067,8 @@ static int ifx_spi_spi_probe(struct spi_device *spi)
 	init_waitqueue_head(&ifx_dev->mdm_reset_wait);
 
 	spi_set_drvdata(spi, ifx_dev);
-	tasklet_init(&ifx_dev->io_work_tasklet, ifx_spi_io,
-						(unsigned long)ifx_dev);
+	tasklet_init_flags(&ifx_dev->io_work_tasklet, ifx_spi_io,
+			   (unsigned long)ifx_dev, TASKLET_USER_DATA);
 
 	set_bit(IFX_SPI_STATE_PRESENT, &ifx_dev->flags);
 

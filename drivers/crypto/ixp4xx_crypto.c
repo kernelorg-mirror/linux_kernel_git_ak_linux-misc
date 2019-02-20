@@ -499,7 +499,8 @@ static int init_ixp_crypto(struct device *dev)
 		goto err;
 	}
 	qmgr_set_irq(RECV_QID, QUEUE_IRQ_SRC_NOT_EMPTY, irqhandler, NULL);
-	tasklet_init(&crypto_done_tasklet, crypto_done_action, 0);
+	tasklet_init_flags(&crypto_done_tasklet, crypto_done_action, 0,
+			   TASKLET_USER_DATA);
 
 	qmgr_enable_irq(RECV_QID);
 	return 0;

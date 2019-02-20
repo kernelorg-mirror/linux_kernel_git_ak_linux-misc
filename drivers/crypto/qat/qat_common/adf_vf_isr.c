@@ -182,8 +182,9 @@ err:
 
 static int adf_setup_pf2vf_bh(struct adf_accel_dev *accel_dev)
 {
-	tasklet_init(&accel_dev->vf.pf2vf_bh_tasklet,
-		     (void *)adf_pf2vf_bh_handler, (unsigned long)accel_dev);
+	tasklet_init_flags(&accel_dev->vf.pf2vf_bh_tasklet,
+			   (void *)adf_pf2vf_bh_handler,
+			   (unsigned long)accel_dev, TASKLET_USER_DATA);
 
 	mutex_init(&accel_dev->vf.vf2pf_lock);
 	return 0;
@@ -259,8 +260,9 @@ static int adf_setup_bh(struct adf_accel_dev *accel_dev)
 {
 	struct adf_etr_data *priv_data = accel_dev->transport;
 
-	tasklet_init(&priv_data->banks[0].resp_handler, adf_response_handler,
-		     (unsigned long)priv_data->banks);
+	tasklet_init_flags(&priv_data->banks[0].resp_handler,
+			   adf_response_handler,
+			   (unsigned long)priv_data->banks, TASKLET_USER_DATA);
 	return 0;
 }
 

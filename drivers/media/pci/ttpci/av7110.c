@@ -2533,7 +2533,8 @@ static int av7110_attach(struct saa7146_dev* dev,
 		saa7146_write(dev, NUM_LINE_BYTE3, (TS_HEIGHT << 16) | TS_WIDTH);
 		saa7146_write(dev, MC2, MASK_04 | MASK_20);
 
-		tasklet_init(&av7110->vpe_tasklet, vpeirq, (unsigned long) av7110);
+		tasklet_init_flags(&av7110->vpe_tasklet, vpeirq,
+				   (unsigned long)av7110, TASKLET_USER_DATA);
 
 	} else if (budgetpatch) {
 		spin_lock_init(&av7110->feedlock1);
@@ -2614,7 +2615,8 @@ static int av7110_attach(struct saa7146_dev* dev,
 		saa7146_write(dev, MC1, (MASK_13 | MASK_29));
 
 		/* end of budgetpatch register initialization */
-		tasklet_init (&av7110->vpe_tasklet,  vpeirq,  (unsigned long) av7110);
+		tasklet_init_flags(&av7110->vpe_tasklet, vpeirq,
+				   (unsigned long)av7110, TASKLET_USER_DATA);
 	} else {
 		saa7146_write(dev, PCI_BT_V1, 0x1c00101f);
 		saa7146_write(dev, BCS_CTRL, 0x80400040);
@@ -2629,8 +2631,10 @@ static int av7110_attach(struct saa7146_dev* dev,
 		saa7146_write(dev, GPIO_CTRL, 0x000000);
 	}
 
-	tasklet_init (&av7110->debi_tasklet, debiirq, (unsigned long) av7110);
-	tasklet_init (&av7110->gpio_tasklet, gpioirq, (unsigned long) av7110);
+	tasklet_init_flags(&av7110->debi_tasklet, debiirq,
+			   (unsigned long)av7110, TASKLET_USER_DATA);
+	tasklet_init_flags(&av7110->gpio_tasklet, gpioirq,
+			   (unsigned long)av7110, TASKLET_USER_DATA);
 
 	mutex_init(&av7110->pid_mutex);
 

@@ -4456,8 +4456,8 @@ static int cnic_init_bnx2_irq(struct cnic_dev *dev)
 		CNIC_WR(dev, base + BNX2_HC_CMD_TICKS_OFF, (64 << 16) | 220);
 
 		cp->last_status_idx = cp->status_blk.bnx2->status_idx;
-		tasklet_init(&cp->cnic_irq_task, cnic_service_bnx2_msix,
-			     (unsigned long) dev);
+		tasklet_init_flags(&cp->cnic_irq_task, cnic_service_bnx2_msix,
+				   (unsigned long)dev, TASKLET_USER_DATA);
 		err = cnic_request_irq(dev);
 		if (err)
 			return err;
@@ -4866,8 +4866,8 @@ static int cnic_init_bnx2x_irq(struct cnic_dev *dev)
 	struct cnic_eth_dev *ethdev = cp->ethdev;
 	int err = 0;
 
-	tasklet_init(&cp->cnic_irq_task, cnic_service_bnx2x_bh,
-		     (unsigned long) dev);
+	tasklet_init_flags(&cp->cnic_irq_task, cnic_service_bnx2x_bh,
+			   (unsigned long)dev, TASKLET_USER_DATA);
 	if (ethdev->drv_state & CNIC_DRV_STATE_USING_MSIX)
 		err = cnic_request_irq(dev);
 

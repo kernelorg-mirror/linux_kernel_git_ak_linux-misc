@@ -344,8 +344,8 @@ struct b43legacy_pioqueue *b43legacy_setup_pioqueue(struct b43legacy_wldev *dev,
 	INIT_LIST_HEAD(&queue->txfree);
 	INIT_LIST_HEAD(&queue->txqueue);
 	INIT_LIST_HEAD(&queue->txrunning);
-	tasklet_init(&queue->txtask, tx_tasklet,
-		     (unsigned long)queue);
+	tasklet_init_flags(&queue->txtask, tx_tasklet, (unsigned long)queue,
+			   TASKLET_USER_DATA);
 
 	value = b43legacy_read32(dev, B43legacy_MMIO_MACCTL);
 	value &= ~B43legacy_MACCTL_BE;

@@ -1278,9 +1278,9 @@ static int hso_serial_open(struct tty_struct *tty, struct file *filp)
 		serial->rx_state = RX_IDLE;
 		/* Force default termio settings */
 		_hso_serial_set_termios(tty, NULL);
-		tasklet_init(&serial->unthrottle_tasklet,
-			     (void (*)(unsigned long))hso_unthrottle_tasklet,
-			     (unsigned long)serial);
+		tasklet_init_flags(&serial->unthrottle_tasklet,
+				   (void(*)(unsigned long))hso_unthrottle_tasklet,
+				   (unsigned long)serial, TASKLET_USER_DATA);
 		result = hso_start_serial_device(serial->parent, GFP_KERNEL);
 		if (result) {
 			hso_stop_serial_device(serial->parent);

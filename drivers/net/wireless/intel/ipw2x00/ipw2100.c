@@ -6151,8 +6151,9 @@ static struct net_device *ipw2100_alloc_device(struct pci_dev *pci_dev,
 	INIT_DELAYED_WORK(&priv->rf_kill, ipw2100_rf_kill);
 	INIT_DELAYED_WORK(&priv->scan_event, ipw2100_scan_event);
 
-	tasklet_init(&priv->irq_tasklet, (void (*)(unsigned long))
-		     ipw2100_irq_tasklet, (unsigned long)priv);
+	tasklet_init_flags(&priv->irq_tasklet,
+			   (void(*)(unsigned long))ipw2100_irq_tasklet,
+			   (unsigned long)priv, TASKLET_USER_DATA);
 
 	/* NOTE:  We do not start the deferred work for status checks yet */
 	priv->stop_rf_kill = 1;

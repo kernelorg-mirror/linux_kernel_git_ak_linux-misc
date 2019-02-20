@@ -689,10 +689,12 @@ static enum i40iw_status_code i40iw_configure_ceq_vector(struct i40iw_device *iw
 	enum i40iw_status_code status;
 
 	if (iwdev->msix_shared && !ceq_id) {
-		tasklet_init(&iwdev->dpc_tasklet, i40iw_dpc, (unsigned long)iwdev);
+		tasklet_init_flags(&iwdev->dpc_tasklet, i40iw_dpc,
+				   (unsigned long)iwdev, TASKLET_USER_DATA);
 		status = request_irq(msix_vec->irq, i40iw_irq_handler, 0, "AEQCEQ", iwdev);
 	} else {
-		tasklet_init(&iwceq->dpc_tasklet, i40iw_ceq_dpc, (unsigned long)iwceq);
+		tasklet_init_flags(&iwceq->dpc_tasklet, i40iw_ceq_dpc,
+				   (unsigned long)iwceq, TASKLET_USER_DATA);
 		status = request_irq(msix_vec->irq, i40iw_ceq_handler, 0, "CEQ", iwceq);
 	}
 
@@ -841,7 +843,8 @@ static enum i40iw_status_code i40iw_configure_aeq_vector(struct i40iw_device *iw
 	u32 ret = 0;
 
 	if (!iwdev->msix_shared) {
-		tasklet_init(&iwdev->dpc_tasklet, i40iw_dpc, (unsigned long)iwdev);
+		tasklet_init_flags(&iwdev->dpc_tasklet, i40iw_dpc,
+				   (unsigned long)iwdev, TASKLET_USER_DATA);
 		ret = request_irq(msix_vec->irq, i40iw_irq_handler, 0, "i40iw", iwdev);
 	}
 	if (ret) {

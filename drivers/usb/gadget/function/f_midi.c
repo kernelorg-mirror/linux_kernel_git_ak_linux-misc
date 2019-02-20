@@ -875,7 +875,8 @@ static int f_midi_bind(struct usb_configuration *c, struct usb_function *f)
 	int status, n, jack = 1, i = 0, endpoint_descriptor_index = 0;
 
 	midi->gadget = cdev->gadget;
-	tasklet_init(&midi->tasklet, f_midi_in_tasklet, (unsigned long) midi);
+	tasklet_init_flags(&midi->tasklet, f_midi_in_tasklet,
+			   (unsigned long)midi, TASKLET_USER_DATA);
 	status = f_midi_register_card(midi);
 	if (status < 0)
 		goto fail_register;

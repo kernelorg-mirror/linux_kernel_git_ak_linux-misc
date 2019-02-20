@@ -1633,7 +1633,8 @@ struct ipw_hardware *ipwireless_hardware_create(void)
 	INIT_LIST_HEAD(&hw->rx_queue);
 	INIT_LIST_HEAD(&hw->rx_pool);
 	spin_lock_init(&hw->lock);
-	tasklet_init(&hw->tasklet, ipwireless_do_tasklet, (unsigned long) hw);
+	tasklet_init_flags(&hw->tasklet, ipwireless_do_tasklet,
+			   (unsigned long)hw, TASKLET_USER_DATA);
 	INIT_WORK(&hw->work_rx, ipw_receive_data_work);
 	timer_setup(&hw->setup_timer, ipwireless_setup_timer, 0);
 

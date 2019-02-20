@@ -3418,9 +3418,9 @@ il3945_setup_deferred_work(struct il_priv *il)
 
 	timer_setup(&il->watchdog, il_bg_watchdog, 0);
 
-	tasklet_init(&il->irq_tasklet,
-		     (void (*)(unsigned long))il3945_irq_tasklet,
-		     (unsigned long)il);
+	tasklet_init_flags(&il->irq_tasklet,
+			   (void(*)(unsigned long))il3945_irq_tasklet,
+			   (unsigned long)il, TASKLET_USER_DATA);
 }
 
 static void

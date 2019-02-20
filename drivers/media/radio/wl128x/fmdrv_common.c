@@ -1540,11 +1540,13 @@ int fmc_prepare(struct fmdev *fmdev)
 
 	/* Initialize TX queue and TX tasklet */
 	skb_queue_head_init(&fmdev->tx_q);
-	tasklet_init(&fmdev->tx_task, send_tasklet, (unsigned long)fmdev);
+	tasklet_init_flags(&fmdev->tx_task, send_tasklet,
+			   (unsigned long)fmdev, TASKLET_USER_DATA);
 
 	/* Initialize RX Queue and RX tasklet */
 	skb_queue_head_init(&fmdev->rx_q);
-	tasklet_init(&fmdev->rx_task, recv_tasklet, (unsigned long)fmdev);
+	tasklet_init_flags(&fmdev->rx_task, recv_tasklet,
+			   (unsigned long)fmdev, TASKLET_USER_DATA);
 
 	fmdev->irq_info.stage = 0;
 	atomic_set(&fmdev->tx_cnt, 1);

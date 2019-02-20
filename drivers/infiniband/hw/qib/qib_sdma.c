@@ -436,8 +436,8 @@ int qib_setup_sdma(struct qib_pportdata *ppd)
 
 	INIT_LIST_HEAD(&ppd->sdma_activelist);
 
-	tasklet_init(&ppd->sdma_sw_clean_up_task, sdma_sw_clean_up_task,
-		(unsigned long)ppd);
+	tasklet_init_flags(&ppd->sdma_sw_clean_up_task, sdma_sw_clean_up_task,
+			   (unsigned long)ppd, TASKLET_USER_DATA);
 
 	ret = dd->f_init_sdma_regs(ppd);
 	if (ret)

@@ -1066,8 +1066,8 @@ int tw5864_video_init(struct tw5864_dev *dev, int *video_nr)
 	dev->irqmask |= TW5864_INTR_VLC_DONE | TW5864_INTR_TIMER;
 	tw5864_irqmask_apply(dev);
 
-	tasklet_init(&dev->tasklet, tw5864_handle_frame_task,
-		     (unsigned long)dev);
+	tasklet_init_flags(&dev->tasklet, tw5864_handle_frame_task,
+			   (unsigned long)dev, TASKLET_USER_DATA);
 
 	for (i = 0; i < TW5864_INPUTS; i++) {
 		dev->inputs[i].root = dev;

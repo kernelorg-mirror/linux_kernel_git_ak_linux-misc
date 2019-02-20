@@ -3040,9 +3040,9 @@ void rtllib_softmac_init(struct rtllib_device *ieee)
 	spin_lock_init(&ieee->mgmt_tx_lock);
 	spin_lock_init(&ieee->beacon_lock);
 
-	tasklet_init(&ieee->ps_task,
-	     (void(*)(unsigned long)) rtllib_sta_ps,
-	     (unsigned long)ieee);
+	tasklet_init_flags(&ieee->ps_task,
+			   (void(*)(unsigned long))rtllib_sta_ps,
+			   (unsigned long)ieee, TASKLET_USER_DATA);
 
 }
 

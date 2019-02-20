@@ -142,9 +142,9 @@ sint _r8712_init_xmit_priv(struct xmit_priv *pxmitpriv,
 	INIT_WORK(&padapter->wkFilterRxFF0, r8712_SetFilter);
 	alloc_hwxmits(padapter);
 	init_hwxmits(pxmitpriv->hwxmits, pxmitpriv->hwxmit_entry);
-	tasklet_init(&pxmitpriv->xmit_tasklet,
-		(void(*)(unsigned long))r8712_xmit_bh,
-		(unsigned long)padapter);
+	tasklet_init_flags(&pxmitpriv->xmit_tasklet,
+			   (void(*)(unsigned long))r8712_xmit_bh,
+			   (unsigned long)padapter, TASKLET_USER_DATA);
 	return _SUCCESS;
 }
 

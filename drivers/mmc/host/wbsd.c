@@ -1452,16 +1452,16 @@ static int wbsd_request_irq(struct wbsd_host *host, int irq)
 	/*
 	 * Set up tasklets. Must be done before requesting interrupt.
 	 */
-	tasklet_init(&host->card_tasklet, wbsd_tasklet_card,
-			(unsigned long)host);
-	tasklet_init(&host->fifo_tasklet, wbsd_tasklet_fifo,
-			(unsigned long)host);
-	tasklet_init(&host->crc_tasklet, wbsd_tasklet_crc,
-			(unsigned long)host);
-	tasklet_init(&host->timeout_tasklet, wbsd_tasklet_timeout,
-			(unsigned long)host);
-	tasklet_init(&host->finish_tasklet, wbsd_tasklet_finish,
-			(unsigned long)host);
+	tasklet_init_flags(&host->card_tasklet, wbsd_tasklet_card,
+			   (unsigned long)host, TASKLET_USER_DATA);
+	tasklet_init_flags(&host->fifo_tasklet, wbsd_tasklet_fifo,
+			   (unsigned long)host, TASKLET_USER_DATA);
+	tasklet_init_flags(&host->crc_tasklet, wbsd_tasklet_crc,
+			   (unsigned long)host, TASKLET_USER_DATA);
+	tasklet_init_flags(&host->timeout_tasklet, wbsd_tasklet_timeout,
+			   (unsigned long)host, TASKLET_USER_DATA);
+	tasklet_init_flags(&host->finish_tasklet, wbsd_tasklet_finish,
+			   (unsigned long)host, TASKLET_USER_DATA);
 
 	/*
 	 * Allocate interrupt.

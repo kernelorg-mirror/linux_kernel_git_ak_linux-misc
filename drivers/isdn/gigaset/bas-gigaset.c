@@ -2146,8 +2146,8 @@ static int gigaset_initbcshw(struct bc_state *bcs)
 		bcs->hw.bas = NULL;
 		return -ENOMEM;
 	}
-	tasklet_init(&ubc->sent_tasklet,
-		     write_iso_tasklet, (unsigned long) bcs);
+	tasklet_init_flags(&ubc->sent_tasklet, write_iso_tasklet,
+			   (unsigned long)bcs, TASKLET_USER_DATA);
 
 	spin_lock_init(&ubc->isoinlock);
 	for (i = 0; i < BAS_INURBS; ++i)
@@ -2167,8 +2167,8 @@ static int gigaset_initbcshw(struct bc_state *bcs)
 	ubc->aborts = 0;
 	ubc->shared0s = 0;
 	ubc->stolen0s = 0;
-	tasklet_init(&ubc->rcvd_tasklet,
-		     read_iso_tasklet, (unsigned long) bcs);
+	tasklet_init_flags(&ubc->rcvd_tasklet, read_iso_tasklet,
+			   (unsigned long)bcs, TASKLET_USER_DATA);
 	return 0;
 }
 

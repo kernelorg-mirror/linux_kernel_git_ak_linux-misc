@@ -967,8 +967,8 @@ static int ks8842_alloc_dma_bufs(struct net_device *netdev)
 		goto err;
 	}
 
-	tasklet_init(&rx_ctl->tasklet, ks8842_rx_frame_dma_tasklet,
-		(unsigned long)netdev);
+	tasklet_init_flags(&rx_ctl->tasklet, ks8842_rx_frame_dma_tasklet,
+			   (unsigned long)netdev, TASKLET_USER_DATA);
 
 	return 0;
 err:
@@ -1187,7 +1187,8 @@ static int ks8842_probe(struct platform_device *pdev)
 		adapter->dma_tx.channel = -1;
 	}
 
-	tasklet_init(&adapter->tasklet, ks8842_tasklet, (unsigned long)netdev);
+	tasklet_init_flags(&adapter->tasklet, ks8842_tasklet,
+			   (unsigned long)netdev, TASKLET_USER_DATA);
 	spin_lock_init(&adapter->lock);
 
 	netdev->netdev_ops = &ks8842_netdev_ops;

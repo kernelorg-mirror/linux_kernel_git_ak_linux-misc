@@ -3774,9 +3774,9 @@ static int b43legacy_one_core_attach(struct ssb_device *dev,
 	wldev->wl = wl;
 	b43legacy_set_status(wldev, B43legacy_STAT_UNINIT);
 	wldev->bad_frames_preempt = modparam_bad_frames_preempt;
-	tasklet_init(&wldev->isr_tasklet,
-		     (void (*)(unsigned long))b43legacy_interrupt_tasklet,
-		     (unsigned long)wldev);
+	tasklet_init_flags(&wldev->isr_tasklet,
+			   (void(*)(unsigned long))b43legacy_interrupt_tasklet,
+			   (unsigned long)wldev, TASKLET_USER_DATA);
 	if (modparam_pio)
 		wldev->__using_pio = true;
 	INIT_LIST_HEAD(&wldev->list);

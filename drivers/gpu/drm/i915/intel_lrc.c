@@ -2231,8 +2231,9 @@ logical_ring_setup(struct intel_engine_cs *engine)
 	/* Intentionally left blank. */
 	engine->buffer = NULL;
 
-	tasklet_init(&engine->execlists.tasklet,
-		     execlists_submission_tasklet, (unsigned long)engine);
+	tasklet_init_flags(&engine->execlists.tasklet,
+			   execlists_submission_tasklet,
+			   (unsigned long)engine, TASKLET_USER_DATA);
 
 	logical_ring_default_vfuncs(engine);
 	logical_ring_default_irqs(engine);

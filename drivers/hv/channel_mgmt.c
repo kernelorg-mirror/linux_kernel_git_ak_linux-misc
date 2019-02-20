@@ -333,8 +333,8 @@ static struct vmbus_channel *alloc_channel(void)
 	INIT_LIST_HEAD(&channel->sc_list);
 	INIT_LIST_HEAD(&channel->percpu_list);
 
-	tasklet_init(&channel->callback_event,
-		     vmbus_on_event, (unsigned long)channel);
+	tasklet_init_flags(&channel->callback_event, vmbus_on_event,
+			   (unsigned long)channel, TASKLET_USER_DATA);
 
 	return channel;
 }

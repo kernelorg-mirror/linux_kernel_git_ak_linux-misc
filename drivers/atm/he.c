@@ -383,7 +383,8 @@ static int he_init_one(struct pci_dev *pci_dev,
 	he_dev->atm_dev->dev_data = he_dev;
 	atm_dev->dev_data = he_dev;
 	he_dev->number = atm_dev->number;
-	tasklet_init(&he_dev->tasklet, he_tasklet, (unsigned long) he_dev);
+	tasklet_init_flags(&he_dev->tasklet, he_tasklet,
+			   (unsigned long)he_dev, TASKLET_USER_DATA);
 	spin_lock_init(&he_dev->global_lock);
 
 	if (he_start(atm_dev)) {
