@@ -444,6 +444,14 @@ static int hist_entry__init(struct hist_entry *he,
 			return -ENOMEM;
 		}
 	}
+
+	if (symbol_conf.res_sample) {
+		he->res_samples = calloc(sizeof(struct res_sample),
+					symbol_conf.res_sample);
+		if (!he->res_samples)
+			return -ENOMEM;
+	}
+
 	INIT_LIST_HEAD(&he->pairs.node);
 	thread__get(he->thread);
 	he->hroot_in  = RB_ROOT_CACHED;
@@ -593,6 +601,32 @@ out:
 	return he;
 }
 
+static unsigned random_max(unsigned high)
+{
+	unsigned thresh = -high % high;
+	for (;;) {
+		unsigned r = random();
+		if (r >= thresh)
+			return r % high;
+	}
+}
+
+static void hists__res_sample(struct hist_entry *he, struct perf_sample *sample)
+{
+	struct res_sample *r;
+	int j;
+
+	if (he->num_res < symbol_conf.res_sample) {
+		j = he->num_res++;
+	} else {
+		j = random_max(symbol_conf.res_sample);
+	}
+	r = &he->res_samples[j];
+	r->time = sample->time;
+	r->cpu = sample->cpu;
+	r->tid = sample->tid;
+}
+
 static struct hist_entry*
 __hists__add_entry(struct hists *hists,
 		   struct addr_location *al,
@@ -640,6 +674,8 @@ __hists__add_entry(struct hists *hists,
 
 	if (!hists->has_callchains && he && he->callchain_size != 0)
 		hists->has_callchains = true;
+	if (he && symbol_conf.res_sample)
+		hists__res_sample(he, sample);
 	return he;
 }
 

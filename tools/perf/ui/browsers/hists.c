@@ -2344,6 +2344,7 @@ struct popup_action {
 	struct map_symbol 	ms;
 	int			socket;
 	struct perf_evsel	*evsel;
+	enum rstype		rstype;
 
 	int (*fn)(struct hist_browser *browser, struct popup_action *act);
 };
@@ -2572,6 +2573,17 @@ do_run_script(struct hist_browser *browser __maybe_unused,
 }
 
 static int
+do_res_sample_script(struct hist_browser *browser __maybe_unused,
+		     struct popup_action *act)
+{
+	struct hist_entry *he;
+
+	he = hist_browser__selected_entry(browser);
+	res_sample_browse(he->res_samples, he->num_res, act->evsel, act->rstype);
+	return 0;
+}
+
+static int
 add_script_opt_2(struct hist_browser *browser __maybe_unused,
 	       struct popup_action *act, char **optstr,
 	       struct thread *thread, struct symbol *sym,
@@ -2626,6 +2638,27 @@ add_script_opt(struct hist_browser *browser,
 		act->time = he->time;
 	}
 	return n;
+}
+
+static int
+add_res_sample_opt(struct hist_browser *browser __maybe_unused,
+		   struct popup_action *act, char **optstr,
+		   struct res_sample *res_sample,
+		   struct perf_evsel *evsel,
+		   enum rstype type)
+{
+	if (!res_sample)
+		return 0;
+
+	if (asprintf(optstr, "Show context for individual samples %s",
+		type == A_ASM ? "with assembler" :
+		type == A_SOURCE ? "with source" : "") < 0)
+		return 0;
+
+	act->fn = do_res_sample_script;
+	act->evsel = evsel;
+	act->rstype = type;
+	return 1;
 }
 
 static int
@@ -3114,6 +3147,18 @@ skip_annotation:
 		}
 		nr_options += add_script_opt(browser, &actions[nr_options],
 					     &options[nr_options], NULL, NULL, evsel);
+		nr_options += add_res_sample_opt(browser, &actions[nr_options],
+						 &options[nr_options],
+				 hist_browser__selected_entry(browser)->res_samples,
+				 evsel, A_NORMAL);
+		nr_options += add_res_sample_opt(browser, &actions[nr_options],
+						 &options[nr_options],
+				 hist_browser__selected_entry(browser)->res_samples,
+				 evsel, A_ASM);
+		nr_options += add_res_sample_opt(browser, &actions[nr_options],
+						 &options[nr_options],
+				 hist_browser__selected_entry(browser)->res_samples,
+				 evsel, A_SOURCE);
 		nr_options += add_switch_opt(browser, &actions[nr_options],
 					     &options[nr_options]);
 skip_scripting:
