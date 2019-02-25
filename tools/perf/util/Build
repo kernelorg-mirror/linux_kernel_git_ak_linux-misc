@@ -65,6 +65,7 @@ perf-y += trace-event-scripting.o
 perf-y += trace-event.o
 perf-y += svghelper.o
 perf-y += sort.o
+perf-y += fetch.o
 perf-y += hist.o
 perf-y += util.o
 perf-y += xyarray.o
