@@ -2554,7 +2554,7 @@ do_run_script(struct hist_browser *browser __maybe_unused,
 	}
 
 	if (act->time) {
-		char start[64], end[64];
+		char start[22], end[22];
 		unsigned long starttime = act->time;
 		unsigned long endtime = act->time + symbol_conf.time_quantum;
 
