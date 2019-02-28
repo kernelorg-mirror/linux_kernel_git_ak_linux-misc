@@ -16,6 +16,7 @@
 #include "debug.h"
 #include "machine.h"
 #include <linux/string.h>
+#include <asm/bug.h>
 #include "srcline.h"
 #include "namespaces.h"
 #include "unwind.h"
@@ -316,6 +317,11 @@ int map__load(struct map *map)
 
 	nr = dso__load(map->dso, map);
 	if (nr < 0) {
+		if (!strncmp(map->dso->name, "/tmp/perf-", 10)) {
+			WARN_ONCE(1, "Cannot find executable, JITed code present? May need agent.\n");
+			return -1;
+		}
+
 		if (map->dso->has_build_id) {
 			char sbuild_id[SBUILD_ID_SIZE];
 
