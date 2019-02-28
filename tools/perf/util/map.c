@@ -316,6 +316,15 @@ int map__load(struct map *map)
 
 	nr = dso__load(map->dso, map);
 	if (nr < 0) {
+		if (!strncmp(map->dso->name, "/tmp/perf-", 10)) {
+			static bool warned;
+			if (!warned) {
+				pr_err("Cannot find executable, JITed code present? May need agent.\n");
+				warned = true;
+			}
+			return -1;
+		}
+
 		if (map->dso->has_build_id) {
 			char sbuild_id[SBUILD_ID_SIZE];
 
