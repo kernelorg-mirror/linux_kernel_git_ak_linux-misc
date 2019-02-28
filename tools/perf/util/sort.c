@@ -12,6 +12,7 @@
 #include "evsel.h"
 #include "evlist.h"
 #include "strlist.h"
+#include "strbuf.h"
 #include <traceevent/event-parse.h>
 #include "mem-events.h"
 #include "annotate.h"
@@ -3067,4 +3068,44 @@ void reset_output_field(void)
 
 	reset_dimensions();
 	perf_hpp__reset_output_field(&perf_hpp_list);
+}
+
+static void add_sort_string(struct strbuf *sb, struct sort_dimension *s, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		strbuf_addch(sb, ' ');
+		strbuf_addstr(sb, s[i].name);
+	}
+}
+
+static void add_hpp_sort_string(struct strbuf *sb, struct hpp_dimension *s, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		strbuf_addch(sb, ' ');
+		strbuf_addstr(sb, s[i].name);
+	}
+}
+
+const char *sort_help(const char *prefix)
+{
+	struct strbuf sb;
+	char *s;
+
+	strbuf_init(&sb, 300);
+	strbuf_addstr(&sb, prefix);
+	add_hpp_sort_string(&sb, hpp_sort_dimensions,
+			    ARRAY_SIZE(hpp_sort_dimensions));
+	add_sort_string(&sb, common_sort_dimensions,
+			    ARRAY_SIZE(common_sort_dimensions));
+	add_sort_string(&sb, bstack_sort_dimensions,
+			    ARRAY_SIZE(bstack_sort_dimensions));
+	add_sort_string(&sb, memory_sort_dimensions,
+			    ARRAY_SIZE(memory_sort_dimensions));
+	s = strbuf_detach(&sb, NULL);
+	strbuf_release(&sb);
+	return s;
 }
