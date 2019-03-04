@@ -514,6 +514,7 @@ void perf_evlist__id_add(struct perf_evlist *evlist, struct perf_evsel *evsel,
 			 int cpu, int thread, u64 id)
 {
 	perf_evlist__id_hash(evlist, evsel, cpu, thread, id);
+	assert(evsel->ids < evsel->sample_id->max_x * evsel->sample_id->max_y);
 	evsel->id[evsel->ids++] = id;
 }
 
