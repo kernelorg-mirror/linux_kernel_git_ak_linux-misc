@@ -3001,5 +3001,7 @@ int perf_evsel__store_ids(struct perf_evsel *evsel, struct perf_evlist *evlist)
 	if (perf_evsel__alloc_id(evsel, cpus->nr, threads->nr))
 		return -ENOMEM;
 
+	evsel->ids = 0;
+
 	return store_evsel_ids(evsel, evlist);
 }
