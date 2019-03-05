@@ -922,8 +922,10 @@ static int perf_evsel__process_page_free_event(struct perf_evsel *evsel,
 
 static bool perf_kmem__skip_sample(struct perf_sample *sample)
 {
+	bool finished;
+
 	/* skip sample based on time? */
-	if (perf_time__skip_sample(&ptime, sample->time))
+	if (perf_time__skip_sample(&ptime, sample->time, &finished))
 		return true;
 
 	return false;

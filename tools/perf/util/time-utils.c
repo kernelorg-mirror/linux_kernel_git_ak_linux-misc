@@ -353,11 +353,15 @@ alloc:
 	return ptime;
 }
 
-bool perf_time__skip_sample(struct perf_time_interval *ptime, u64 timestamp)
+bool perf_time__skip_sample(struct perf_time_interval *ptime, u64 timestamp,
+			    bool *finished)
 {
+	*finished = false;
 	/* if time is not set don't drop sample */
 	if (timestamp == 0)
 		return false;
+
+	*finished = timestamp >= ptime->end;
 
 	/* otherwise compare sample time to time window */
 	if ((ptime->start && timestamp < ptime->start) ||
@@ -369,7 +373,7 @@ bool perf_time__skip_sample(struct perf_time_interval *ptime, u64 timestamp)
 }
 
 bool perf_time__ranges_skip_sample(struct perf_time_interval *ptime_buf,
-				   int num, u64 timestamp)
+				   int num, u64 timestamp, bool *finished)
 {
 	struct perf_time_interval *ptime;
 	int i;
@@ -378,13 +382,19 @@ bool perf_time__ranges_skip_sample(struct perf_time_interval *ptime_buf,
 		return false;
 
 	if (num == 1)
-		return perf_time__skip_sample(&ptime_buf[0], timestamp);
+		return perf_time__skip_sample(&ptime_buf[0], timestamp,
+					      finished);
+
+	*finished = true;
 
 	/*
 	 * start/end of multiple time ranges must be valid.
 	 */
 	for (i = 0; i < num; i++) {
 		ptime = &ptime_buf[i];
+
+		if (timestamp < ptime->end)
+			*finished = false;
 
 		if (timestamp >= ptime->start &&
 		    ((timestamp < ptime->end && i < num - 1) ||
@@ -393,7 +403,10 @@ bool perf_time__ranges_skip_sample(struct perf_time_interval *ptime_buf,
 		}
 	}
 
-	return (i == num) ? true : false;
+	if (i == num)
+		return true;
+	*finished = false;
+	return false;
 }
 
 int timestamp__scnprintf_usec(u64 timestamp, char *buf, size_t sz)

@@ -1774,6 +1774,9 @@ more:
 	}
 
 	if ((skip = perf_session__process_event(session, event, head)) < 0) {
+		err = 0;
+		if (skip == -ECANCELED)
+			goto done;
 		pr_err("%#" PRIx64 " [%#x]: failed to process type: %d\n",
 		       head, event->header.size, event->header.type);
 		err = -EINVAL;
@@ -1920,6 +1923,9 @@ more:
 
 	if (size < sizeof(struct perf_event_header) ||
 	    (skip = perf_session__process_event(session, event, file_pos)) < 0) {
+		err = 0;
+		if (skip == -ECANCELED)
+			goto out;
 		pr_err("%#" PRIx64 " [%#x]: failed to process type: %d\n",
 		       file_offset + head, event->header.size,
 		       event->header.type);
