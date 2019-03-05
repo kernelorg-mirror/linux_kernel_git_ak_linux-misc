@@ -2038,6 +2038,9 @@ static int process_comm_event(struct perf_tool *tool,
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 	int ret = -1;
 
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
+
 	thread = machine__findnew_thread(machine, event->comm.pid, event->comm.tid);
 	if (thread == NULL) {
 		pr_debug("problem processing COMM event, skipping it.\n");
@@ -2072,6 +2075,9 @@ static int process_namespaces_event(struct perf_tool *tool,
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 	int ret = -1;
+
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
 
 	thread = machine__findnew_thread(machine, event->namespaces.pid,
 					 event->namespaces.tid);
@@ -2108,6 +2114,9 @@ static int process_fork_event(struct perf_tool *tool,
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
+
 	if (perf_event__process_fork(tool, event, sample, machine) < 0)
 		return -1;
 
@@ -2140,6 +2149,9 @@ static int process_exit_event(struct perf_tool *tool,
 	struct perf_script *script = container_of(tool, struct perf_script, tool);
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
+
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
 
 	thread = machine__findnew_thread(machine, event->fork.pid, event->fork.tid);
 	if (thread == NULL) {
@@ -2174,6 +2186,9 @@ static int process_mmap_event(struct perf_tool *tool,
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
+
 	if (perf_event__process_mmap(tool, event, sample, machine) < 0)
 		return -1;
 
@@ -2205,6 +2220,9 @@ static int process_mmap2_event(struct perf_tool *tool,
 	struct perf_script *script = container_of(tool, struct perf_script, tool);
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
+
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
 
 	if (perf_event__process_mmap2(tool, event, sample, machine) < 0)
 		return -1;
@@ -2238,6 +2256,9 @@ static int process_switch_event(struct perf_tool *tool,
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
+
 	if (perf_event__process_switch(tool, event, sample, machine) < 0)
 		return -1;
 
@@ -2265,6 +2286,9 @@ process_lost_event(struct perf_tool *tool,
 	struct perf_session *session = script->session;
 	struct perf_evsel *evsel = perf_evlist__id2evsel(session->evlist, sample->id);
 	struct thread *thread;
+
+	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
+		return 0;
 
 	thread = machine__findnew_thread(machine, sample->pid,
 					 sample->tid);
