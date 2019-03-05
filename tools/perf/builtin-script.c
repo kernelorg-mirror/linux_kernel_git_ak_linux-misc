@@ -1956,9 +1956,12 @@ static int process_sample_event(struct perf_tool *tool,
 {
 	struct perf_script *scr = container_of(tool, struct perf_script, tool);
 	struct addr_location al;
+	bool finished;
 
 	if (perf_time__ranges_skip_sample(scr->ptime_range, scr->range_num,
-					  sample->time)) {
+					  sample->time, &finished)) {
+		if (finished)
+			return -ECANCELED;
 		return 0;
 	}
 

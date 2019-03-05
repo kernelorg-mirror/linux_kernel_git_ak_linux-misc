@@ -243,9 +243,12 @@ static int process_sample_event(struct perf_tool *tool,
 		.add_entry_cb 		= hist_iter__report_callback,
 	};
 	int ret = 0;
+	bool finished;
 
 	if (perf_time__ranges_skip_sample(rep->ptime_range, rep->range_num,
-					  sample->time)) {
+					  sample->time, &finished)) {
+		if (finished)
+			return -ECANCELED;
 		return 0;
 	}
 

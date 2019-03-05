@@ -2397,6 +2397,7 @@ static int timehist_sched_wakeup_event(struct perf_tool *tool,
 	struct thread_runtime *tr = NULL;
 	/* want pid of awakened task not pid in sample */
 	const u32 pid = perf_evsel__intval(evsel, sample, "pid");
+	bool finished;
 
 	thread = machine__findnew_thread(machine, 0, pid);
 	if (thread == NULL)
@@ -2411,7 +2412,7 @@ static int timehist_sched_wakeup_event(struct perf_tool *tool,
 
 	/* show wakeups if requested */
 	if (sched->show_wakeups &&
-	    !perf_time__skip_sample(&sched->ptime, sample->time))
+	    !perf_time__skip_sample(&sched->ptime, sample->time, &finished))
 		timehist_print_wakeup_event(sched, evsel, sample, machine, thread);
 
 	return 0;
