@@ -1436,13 +1436,18 @@ int perf_session__deliver_synth_event(struct perf_session *session,
 {
 	struct perf_evlist *evlist = session->evlist;
 	struct perf_tool *tool = session->tool;
+	int ret;
 
 	events_stats__inc(&evlist->stats, event->header.type);
 
 	if (event->header.type >= PERF_RECORD_USER_TYPE_START)
-		return perf_session__process_user_event(session, event, 0);
-
-	return machines__deliver_event(&session->machines, evlist, event, sample, tool, 0);
+		ret = perf_session__process_user_event(session, event, 0);
+	else
+		ret = machines__deliver_event(&session->machines, evlist, event,
+					      sample, tool, 0);
+	if (ret == -ECANCELED)
+		ret = 0;
+	return ret;
 }
 
 static void event_swap(union perf_event *event, bool sample_id_all)
@@ -1776,6 +1781,9 @@ more:
 	}
 
 	if ((skip = perf_session__process_event(session, event, head)) < 0) {
+		err = 0;
+		if (skip == -ECANCELED)
+			goto done;
 		pr_err("%#" PRIx64 " [%#x]: failed to process type: %d\n",
 		       head, event->header.size, event->header.type);
 		err = -EINVAL;
@@ -1929,6 +1937,9 @@ more:
 
 	if (size < sizeof(struct perf_event_header) ||
 	    (skip = rd->process(session, event, file_pos)) < 0) {
+		err = 0;
+		if (skip == -ECANCELED)
+			goto out;
 		pr_err("%#" PRIx64 " [%#x]: failed to process type: %d\n",
 		       file_offset + head, event->header.size,
 		       event->header.type);

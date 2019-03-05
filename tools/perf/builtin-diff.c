@@ -345,9 +345,10 @@ static int diff__process_sample_event(struct perf_tool *tool,
 	struct addr_location al;
 	struct hists *hists = evsel__hists(evsel);
 	int ret = -1;
+	bool finished;
 
 	if (perf_time__ranges_skip_sample(pdiff->ptime_range, pdiff->range_num,
-					  sample->time)) {
+					  sample->time, &finished)) {
 		return 0;
 	}
 
