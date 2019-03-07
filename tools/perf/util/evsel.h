@@ -73,6 +73,11 @@ struct perf_evsel_config_term {
 
 struct perf_stat_evsel;
 
+enum perf_tool_event {
+	PERF_TOOL_NONE		= 0,
+	PERF_TOOL_DURATION_TIME = 1,
+};
+
 /** struct perf_evsel - event selector
  *
  * @evlist - evlist this evsel is in, if it is in one.
@@ -119,6 +124,7 @@ struct perf_evsel {
 	unsigned int		sample_size;
 	int			id_pos;
 	int			is_pos;
+	enum perf_tool_event	tool_event;
 	bool			uniquified_name;
 	bool			snapshot;
 	bool 			supported;
