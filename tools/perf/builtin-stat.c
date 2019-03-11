@@ -247,10 +247,30 @@ perf_evsel__write_stat_event(struct perf_evsel *counter, u32 cpu, u32 thread,
 static int read_single_counter(struct perf_evsel *counter, int cpu,
 			       int thread, struct timespec *rs)
 {
-	if (counter->tool_event == PERF_TOOL_DURATION_TIME) {
-		u64 val = rs->tv_nsec + rs->tv_sec*1000000000ULL;
+	if (counter->tool_event > 0) {
+		u64 val;
 		struct perf_counts_values *count =
 			perf_counts(counter->counts, cpu, thread);
+		struct timeval *tv;
+
+		switch (counter->tool_event) {
+		case PERF_TOOL_DURATION_TIME:
+			val = rs->tv_nsec + rs->tv_sec*1000000000ULL;
+			break;
+		case PERF_TOOL_SYS_TIME:
+			tv = &stat_config.ru_data.ru_stime;
+			val = tv->tv_sec * NSEC_PER_SEC +
+				tv->tv_usec*NSEC_PER_USEC;
+			break;
+		case PERF_TOOL_USR_TIME:
+			tv = &stat_config.ru_data.ru_utime;
+			val = tv->tv_sec * NSEC_PER_SEC +
+				tv->tv_usec * NSEC_PER_USEC;
+			break;
+		case PERF_TOOL_NONE:
+		default:
+			assert(0);
+		}
 		count->ena = count->run = val;
 		count->val = val;
 		return 0;

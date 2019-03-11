@@ -366,7 +366,8 @@ static int add_event_tool(struct list_head *list, int *idx,
 	if (!evsel)
 		return -ENOMEM;
 	evsel->tool_event = tool_event;
-	if (tool_event == PERF_TOOL_DURATION_TIME)
+	if (tool_event >= PERF_TOOL_DURATION_TIME &&
+	    tool_event <= PERF_TOOL_SYS_TIME)
 		evsel->unit = strdup("ns");
 	return 0;
 }
@@ -2472,6 +2473,8 @@ static void print_tool_event(const char *name, const char *event_glob,
 void print_tool_events(const char *event_glob, bool name_only)
 {
 	print_tool_event("duration_time", event_glob, name_only);
+	print_tool_event("usr_time", event_glob, name_only);
+	print_tool_event("sys_time", event_glob, name_only);
 	if (pager_in_use())
 		printf("\n");
 }

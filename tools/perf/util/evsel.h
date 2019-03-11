@@ -77,7 +77,9 @@ typedef int (perf_evsel__sb_cb_t)(union perf_event *event, void *data);
 
 enum perf_tool_event {
 	PERF_TOOL_NONE		= 0,
-	PERF_TOOL_DURATION_TIME = 1,
+	PERF_TOOL_DURATION_TIME,
+	PERF_TOOL_USR_TIME,
+	PERF_TOOL_SYS_TIME,
 };
 
 /** struct perf_evsel - event selector
