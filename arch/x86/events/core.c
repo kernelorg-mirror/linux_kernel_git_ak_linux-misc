@@ -76,6 +76,8 @@ u64 x86_perf_event_update(struct perf_event *event)
 	if (idx == INTEL_PMC_IDX_FIXED_BTS)
 		return 0;
 
+	if (is_topdown_count(event) && x86_pmu.update_topdown_event)
+		return x86_pmu.update_topdown_event(event);
 	/*
 	 * Careful: an NMI might modify the previous event value.
 	 *
@@ -1003,6 +1005,10 @@ static int collect_events(struct cpu_hw_events *cpuc, struct perf_event *leader,
 
 	max_count = x86_pmu.num_counters + x86_pmu.num_counters_fixed;
 
+	/* There are 4 TopDown metrics events. */
+	if (x86_pmu.intel_cap.perf_metrics)
+		max_count += 4;
+
 	/* current number of events already accepted */
 	n = cpuc->n_events;
 
@@ -1183,6 +1189,10 @@ int x86_perf_event_set_period(struct perf_event *event)
 
 	if (idx == INTEL_PMC_IDX_FIXED_BTS)
 		return 0;
+
+	if (unlikely(is_topdown_count(event)) &&
+	    x86_pmu.set_topdown_event_period)
+		return x86_pmu.set_topdown_event_period(event);
 
 	/*
 	 * If we are way outside a reasonable range then just skip forward:

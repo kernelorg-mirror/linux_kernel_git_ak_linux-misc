@@ -40,6 +40,7 @@ enum extra_reg_type {
 	EXTRA_REG_LBR   = 2,	/* lbr_select */
 	EXTRA_REG_LDLAT = 3,	/* ld_lat_threshold */
 	EXTRA_REG_FE    = 4,    /* fe_* */
+	EXTRA_REG_TOPDOWN = 5,	/* Topdown slots/metrics */
 
 	EXTRA_REG_MAX		/* number of entries needed */
 };
@@ -76,6 +77,12 @@ static inline bool constraint_match(struct event_constraint *c, u64 ecode)
 #define PERF_X86_EVENT_EXCL_ACCT	0x0100 /* accounted EXCL event */
 #define PERF_X86_EVENT_AUTO_RELOAD	0x0200 /* use PEBS auto-reload */
 #define PERF_X86_EVENT_LARGE_PEBS	0x0400 /* use large PEBS */
+#define PERF_X86_EVENT_TOPDOWN		0x0800 /* Count Topdown slots/metrics events */
+
+static inline bool is_topdown_count(struct perf_event *event)
+{
+	return event->hw.flags & PERF_X86_EVENT_TOPDOWN;
+}
 
 struct amd_nb {
 	int nb_id;  /* NorthBridge id */
@@ -509,6 +516,9 @@ struct extra_reg {
 			       0xffff, \
 			       LDLAT)
 
+#define INTEL_UEVENT_TOPDOWN_EXTRA_REG(event)	\
+	EVENT_EXTRA_REG(event, 0, 0xfcff, -1L, TOPDOWN)
+
 #define EVENT_EXTRA_END EVENT_EXTRA_REG(0, 0, 0, 0, RSP_0)
 
 union perf_capabilities {
@@ -524,6 +534,7 @@ union perf_capabilities {
 		 */
 		u64	full_width_write:1;
 		u64     pebs_baseline:1;
+		u64	perf_metrics:1;
 	};
 	u64	capabilities;
 };
@@ -685,6 +696,12 @@ struct x86_pmu {
 	 * Intel PT/LBR/BTS are exclusive
 	 */
 	atomic_t	lbr_exclusive[x86_lbr_exclusive_max];
+
+	/*
+	 * Intel perf metrics
+	 */
+	u64		(*update_topdown_event)(struct perf_event *event);
+	int		(*set_topdown_event_period)(struct perf_event *event);
 
 	/*
 	 * AMD bits
