@@ -133,6 +133,9 @@ struct hw_perf_event {
 
 			struct hw_perf_event_extra extra_reg;
 			struct hw_perf_event_extra branch_reg;
+
+			u64		saved_slots;
+			u64		saved_metric;
 		};
 		struct { /* software */
 			struct hrtimer	hrtimer;
