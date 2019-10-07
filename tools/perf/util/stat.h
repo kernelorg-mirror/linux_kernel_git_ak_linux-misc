@@ -209,7 +209,8 @@ size_t perf_event__fprintf_stat_config(union perf_event *event, FILE *fp);
 
 int create_perf_stat_counter(struct evsel *evsel,
 			     struct perf_stat_config *config,
-			     struct target *target);
+			     struct target *target,
+			     int cpu);
 int perf_stat_synthesize_config(struct perf_stat_config *config,
 				struct perf_tool *tool,
 				struct evlist *evlist,
