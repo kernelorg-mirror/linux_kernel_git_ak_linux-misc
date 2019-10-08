@@ -6,11 +6,17 @@
 
 /* Resolve variable names from samples using DWARF. */
 #include <errno.h>
+#include <stdlib.h>
 #include "perf.h"
 #include "thread.h"
+#include <linux/zalloc.h>
+#include "event.h"
 #include "strbuf.h"
 #include "strlist.h"
 #include "util.h"
+#include "map.h"
+#include "dso.h"
+#include "symbol.h"
 #include "debug.h"
 #include "probe-finder.h"
 #include "dwarf-sample.h"
@@ -27,7 +33,7 @@ int dwarf_resolve_sample(struct perf_sample *sample,
 
 	memset(&pev, 0, sizeof(struct perf_probe_event));
 	memset(&al, 0, sizeof(al));
-	thread__find_addr_map(thread, sample->cpumode, MAP__FUNCTION, sample->ip, &al);
+	thread__find_map(thread, sample->cpumode, sample->ip, &al);
 	if (al.map && al.map->dso->long_name) {
 		pev.target = build_id_cache__complement(al.map->dso->long_name);
 		if (pev.target) {

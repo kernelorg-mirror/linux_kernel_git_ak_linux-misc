@@ -4,6 +4,8 @@
 
 #include "probe-finder.h"
 
+struct perf_sample;
+
 int dwarf_resolve_sample(struct perf_sample *sample,
 			 struct thread *thread,
 			 struct variable_list **vls);
