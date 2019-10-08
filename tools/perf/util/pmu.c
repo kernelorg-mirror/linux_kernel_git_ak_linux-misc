@@ -25,6 +25,7 @@
 #include "pmu-events/pmu-events.h"
 #include "string2.h"
 #include "strbuf.h"
+#include "fncache.h"
 
 struct perf_pmu_format {
 	char *name;
@@ -83,9 +84,9 @@ int perf_pmu__format_parse(char *dir, struct list_head *head)
  */
 static int pmu_format(const char *name, struct list_head *format)
 {
-	struct stat st;
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
+	bool res = false;
 
 	if (!sysfs)
 		return -1;
@@ -93,8 +94,12 @@ static int pmu_format(const char *name, struct list_head *format)
 	snprintf(path, PATH_MAX,
 		 "%s" EVENT_SOURCE_DEVICE_PATH "%s/format", sysfs, name);
 
-	if (stat(path, &st) < 0)
+	if (lookup_fncache(path, &res) && !res)
+		return 0;
+
+	if (!res && access(path, R_OK) < 0)
 		return 0;	/* no error if format does not exist */
+	update_fncache(path, true);
 
 	if (perf_pmu__format_parse(path, format))
 		return -1;
@@ -243,7 +248,7 @@ static void perf_pmu_assign_str(char *name, const char *field, char **old_str,
 		goto set_new;
 
 	if (*new_str) {	/* Have new string, check with old */
-		if (strcasecmp(*old_str, *new_str))
+		if (strcasecmp(*old_str, *new_str) && 0)
 			pr_debug("alias %s differs in field '%s'\n",
 				 name, field);
 		zfree(old_str);
@@ -471,9 +476,9 @@ static int pmu_aliases_parse(char *dir, struct list_head *head)
  */
 static int pmu_aliases(const char *name, struct list_head *head)
 {
-	struct stat st;
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
+	bool res = false;
 
 	if (!sysfs)
 		return -1;
@@ -481,8 +486,11 @@ static int pmu_aliases(const char *name, struct list_head *head)
 	snprintf(path, PATH_MAX,
 		 "%s/bus/event_source/devices/%s/events", sysfs, name);
 
-	if (stat(path, &st) < 0)
-		return 0;	 /* no error if 'events' does not exist */
+	if (lookup_fncache(path, &res) && !res)
+		return 0;
+	if (!res && access(path, R_OK) < 0)
+		return 0;
+	update_fncache(path, true);
 
 	if (pmu_aliases_parse(path, head))
 		return -1;
@@ -521,7 +529,6 @@ static int pmu_alias_terms(struct perf_pmu_alias *alias,
  */
 static int pmu_type(const char *name, __u32 *type)
 {
-	struct stat st;
 	char path[PATH_MAX];
 	FILE *file;
 	int ret = 0;
@@ -533,7 +540,7 @@ static int pmu_type(const char *name, __u32 *type)
 	snprintf(path, PATH_MAX,
 		 "%s" EVENT_SOURCE_DEVICE_PATH "%s/type", sysfs, name);
 
-	if (stat(path, &st) < 0)
+	if (access(path, R_OK) < 0)
 		return -1;
 
 	file = fopen(path, "r");
@@ -624,14 +631,16 @@ static struct perf_cpu_map *pmu_cpumask(const char *name)
 static bool pmu_is_uncore(const char *name)
 {
 	char path[PATH_MAX];
-	struct perf_cpu_map *cpus;
-	const char *sysfs = sysfs__mountpoint();
+	const char *sysfs;
+	bool res;
 
+	sysfs = sysfs__mountpoint();
 	snprintf(path, PATH_MAX, CPUS_TEMPLATE_UNCORE, sysfs, name);
-	cpus = __pmu_cpumask(path);
-	perf_cpu_map__put(cpus);
-
-	return !!cpus;
+	if (lookup_fncache(path, &res))
+		return res;
+	res = access(path, R_OK) == 0;
+	update_fncache(path, res);
+	return res;
 }
 
 /*
@@ -641,9 +650,9 @@ static bool pmu_is_uncore(const char *name)
  */
 static int is_arm_pmu_core(const char *name)
 {
-	struct stat st;
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
+	bool res;
 
 	if (!sysfs)
 		return 0;
@@ -651,10 +660,11 @@ static int is_arm_pmu_core(const char *name)
 	/* Look for cpu sysfs (specific to arm) */
 	scnprintf(path, PATH_MAX, "%s/bus/event_source/devices/%s/cpus",
 				sysfs, name);
-	if (stat(path, &st) == 0)
-		return 1;
-
-	return 0;
+	if (lookup_fncache(path, &res))
+		return res;
+	res = access(path, R_OK) == 0;
+	update_fncache(path, res);
+	return res;
 }
 
 static char *perf_pmu__getcpuid(struct perf_pmu *pmu)
@@ -1520,9 +1530,9 @@ bool pmu_have_event(const char *pname, const char *name)
 
 static FILE *perf_pmu__open_file(struct perf_pmu *pmu, const char *name)
 {
-	struct stat st;
 	char path[PATH_MAX];
 	const char *sysfs;
+	bool res = false;
 
 	sysfs = sysfs__mountpoint();
 	if (!sysfs)
@@ -1531,8 +1541,11 @@ static FILE *perf_pmu__open_file(struct perf_pmu *pmu, const char *name)
 	snprintf(path, PATH_MAX,
 		 "%s" EVENT_SOURCE_DEVICE_PATH "%s/%s", sysfs, pmu->name, name);
 
-	if (stat(path, &st) < 0)
+	if (lookup_fncache(path, &res) && !res)
 		return NULL;
+	if (!res && access(path, R_OK) < 0)
+		return NULL;
+	update_fncache(path, true);
 
 	return fopen(path, "r");
 }
