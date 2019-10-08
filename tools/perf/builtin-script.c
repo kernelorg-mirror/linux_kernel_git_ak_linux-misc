@@ -1225,11 +1225,7 @@ static void print_op_symbol(void *ctx, u64 addr, bool has_val, u64 val)
 	struct addr_location al;
 
 	memset(&al, 0, sizeof(struct addr_location));
-	thread__find_addr_map(oc->thread, oc->cpumode, MAP__VARIABLE,
-			      addr, &al);
-	if (!al.map)
-		thread__find_addr_map(oc->thread, oc->cpumode, MAP__FUNCTION,
-			      addr, &al);
+	thread__find_map(oc->thread, oc->cpumode, addr, &al);
 	if (al.map)
 		al.sym = map__find_symbol(al.map, al.addr);
 
