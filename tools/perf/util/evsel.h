@@ -391,4 +391,5 @@ static inline bool evsel__has_callchain(const struct evsel *evsel)
 struct perf_env *perf_evsel__env(struct evsel *evsel);
 
 int perf_evsel__store_ids(struct evsel *evsel, struct evlist *evlist);
+
 #endif /* __PERF_EVSEL_H */
