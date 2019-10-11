@@ -1248,7 +1248,7 @@ int perf_evsel__alloc_id(struct evsel *evsel, int ncpus, int nthreads)
 	return 0;
 }
 
-static void perf_evsel__free_id(struct evsel *evsel)
+void perf_evsel__free_id(struct evsel *evsel)
 {
 	xyarray__delete(evsel->sample_id);
 	evsel->sample_id = NULL;
