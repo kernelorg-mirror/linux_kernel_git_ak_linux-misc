@@ -342,6 +342,39 @@ static int perf_evlist__nr_threads(struct evlist *evlist,
 		return perf_thread_map__nr(evlist->core.threads);
 }
 
+struct perf_cpu_map *evlist__cpu_iter_start(struct evlist *evlist)
+{
+	struct perf_cpu_map *cpus;
+	struct evsel *pos;
+
+	/*
+	 * evlist->cpus is not necessarily a superset of all the
+	 * event's cpus, so compute our own super set. This
+	 * assume that there is a super set
+	 */
+	cpus = evlist->core.cpus;
+	evlist__for_each_entry(evlist, pos) {
+		pos->cpu_index = 0;
+		if (pos->core.cpus->nr > cpus->nr)
+			cpus = pos->core.cpus;
+	}
+	return cpus;
+}
+
+bool evlist__cpu_iter_skip(struct evsel *ev, int cpu)
+{
+	if (ev->cpu_index >= ev->core.cpus->nr)
+		return true;
+	if (cpu >= 0 && ev->core.cpus->map[ev->cpu_index] != cpu)
+		return true;
+	return false;
+}
+
+void evlist__cpu_iter_next(struct evsel *ev)
+{
+	ev->cpu_index++;
+}
+
 void evlist__disable(struct evlist *evlist)
 {
 	struct evsel *pos;
