@@ -336,6 +336,10 @@ void perf_evlist__to_front(struct evlist *evlist,
 void perf_evlist__set_tracking_event(struct evlist *evlist,
 				     struct evsel *tracking_evsel);
 
+struct perf_cpu_map *evlist__cpu_iter_start(struct evlist *evlist);
+bool evlist__cpu_iter_skip(struct evsel *ev, int cpu);
+void evlist__cpu_iter_next(struct evsel *ev);
+
 struct evsel *
 perf_evlist__find_evsel_by_str(struct evlist *evlist, const char *str);
 
