@@ -599,9 +599,9 @@ try_again:
 					continue;
 				perf_evsel__close_cpu(&counter->core, counter->cpu_index);
 			}
-			/* Now reopen */
+			/* Now reopen weak */
 			evlist__for_each_entry(evsel_list, counter) {
-				if (!counter->reset_group || counter->errored)
+				if (!counter->reset_group)
 					continue;
 				if (evlist__cpu_iter_skip(counter, cpu))
 					continue;
@@ -633,6 +633,9 @@ try_again_reset:
 			perf_evsel__free_fd(&counter->core);
 			continue;
 		}
+		/* Must have consumed all map indexes */
+		assert(!counter->errored &&
+			counter->cpu_index == counter->core.cpus->nr);
 
 		l = strlen(counter->unit);
 		if (l > stat_config.unit_width)
