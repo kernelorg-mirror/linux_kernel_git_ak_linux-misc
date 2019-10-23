@@ -3,8 +3,8 @@
 #define AFFINITY_H 1
 
 struct affinity {
-	unsigned char *orig_cpus;
-	unsigned char *sched_cpus;
+	unsigned long *orig_cpus;
+	unsigned long *sched_cpus;
 	bool changed;
 };
 
