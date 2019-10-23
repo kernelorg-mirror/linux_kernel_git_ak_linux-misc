@@ -380,14 +380,13 @@ void evlist__disable(struct evlist *evlist)
 	struct evsel *pos;
 	struct affinity affinity;
 	struct perf_cpu_map *cpus;
-	int i;
+	int i, cpu;
 
 	if (affinity__setup(&affinity) < 0)
 		return;
 
 	cpus = evlist__cpu_iter_start(evlist);
-	for (i = 0; i < cpus->nr; i++) {
-		int cpu = cpus->map[i];
+	cpumap__for_each_cpu (cpus, i, cpu) {
 		affinity__set(&affinity, cpu);
 
 		evlist__for_each_entry(evlist, pos) {
@@ -413,14 +412,13 @@ void evlist__enable(struct evlist *evlist)
 	struct evsel *pos;
 	struct affinity affinity;
 	struct perf_cpu_map *cpus;
-	int i;
+	int i, cpu;
 
 	if (affinity__setup(&affinity) < 0)
 		return;
 
 	cpus = evlist__cpu_iter_start(evlist);
-	for (i = 0; i < cpus->nr; i++) {
-		int cpu = cpus->map[i];
+	cpumap__for_each_cpu (cpus, i, cpu) {
 		affinity__set(&affinity, cpu);
 
 		evlist__for_each_entry(evlist, pos) {
