@@ -502,7 +502,7 @@ static int __run_perf_stat(int argc, const char **argv, int run_idx)
 	const bool forks = (argc > 0);
 	bool is_pipe = STAT_RECORD ? perf_stat.data.is_pipe : false;
 	struct affinity affinity;
-	int i;
+	int i, cpu;
 	bool second_pass = false;
 
 	if (interval) {
@@ -532,11 +532,9 @@ static int __run_perf_stat(int argc, const char **argv, int run_idx)
 		return -1;
 
 	cpus = evlist__cpu_iter_start(evsel_list);
-
-	for (i = 0; i < cpus->nr; i++) {
-		int cpu = cpus->map[i];
-
+	cpumap__for_each_cpu (cpus, i, cpu) {
 		affinity__set(&affinity, cpu);
+
 		evlist__for_each_entry(evsel_list, counter) {
 			if (evlist__cpu_iter_skip(counter, cpu))
 				continue;
@@ -586,9 +584,7 @@ try_again:
 		 */
 
 		cpus = evlist__cpu_iter_start(evsel_list);
-		for (i = 0; i < cpus->nr; i++) {
-			int cpu = cpus->map[i];
-
+		cpumap__for_each_cpu (cpus, i, cpu) {
 			affinity__set(&affinity, cpu);
 			/* First close errored or weak retry */
 			evlist__for_each_entry(evsel_list, counter) {
