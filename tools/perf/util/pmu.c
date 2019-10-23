@@ -85,7 +85,6 @@ static int pmu_format(const char *name, struct list_head *format)
 {
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
-	bool res = false;
 
 	if (!sysfs)
 		return -1;
@@ -93,12 +92,8 @@ static int pmu_format(const char *name, struct list_head *format)
 	snprintf(path, PATH_MAX,
 		 "%s" EVENT_SOURCE_DEVICE_PATH "%s/format", sysfs, name);
 
-	if (lookup_fncache(path, &res) && !res)
+	if (!file_available(path))
 		return 0;
-
-	if (!res && access(path, R_OK) < 0)
-		return 0;	/* no error if format does not exist */
-	update_fncache(path, true);
 
 	if (perf_pmu__format_parse(path, format))
 		return -1;
@@ -477,7 +472,6 @@ static int pmu_aliases(const char *name, struct list_head *head)
 {
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
-	bool res = false;
 
 	if (!sysfs)
 		return -1;
@@ -485,11 +479,8 @@ static int pmu_aliases(const char *name, struct list_head *head)
 	snprintf(path, PATH_MAX,
 		 "%s/bus/event_source/devices/%s/events", sysfs, name);
 
-	if (lookup_fncache(path, &res) && !res)
+	if (!file_available(path))
 		return 0;
-	if (!res && access(path, R_OK) < 0)
-		return 0;
-	update_fncache(path, true);
 
 	if (pmu_aliases_parse(path, head))
 		return -1;
@@ -631,15 +622,10 @@ static bool pmu_is_uncore(const char *name)
 {
 	char path[PATH_MAX];
 	const char *sysfs;
-	bool res;
 
 	sysfs = sysfs__mountpoint();
 	snprintf(path, PATH_MAX, CPUS_TEMPLATE_UNCORE, sysfs, name);
-	if (lookup_fncache(path, &res))
-		return res;
-	res = access(path, R_OK) == 0;
-	update_fncache(path, res);
-	return res;
+	return file_available(path);
 }
 
 /*
@@ -651,7 +637,6 @@ static int is_arm_pmu_core(const char *name)
 {
 	char path[PATH_MAX];
 	const char *sysfs = sysfs__mountpoint();
-	bool res;
 
 	if (!sysfs)
 		return 0;
@@ -659,11 +644,7 @@ static int is_arm_pmu_core(const char *name)
 	/* Look for cpu sysfs (specific to arm) */
 	scnprintf(path, PATH_MAX, "%s/bus/event_source/devices/%s/cpus",
 				sysfs, name);
-	if (lookup_fncache(path, &res))
-		return res;
-	res = access(path, R_OK) == 0;
-	update_fncache(path, res);
-	return res;
+	return file_available(path);
 }
 
 static char *perf_pmu__getcpuid(struct perf_pmu *pmu)
@@ -1531,7 +1512,6 @@ static FILE *perf_pmu__open_file(struct perf_pmu *pmu, const char *name)
 {
 	char path[PATH_MAX];
 	const char *sysfs;
-	bool res = false;
 
 	sysfs = sysfs__mountpoint();
 	if (!sysfs)
@@ -1539,13 +1519,8 @@ static FILE *perf_pmu__open_file(struct perf_pmu *pmu, const char *name)
 
 	snprintf(path, PATH_MAX,
 		 "%s" EVENT_SOURCE_DEVICE_PATH "%s/%s", sysfs, pmu->name, name);
-
-	if (lookup_fncache(path, &res) && !res)
+	if (!file_available(path))
 		return NULL;
-	if (!res && access(path, R_OK) < 0)
-		return NULL;
-	update_fncache(path, true);
-
 	return fopen(path, "r");
 }
 

@@ -24,7 +24,7 @@ unsigned shash(const unsigned char *s)
 	return h ^ (h >> 16);
 }
 
-bool lookup_fncache(const char *name, bool *res)
+static bool lookup_fncache(const char *name, bool *res)
 {
 	int h = shash((const unsigned char *)name) % FNHSIZE;
 	struct fncache *n;
@@ -38,8 +38,7 @@ bool lookup_fncache(const char *name, bool *res)
 	return false;
 }
 
-/* No LRU, only use when bounded in some other way. */
-void update_fncache(const char *name, bool res)
+static void update_fncache(const char *name, bool res)
 {
 	struct fncache *n = malloc(sizeof(struct fncache) + strlen(name) + 1);
 	int h = shash((const unsigned char *)name) % FNHSIZE;
@@ -49,4 +48,16 @@ void update_fncache(const char *name, bool res)
 	strcpy(n->name, name);
 	n->res = res;
 	hlist_add_head(&n->nd, &fncache_hash[h]);
+}
+
+/* No LRU, only use when bounded in some other way. */
+bool file_available(const char *name)
+{
+	bool res;
+
+	if (lookup_fncache(name, &res))
+		return res;
+	res = access(name, R_OK) == 0;
+	update_fncache(name, res);
+	return res;
 }
