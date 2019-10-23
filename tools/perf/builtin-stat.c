@@ -319,7 +319,7 @@ static void read_counters(struct timespec *rs)
 {
 	struct evsel *counter;
 	struct affinity affinity;
-	int i, ncpus;
+	int i, ncpus, cpu;
 	struct perf_cpu_map *cpus;
 
 	if (affinity__setup(&affinity) < 0)
@@ -330,8 +330,7 @@ static void read_counters(struct timespec *rs)
 	ncpus = cpus->nr;
 	if (!(target__has_cpu(&target) && !target__has_per_thread(&target)))
 		ncpus = 1;
-	for (i = 0; i < ncpus; i++) {
-		int cpu = cpus->map[i];
+	__cpumap__for_each_cpu (cpus, i, cpu, ncpus) {
 		affinity__set(&affinity, cpu);
 
 		evlist__for_each_entry(evsel_list, counter) {
