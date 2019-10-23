@@ -60,4 +60,12 @@ int cpu_map__build_map(struct perf_cpu_map *cpus, struct perf_cpu_map **res,
 
 int cpu_map__cpu(struct perf_cpu_map *cpus, int idx);
 bool cpu_map__has(struct perf_cpu_map *cpus, int cpu);
+
+#define __cpumap__for_each_cpu(cpus, index, cpu, maxcpu)\
+	for ((index) = 0; 				\
+	     (cpu) = (index) < (maxcpu) ? (cpus)->map[index] : -1, (index) < (maxcpu); \
+	     (index)++)
+#define cpumap__for_each_cpu(cpus, index, cpu) \
+	__cpumap__for_each_cpu(cpus, index, cpu, (cpus)->nr)
+
 #endif /* __PERF_CPUMAP_H */
