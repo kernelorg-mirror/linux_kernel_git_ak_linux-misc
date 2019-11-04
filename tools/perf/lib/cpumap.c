@@ -68,6 +68,11 @@ static struct perf_cpu_map *cpu_map__default_new(void)
 	return cpus;
 }
 
+static int cmp_int(const void *a, const void *b)
+{
+	return *(const int *)a - *(const int*)b;
+}
+
 static struct perf_cpu_map *cpu_map__trim_new(int nr_cpus, int *tmp_cpus)
 {
 	size_t payload_size = nr_cpus * sizeof(int);
@@ -76,6 +81,7 @@ static struct perf_cpu_map *cpu_map__trim_new(int nr_cpus, int *tmp_cpus)
 	if (cpus != NULL) {
 		cpus->nr = nr_cpus;
 		memcpy(cpus->map, tmp_cpus, payload_size);
+		qsort(cpus->map, nr_cpus, sizeof(int), cmp_int);
 		refcount_set(&cpus->refcnt, 1);
 	}
 
@@ -271,4 +277,40 @@ int perf_cpu_map__max(struct perf_cpu_map *map)
 	}
 
 	return max;
+}
+
+struct perf_cpu_map *perf_cpu_map__update(struct perf_cpu_map *orig,
+					  struct perf_cpu_map *other)
+{
+	int *tmp_cpus;
+	int tmp_len;
+	int i, j, k;
+	struct perf_cpu_map *merged;
+
+	if (!orig) {
+		perf_cpu_map__get(other);
+		return other;
+	}
+	if (orig->nr == other->nr &&
+	    !memcmp(orig->map, other->map, orig->nr * sizeof(int)))
+		return orig;
+	tmp_len = orig->nr + other->nr;
+	tmp_cpus = malloc(tmp_len * sizeof(int));
+	if (!tmp_cpus)
+		return NULL;
+	i = j = k = 0;
+	while (i < orig->nr && j < other->nr) {
+		if (orig->map[i] <= other->map[j])
+			tmp_cpus[k++] = orig->map[i++];
+		else
+			tmp_cpus[k++] = other->map[j++];
+	}
+	while (i < orig->nr)
+		tmp_cpus[k++] = orig->map[i++];
+	while (j < other->nr)
+		tmp_cpus[k++] = other->map[j++];
+	assert(k < tmp_len);
+	merged = cpu_map__trim_new(k, tmp_cpus);
+	free(tmp_cpus);
+	return merged;
 }
