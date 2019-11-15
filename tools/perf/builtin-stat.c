@@ -266,7 +266,7 @@ static int read_single_counter(struct evsel *counter, int cpu,
  * Read out the results of a single counter:
  * do not aggregate counts across CPUs in system-wide mode
  */
-static int read_counter(struct evsel *counter, struct timespec *rs, int cpu)
+static int read_counter_cpu(struct evsel *counter, struct timespec *rs, int cpu)
 {
 	int nthreads = perf_thread_map__nr(evsel_list->core.threads);
 	int thread;
@@ -325,7 +325,7 @@ static void read_counters(struct timespec *rs)
 		return;
 
 	ncpus = evsel_list->core.all_cpus->nr;
-	if (!(target__has_cpu(&target) && !target__has_per_thread(&target)))
+	if (!target__has_cpu(&target) || target__has_per_thread(&target))
 		ncpus = 1;
 	evlist__for_each_cpu (evsel_list, i, cpu) {
 		if (i >= ncpus)
@@ -336,7 +336,8 @@ static void read_counters(struct timespec *rs)
 			if (evsel__cpu_iter_skip(counter, cpu))
 				continue;
 			if (!counter->err)
-				counter->err = read_counter(counter, rs, counter->cpu_iter - 1);
+				counter->err = read_counter_cpu(counter, rs,
+								counter->cpu_iter - 1);
 		}
 	}
 	affinity__cleanup(&affinity);
