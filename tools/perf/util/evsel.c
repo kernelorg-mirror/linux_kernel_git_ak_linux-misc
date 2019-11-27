@@ -1853,6 +1853,10 @@ int perf_evsel__open_per_cpu(struct evsel *evsel,
 			     struct perf_cpu_map *cpus,
 			     int cpu)
 {
+	if (cpu == -1)
+		return evsel__open_cpu(evsel, cpus, NULL, 0,
+					cpus ? cpus->nr : 1);
+
 	return evsel__open_cpu(evsel, cpus, NULL, cpu, cpu + 1);
 }
 
