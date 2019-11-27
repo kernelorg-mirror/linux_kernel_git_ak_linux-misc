@@ -224,7 +224,7 @@ int perf_evsel__enable(struct perf_evsel *evsel)
 	int i;
 	int err = 0;
 
-	for (i = 0; i < evsel->cpus->nr && !err; i++)
+	for (i = 0; i < xyarray__max_x(evsel->fd) && !err; i++)
 		err = perf_evsel__run_ioctl(evsel, PERF_EVENT_IOC_ENABLE, NULL, i);
 	return err;
 }
@@ -239,7 +239,7 @@ int perf_evsel__disable(struct perf_evsel *evsel)
 	int i;
 	int err = 0;
 
-	for (i = 0; i < evsel->cpus->nr && !err; i++)
+	for (i = 0; i < xyarray__max_x(evsel->fd) && !err; i++)
 		err = perf_evsel__run_ioctl(evsel, PERF_EVENT_IOC_DISABLE, NULL, i);
 	return err;
 }
