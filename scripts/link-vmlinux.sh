@@ -56,7 +56,7 @@ gen_initcalls()
 		> .tmp_initcalls.lds
 }
 
-# If CONFIG_LTO_CLANG is selected, collect generated symbol versions into
+# If CONFIG_LTO is selected, collect generated symbol versions into
 # .tmp_symversions.lds
 gen_symversions()
 {
@@ -108,7 +108,7 @@ objtool_link()
 	local objtoolcmd;
 	local objtoolopt;
 
-	if is_enabled CONFIG_LTO_CLANG && is_enabled CONFIG_STACK_VALIDATION; then
+	if is_enabled CONFIG_LTO && is_enabled CONFIG_STACK_VALIDATION; then
 		# Don't perform vmlinux validation unless explicitly requested,
 		# but run objtool on vmlinux.o now that we have an object file.
 		if is_enabled CONFIG_UNWINDER_ORC; then
@@ -134,7 +134,7 @@ objtool_link()
 		if ! is_enabled CONFIG_FRAME_POINTER; then
 			objtoolopt="${objtoolopt} --no-fp"
 		fi
-		if is_enabled CONFIG_GCOV_KERNEL || is_enabled CONFIG_LTO_CLANG; then
+		if is_enabled CONFIG_GCOV_KERNEL || is_enabled CONFIG_LTO; then
 			objtoolopt="${objtoolopt} --no-unreachable"
 		fi
 		if is_enabled CONFIG_RETPOLINE; then
