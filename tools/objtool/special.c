@@ -134,6 +134,9 @@ static int get_alt_entry(struct elf *elf, struct special_entry *entry,
 		alt->key_addend = key_reloc->addend;
 	}
 
+	if (!alt->new_sec)
+		return -1;
+
 	return 0;
 }
 
