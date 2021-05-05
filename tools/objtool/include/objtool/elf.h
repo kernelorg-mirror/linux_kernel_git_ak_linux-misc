@@ -75,7 +75,7 @@ struct reloc {
 	bool jump_table_start;
 };
 
-#define ELF_HASH_BITS	20
+#define ELF_HASH_BITS	30
 
 struct elf {
 	Elf *elf;
