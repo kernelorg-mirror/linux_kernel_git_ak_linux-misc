@@ -11,6 +11,9 @@ ifdef CONFIG_LTO_GCC
 
 	KBUILD_CFLAGS += ${CC_FLAGS_LTO_GCC}
 
+	CC_FLAGS_LTO := -flto
+	export CC_FLAGS_LTO
+
 	lto-flags-y := -flto -flinker-output=nolto-rel -flto=jobserver
 	lto-flags-y += -fwhole-program
 
