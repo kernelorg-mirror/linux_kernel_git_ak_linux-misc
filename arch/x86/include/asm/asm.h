@@ -154,11 +154,11 @@
 
 # define DEFINE_EXTABLE_TYPE_REG \
 	".macro extable_type_reg type:req reg:req\n"						\
-	".set found, 0\n"									\
+	".set tmp_found, 0\n"									\
 	".set regnr, 0\n"									\
 	".irp rs,rax,rcx,rdx,rbx,rsp,rbp,rsi,rdi,r8,r9,r10,r11,r12,r13,r14,r15\n"		\
 	".ifc \\reg, %%\\rs\n"									\
-	".set found, found+1\n"									\
+	".set tmp_found, tmp_found+1\n"									\
 	".long \\type + (regnr << 8)\n"								\
 	".endif\n"										\
 	".set regnr, regnr+1\n"									\
@@ -166,12 +166,12 @@
 	".set regnr, 0\n"									\
 	".irp rs,eax,ecx,edx,ebx,esp,ebp,esi,edi,r8d,r9d,r10d,r11d,r12d,r13d,r14d,r15d\n"	\
 	".ifc \\reg, %%\\rs\n"									\
-	".set found, found+1\n"									\
+	".set tmp_found, tmp_found+1\n"									\
 	".long \\type + (regnr << 8)\n"								\
 	".endif\n"										\
 	".set regnr, regnr+1\n"									\
 	".endr\n"										\
-	".if (found != 1)\n"									\
+	".if (tmp_found != 1)\n"									\
 	".error \"extable_type_reg: bad register argument\"\n"					\
 	".endif\n"										\
 	".endm\n"
