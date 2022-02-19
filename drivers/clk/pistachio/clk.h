@@ -34,7 +34,7 @@ struct pistachio_mux {
 	const char **parents;
 };
 
-#define PNAME(x) static const char *x[] __initconst
+#define PNAME(x) static const char *x[] __initdata
 
 #define MUX(_id, _name, _pnames, _reg, _shift)			\
 	{							\
