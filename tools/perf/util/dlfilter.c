@@ -250,7 +250,7 @@ static const char *dlfilter__srcline(void *ctx, __u32 *line_no)
 {
 	struct dlfilter *d = (struct dlfilter *)ctx;
 	struct addr_location *al;
-	unsigned int line = 0;
+	unsigned int line = 0, disc = 0;
 	char *srcfile = NULL;
 	struct map *map;
 	struct dso *dso;
@@ -268,7 +268,7 @@ static const char *dlfilter__srcline(void *ctx, __u32 *line_no)
 	dso = map ? map__dso(map) : NULL;
 
 	if (dso)
-		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line);
+		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc);
 
 	*line_no = line;
 	return srcfile;

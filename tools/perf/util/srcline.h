@@ -17,7 +17,7 @@ char *__get_srcline(struct dso *dso, u64 addr, struct symbol *sym,
 		  bool show_sym, bool show_addr, bool unwind_inlines,
 		  u64 ip);
 void zfree_srcline(char **srcline);
-char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line);
+char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line, unsigned *disc);
 
 /* insert the srcline into the DSO, which will take ownership */
 void srcline__tree_insert(struct rb_root_cached *tree, u64 addr, char *srcline);

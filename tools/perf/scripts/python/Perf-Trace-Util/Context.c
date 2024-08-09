@@ -140,7 +140,7 @@ out:
 static PyObject *perf_sample_src(PyObject *obj, PyObject *args, bool get_srccode)
 {
 	struct scripting_context *c = get_scripting_context(args);
-	unsigned int line = 0;
+	unsigned int line = 0, disc = 0;
 	char *srcfile = NULL;
 	char *srccode = NULL;
 	PyObject *result;
@@ -157,7 +157,7 @@ static PyObject *perf_sample_src(PyObject *obj, PyObject *args, bool get_srccode
 	dso = map ? map__dso(map) : NULL;
 
 	if (dso)
-		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line);
+		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc);
 
 	if (get_srccode) {
 		if (srcfile)

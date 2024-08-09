@@ -1131,7 +1131,7 @@ static int map__fprintf_srccode(struct map *map, u64 addr, FILE *fp, struct srcc
 {
 	char *srcfile;
 	int ret = 0;
-	unsigned line;
+	unsigned line, disc;
 	int len;
 	char *srccode;
 	struct dso *dso;
@@ -1140,7 +1140,7 @@ static int map__fprintf_srccode(struct map *map, u64 addr, FILE *fp, struct srcc
 		return 0;
 	srcfile = get_srcline_split(dso,
 				    map__rip_2objdump(map, addr),
-				    &line);
+				    &line, &disc);
 	if (!srcfile)
 		return 0;
 
@@ -1156,6 +1156,8 @@ static int map__fprintf_srccode(struct map *map, u64 addr, FILE *fp, struct srcc
 	srccode = find_sourceline(srcfile, line, &len);
 	if (!srccode)
 		goto out_free_line;
+
+	/* Print discriminator too? Maybe with a new option */
 
 	ret = fprintf(fp, "|%-8d %.*s", line, len, srccode);
 

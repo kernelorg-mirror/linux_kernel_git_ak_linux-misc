@@ -146,6 +146,7 @@ struct a2l_data {
 	const char 	*filename;
 	const char 	*funcname;
 	unsigned 	line;
+	unsigned	discriminator;
 
 	bfd 		*abfd;
 	asymbol 	**syms;
@@ -232,9 +233,10 @@ static void find_address_in_section(bfd *abfd, asection *section, void *data)
 	if (pc < vma || pc >= vma + size)
 		return;
 
-	a2l->found = bfd_find_nearest_line(abfd, section, a2l->syms, pc - vma,
-					   &a2l->filename, &a2l->funcname,
-					   &a2l->line);
+	a2l->found = bfd_find_nearest_line_discriminator(abfd,
+							 section, a2l->syms, pc - vma,
+							 &a2l->filename, &a2l->funcname,
+							 &a2l->line, &a2l->discriminator);
 
 	if (a2l->filename && !strlen(a2l->filename))
 		a2l->filename = NULL;
@@ -301,7 +303,7 @@ static int inline_list__append_dso_a2l(struct dso *dso,
 static int addr2line(const char *dso_name, u64 addr,
 		     char **file, unsigned int *line, struct dso *dso,
 		     bool unwind_inlines, struct inline_node *node,
-		     struct symbol *sym)
+		     struct symbol *sym, unsigned *disc)
 {
 	int ret = 0;
 	struct a2l_data *a2l = dso__a2l(dso);
@@ -354,6 +356,8 @@ static int addr2line(const char *dso_name, u64 addr,
 
 	if (line)
 		*line = a2l->line;
+	if (disc)
+		*disc = a2l->discriminator;
 
 	return ret;
 }
@@ -506,7 +510,8 @@ static int read_addr2line_record(struct io *io,
 				 bool first,
 				 char **function,
 				 char **filename,
-				 unsigned int *line_nr)
+				 unsigned int *line_nr,
+				 unsigned *disc)
 {
 	/*
 	 * Returns:
@@ -518,6 +523,9 @@ static int read_addr2line_record(struct io *io,
 	size_t line_len = 0;
 	unsigned int dummy_line_nr = 0;
 	int ret = -1;
+	char *p;
+
+	*disc = 0;
 
 	if (function != NULL)
 		zfree(function);
@@ -602,6 +610,10 @@ static int read_addr2line_record(struct io *io,
 		goto error;
 	}
 
+	p = strstr(line, "discriminator");
+	if (p && disc)
+		*disc = strtoul(p + sizeof("discriminator"), NULL, 0);
+
 	if (filename != NULL)
 		*filename = strdup(line);
 
@@ -636,7 +648,8 @@ static int addr2line(const char *dso_name, u64 addr,
 		     struct dso *dso,
 		     bool unwind_inlines,
 		     struct inline_node *node,
-		     struct symbol *sym __maybe_unused)
+		     struct symbol *sym __maybe_unused,
+		     unsigned *disc)
 {
 	struct child_process *a2l = dso__a2l(dso);
 	char *record_function = NULL;
@@ -688,7 +701,8 @@ static int addr2line(const char *dso_name, u64 addr,
 	io__init(&io, a2l->out, buf, sizeof(buf));
 	io.timeout_ms = addr2line_timeout_ms;
 	switch (read_addr2line_record(&io, a2l_style, dso_name, addr, /*first=*/true,
-				      &record_function, &record_filename, &record_line_nr)) {
+				      &record_function, &record_filename, &record_line_nr,
+				      &disc)) {
 	case -1:
 		if (!symbol_conf.disable_add2line_warn)
 			pr_warning("%s %s: could not read first record\n", __func__, dso_name);
@@ -704,7 +718,7 @@ static int addr2line(const char *dso_name, u64 addr,
 		 */
 		switch (read_addr2line_record(&io, a2l_style, dso_name,
 					      /*addr=*/1, /*first=*/true,
-					      NULL, NULL, NULL)) {
+					      NULL, NULL, NULL, NULL)) {
 		case -1:
 			if (!symbol_conf.disable_add2line_warn)
 				pr_warning("%s %s: could not read sentinel record\n",
@@ -754,7 +768,7 @@ static int addr2line(const char *dso_name, u64 addr,
 						      /*first=*/false,
 						      &record_function,
 						      &record_filename,
-						      &record_line_nr)) == 1) {
+						      &record_line_nr, NULL)) == 1) {
 		if (unwind_inlines && node && inline_count++ < MAX_INLINE_NEST) {
 			if (inline_list__append_record(dso, node, sym,
 						       record_function,
@@ -805,7 +819,7 @@ static struct inline_node *addr2inlines(const char *dso_name, u64 addr,
 	INIT_LIST_HEAD(&node->val);
 	node->addr = addr;
 
-	addr2line(dso_name, addr, NULL, NULL, dso, true, node, sym);
+	addr2line(dso_name, addr, NULL, NULL, dso, true, node, sym, NULL);
 	return node;
 }
 
@@ -832,7 +846,7 @@ char *__get_srcline(struct dso *dso, u64 addr, struct symbol *sym,
 		goto out_err;
 
 	if (!addr2line(dso_name, addr, &file, &line, dso,
-		       unwind_inlines, NULL, sym))
+		       unwind_inlines, NULL, sym, NULL))
 		goto out_err;
 
 	srcline = srcline_from_fileline(file, line);
@@ -865,8 +879,8 @@ out:
 	return srcline;
 }
 
-/* Returns filename and fills in line number in line */
-char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line)
+/* Returns filename and fills in line number in line and discriminator in disc */
+char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line, unsigned *disc)
 {
 	char *file = NULL;
 	const char *dso_name;
@@ -878,7 +892,7 @@ char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line)
 	if (dso_name == NULL)
 		goto out_err;
 
-	if (!addr2line(dso_name, addr, &file, line, dso, true, NULL, NULL))
+	if (!addr2line(dso_name, addr, &file, line, dso, true, NULL, NULL, disc))
 		goto out_err;
 
 	dso__set_a2l_fails(dso, 0);
