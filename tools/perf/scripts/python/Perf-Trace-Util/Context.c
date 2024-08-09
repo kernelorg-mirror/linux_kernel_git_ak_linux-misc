@@ -22,6 +22,7 @@
 #include "../../../util/session.h"
 #include "../../../util/srcline.h"
 #include "../../../util/srccode.h"
+#include "../../../util/dso.h"
 
 #if PY_MAJOR_VERSION < 3
 #define _PyCapsule_GetPointer(arg1, arg2) \
@@ -182,6 +183,61 @@ static PyObject *perf_sample_srccode(PyObject *obj, PyObject *args)
 	return perf_sample_src(obj, args, true);
 }
 
+static PyObject *do_perf_brstack_srcline(struct scripting_context *c, PyObject *ipp)
+{
+	struct addr_location al;
+	struct dso *dso;
+	u8 cpumode;
+	char *srcfile = NULL;
+	PyObject *result = NULL;
+	bool kernel;
+	u64 ip = PyLong_AsUnsignedLongLong(ipp);
+	unsigned line = 0, disc = 0;
+
+	kernel = machine__kernel_ip(c->machine, ip);
+	if (kernel)
+		cpumode = PERF_RECORD_MISC_KERNEL;
+	else
+		cpumode = PERF_RECORD_MISC_USER;
+
+	addr_location__init(&al);
+	if (machine__resolve(c->machine, &al, c->sample) < 0)
+		goto err2;
+	if (!thread__find_map(al.thread, cpumode, ip, &al))
+		goto err;
+	if (!al.map)
+		goto err;
+	dso = map__dso(al.map);
+	if (!dso)
+		goto err;
+	if (dso__data(dso)->status == DSO_DATA_STATUS_ERROR)
+		goto err;
+	srcfile = get_srcline_split(dso, map__rip_2objdump(al.map, al.addr), &line, &disc);
+	if (srcfile)
+		result = Py_BuildValue("(sII)", srcfile, line, disc);
+	free(srcfile);
+err:
+	addr_location__exit(&al);
+err2:
+	if (!result)
+		return Py_BuildValue("");
+	return result;
+}
+
+/* Resolve srcfile/line/disc for brstack from/to. */
+
+static PyObject *perf_brstack_srcline(PyObject *obj, PyObject *args)
+{
+	PyObject *brstack = NULL;
+	PyObject *from, *to;
+	struct scripting_context *c = get_args(args, "brstack", &brstack);
+	if (!c)
+		return NULL;
+	from = do_perf_brstack_srcline(c, PyDict_GetItemString(brstack, "from"));
+	to = do_perf_brstack_srcline(c, PyDict_GetItemString(brstack, "to"));
+	return Py_BuildValue("(OO)", from, to);
+}
+
 static PyMethodDef ContextMethods[] = {
 #ifdef HAVE_LIBTRACEEVENT
 	{ "common_pc", perf_trace_context_common_pc, METH_VARARGS,
@@ -199,6 +255,8 @@ static PyMethodDef ContextMethods[] = {
 	  METH_VARARGS,	"Get source file name and line number."},
 	{ "perf_sample_srccode", perf_sample_srccode,
 	  METH_VARARGS,	"Get source file name, line number and line."},
+	{ "perf_brstack_srcline", perf_brstack_srcline,
+	  METH_VARARGS, "Get source file name, line number, discriminator for from/to of a brstack entry." },
 	{ NULL, NULL, 0, NULL}
 };
 
