@@ -26,7 +26,8 @@ void scripting_context__update(struct scripting_context *c,
 			       struct perf_sample *sample,
 			       struct evsel *evsel,
 			       struct addr_location *al,
-			       struct addr_location *addr_al)
+			       struct addr_location *addr_al,
+			       struct machine *machine)
 {
 	c->event_data = sample->raw_data;
 	c->pevent = NULL;
@@ -39,6 +40,7 @@ void scripting_context__update(struct scripting_context *c,
 	c->evsel = evsel;
 	c->al = al;
 	c->addr_al = addr_al;
+	c->machine = machine;
 }
 
 static int flush_script_unsupported(void)
@@ -55,7 +57,8 @@ static void process_event_unsupported(union perf_event *event __maybe_unused,
 				      struct perf_sample *sample __maybe_unused,
 				      struct evsel *evsel __maybe_unused,
 				      struct addr_location *al __maybe_unused,
-				      struct addr_location *addr_al __maybe_unused)
+				      struct addr_location *addr_al __maybe_unused,
+				      struct machine *machine __maybe_unused)
 {
 }
 

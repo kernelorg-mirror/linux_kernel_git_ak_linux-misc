@@ -99,7 +99,8 @@ struct scripting_ops {
 			       struct perf_sample *sample,
 			       struct evsel *evsel,
 			       struct addr_location *al,
-			       struct addr_location *addr_al);
+			       struct addr_location *addr_al,
+			       struct machine *machine);
 	void (*process_switch)(union perf_event *event,
 			       struct perf_sample *sample,
 			       struct machine *machine);
@@ -133,6 +134,7 @@ struct scripting_context {
 	struct addr_location *al;
 	struct addr_location *addr_al;
 	struct perf_session *session;
+	struct machine *machine;
 };
 
 void scripting_context__update(struct scripting_context *scripting_context,
@@ -140,7 +142,8 @@ void scripting_context__update(struct scripting_context *scripting_context,
 			       struct perf_sample *sample,
 			       struct evsel *evsel,
 			       struct addr_location *al,
-			       struct addr_location *addr_al);
+			       struct addr_location *addr_al,
+			       struct machine *machine);
 
 int common_pc(struct scripting_context *context);
 int common_flags(struct scripting_context *context);
