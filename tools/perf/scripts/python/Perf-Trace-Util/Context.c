@@ -183,7 +183,7 @@ static PyObject *perf_sample_srccode(PyObject *obj, PyObject *args)
 	return perf_sample_src(obj, args, true);
 }
 
-static PyObject *do_perf_brstack_srcline(struct scripting_context *c, PyObject *ipp)
+static PyObject *do_resolve_ip(struct scripting_context *c, PyObject *ipp)
 {
 	struct addr_location al;
 	struct dso *dso;
@@ -233,9 +233,20 @@ static PyObject *perf_brstack_srcline(PyObject *obj, PyObject *args)
 	struct scripting_context *c = get_args(args, "brstack", &brstack);
 	if (!c)
 		return NULL;
-	from = do_perf_brstack_srcline(c, PyDict_GetItemString(brstack, "from"));
-	to = do_perf_brstack_srcline(c, PyDict_GetItemString(brstack, "to"));
+	from = do_resolve_ip(c, PyDict_GetItemString(brstack, "from"));
+	to = do_resolve_ip(c, PyDict_GetItemString(brstack, "to"));
 	return Py_BuildValue("(OO)", from, to);
+}
+
+/* Resolve an numerical address to srcfile/line/disc */
+
+static PyObject *perf_resolve_ip(PyObject *obj, PyObject *args)
+{
+	PyObject *ip;
+	struct scripting_context *c = get_args(args, "ip", &ip);
+	if (!c)
+		return NULL;
+	return do_resolve_ip(c, ip);
 }
 
 static PyMethodDef ContextMethods[] = {
@@ -257,6 +268,8 @@ static PyMethodDef ContextMethods[] = {
 	  METH_VARARGS,	"Get source file name, line number and line."},
 	{ "perf_brstack_srcline", perf_brstack_srcline,
 	  METH_VARARGS, "Get source file name, line number, discriminator for from/to of a brstack entry." },
+	{ "perf_resolve_ip", perf_resolve_ip,
+	  METH_VARARGS, "Get source file name, line number, discriminator for numerical IP." },
 	{ NULL, NULL, 0, NULL}
 };
 
