@@ -32,6 +32,8 @@ extern char *srcline__unknown;
 struct inline_list {
 	struct symbol		*symbol;
 	char			*srcline;
+	int			line;
+	int			disc;
 	struct list_head	list;
 };
 

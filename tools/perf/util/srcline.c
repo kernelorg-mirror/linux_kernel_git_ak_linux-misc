@@ -46,6 +46,7 @@ static const char *srcline_dso_name(struct dso *dso)
 }
 
 static int inline_list__append(struct symbol *symbol, char *srcline,
+			       int line, int disc,
 			       struct inline_node *node)
 {
 	struct inline_list *ilist;
@@ -56,6 +57,8 @@ static int inline_list__append(struct symbol *symbol, char *srcline,
 
 	ilist->symbol = symbol;
 	ilist->srcline = srcline;
+	ilist->disc = disc;
+	ilist->line = line;
 
 	if (callchain_param.order == ORDER_CALLEE)
 		list_add_tail(&ilist->list, &node->val);
@@ -297,7 +300,8 @@ static int inline_list__append_dso_a2l(struct dso *dso,
 	if (a2l->filename)
 		srcline = srcline_from_fileline(a2l->filename, a2l->line);
 
-	return inline_list__append(inline_sym, srcline, node);
+	return inline_list__append(inline_sym, srcline, a2l->line,
+				   a2l->discriminator, node);
 }
 
 static int addr2line(const char *dso_name, u64 addr,
@@ -636,11 +640,12 @@ static int inline_list__append_record(struct dso *dso,
 				      struct symbol *sym,
 				      const char *function,
 				      const char *filename,
-				      unsigned int line_nr)
+				      unsigned int line_nr,
+				      unsigned int disc)
 {
 	struct symbol *inline_sym = new_inline_sym(dso, sym, function);
 
-	return inline_list__append(inline_sym, srcline_from_fileline(filename, line_nr), node);
+	return inline_list__append(inline_sym, srcline_from_fileline(filename, line_nr), line_nr, disc, node);
 }
 
 static int addr2line(const char *dso_name, u64 addr,
@@ -750,7 +755,8 @@ static int addr2line(const char *dso_name, u64 addr,
 		if (node && inline_list__append_record(dso, node, sym,
 						       record_function,
 						       record_filename,
-						       record_line_nr)) {
+						       record_line_nr,
+						       disc)) {
 			ret = 0;
 			goto out;
 		}
@@ -768,12 +774,12 @@ static int addr2line(const char *dso_name, u64 addr,
 						      /*first=*/false,
 						      &record_function,
 						      &record_filename,
-						      &record_line_nr, NULL)) == 1) {
+						      &record_line_nr, &disc)) == 1) {
 		if (unwind_inlines && node && inline_count++ < MAX_INLINE_NEST) {
 			if (inline_list__append_record(dso, node, sym,
 						       record_function,
 						       record_filename,
-						       record_line_nr)) {
+						       record_line_nr, disc)) {
 				ret = 0;
 				goto out;
 			}
