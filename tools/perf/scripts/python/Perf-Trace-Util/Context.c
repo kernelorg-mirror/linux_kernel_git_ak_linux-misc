@@ -158,7 +158,8 @@ static PyObject *perf_sample_src(PyObject *obj, PyObject *args, bool get_srccode
 	dso = map ? map__dso(map) : NULL;
 
 	if (dso)
-		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc);
+		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc,
+				NULL);
 
 	if (get_srccode) {
 		if (srcfile)

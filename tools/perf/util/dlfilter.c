@@ -268,7 +268,7 @@ static const char *dlfilter__srcline(void *ctx, __u32 *line_no)
 	dso = map ? map__dso(map) : NULL;
 
 	if (dso)
-		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc);
+		srcfile = get_srcline_split(dso, map__rip_2objdump(map, addr), &line, &disc, NULL);
 
 	*line_no = line;
 	return srcfile;

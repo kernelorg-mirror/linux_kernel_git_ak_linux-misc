@@ -886,7 +886,8 @@ out:
 }
 
 /* Returns filename and fills in line number in line and discriminator in disc */
-char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line, unsigned *disc)
+char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line, unsigned *disc, 
+		        struct inline_node *inline_node)
 {
 	char *file = NULL;
 	const char *dso_name;
@@ -898,7 +899,7 @@ char *get_srcline_split(struct dso *dso, u64 addr, unsigned *line, unsigned *dis
 	if (dso_name == NULL)
 		goto out_err;
 
-	if (!addr2line(dso_name, addr, &file, line, dso, true, NULL, NULL, disc))
+	if (!addr2line(dso_name, addr, &file, line, dso, true, inline_node, NULL, disc))
 		goto out_err;
 
 	dso__set_a2l_fails(dso, 0);

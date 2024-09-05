@@ -1140,7 +1140,7 @@ static int map__fprintf_srccode(struct map *map, u64 addr, FILE *fp, struct srcc
 		return 0;
 	srcfile = get_srcline_split(dso,
 				    map__rip_2objdump(map, addr),
-				    &line, &disc);
+				    &line, &disc, NULL);
 	if (!srcfile)
 		return 0;
 
