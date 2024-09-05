@@ -23,6 +23,7 @@
 #include "../../../util/srcline.h"
 #include "../../../util/srccode.h"
 #include "../../../util/dso.h"
+#include "../../../util/build-id.h"
 
 #if PY_MAJOR_VERSION < 3
 #define _PyCapsule_GetPointer(arg1, arg2) \
@@ -195,6 +196,7 @@ static PyObject *do_resolve_ip(struct scripting_context *c, PyObject *ipp)
 	u64 ip = PyLong_AsUnsignedLongLong(ipp);
 	unsigned line = 0, disc = 0;
 	struct inline_node *inode = calloc(sizeof(struct inline_node), 1);
+	char bid[SBUILD_ID_SIZE];
 
 	if (!inode)
 		goto err2;
@@ -218,6 +220,8 @@ static PyObject *do_resolve_ip(struct scripting_context *c, PyObject *ipp)
 		goto err;
 	if (dso__data(dso)->status == DSO_DATA_STATUS_ERROR)
 		goto err;
+	build_id__sprintf(dso__bid(dso), bid);
+
 	srcfile = get_srcline_split(dso, map__rip_2objdump(al.map, al.addr), &line,
 				    &disc, inode);
 	if (srcfile && srcfile != SRCLINE_UNKNOWN) {
@@ -234,16 +238,18 @@ static PyObject *do_resolve_ip(struct scripting_context *c, PyObject *ipp)
 			num = 0;
 			list_for_each_entry (ilist, &inode->val, list) {
 				PyTuple_SetItem(inlines, num,
-						Py_BuildValue("(ssII)",
-							ilist->srcline, ilist->symbol->name,
-							ilist->line, ilist->disc));
+						Py_BuildValue("(s#IIs)",
+							ilist->srcline,
+							strcspn(ilist->srcline, ":"),
+							ilist->line, ilist->disc,
+							ilist->symbol->name));
 				num++;
 			}
-			result = Py_BuildValue("(sIIO)", srcfile, line, disc, inlines);
+			result = Py_BuildValue("(sIIssO)", srcfile, line, disc, dso->long_name, bid, inlines);
 			Py_DECREF(inlines);
 		out:
 		} else {
-			result = Py_BuildValue("(sII)", srcfile, line, disc);
+			result = Py_BuildValue("(sIIss())", srcfile, line, disc, dso->long_name, bid);
 		}
 	}
 	zfree_srcline(&srcfile);
@@ -299,9 +305,9 @@ static PyMethodDef ContextMethods[] = {
 	{ "perf_sample_srccode", perf_sample_srccode,
 	  METH_VARARGS,	"Get source file name, line number and line."},
 	{ "perf_brstack_srcline", perf_brstack_srcline,
-	  METH_VARARGS, "Get source file name, line number, discriminator, inline stack for from/to of a brstack entry." },
+	  METH_VARARGS, "Get source file name, line number, discriminator, executable, build-id, inline stack for from/to of a brstack entry." },
 	{ "perf_resolve_ip", perf_resolve_ip,
-	  METH_VARARGS, "Get source file name, line number, discriminator, inline stack for numerical IP." },
+	  METH_VARARGS, "Get source file name, line number, discriminator, executable, build-id, inline stack for numerical IP." },
 	{ NULL, NULL, 0, NULL}
 };
 
