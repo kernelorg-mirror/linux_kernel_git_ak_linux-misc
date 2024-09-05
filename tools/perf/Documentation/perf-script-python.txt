@@ -624,6 +624,9 @@ as perf_trace_context.perf_script_context .
  perf_set_itrace_options(context, itrace_options) - set --itrace options if they have not been set already
  perf_sample_srcline(context) - returns source_file_name, line_number
  perf_sample_srccode(context) - returns source_file_name, line_number, source_line
+ perf_brstack_srcline(context, brstack) - returns source_file_name, line_number, discriminator, executable, build-id, inline-stack for each entry of a brstack from the sample. Inline stack is a list of inlines with filename, line number, discriminator, symbolname for each entry.
+ perf_ip_srcline(context, ip) - returns source_file_name, line_number, discriminator, executable, build-id, inline-stack for a numerical IP address.
+
 
 
 Util.py Module
