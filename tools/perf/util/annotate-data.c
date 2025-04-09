@@ -825,6 +825,7 @@ bool get_global_var_type(Dwarf_Die *cu_die, struct data_loc_info *dloc,
 ok:
 	/* The address should point to the start of the variable */
 	global_var__add(dloc, var_addr - *var_offset, var_name, type_die);
+	snprintf(dloc->name, sizeof(dloc->name), "%s", var_name);
 	return true;
 }
 
@@ -1573,6 +1574,7 @@ retry:
 
 		pr_debug_location(&var_die, pc, reg);
 		pr_debug_type_name(&mem_die, TSR_KIND_TYPE);
+		snprintf(dloc->name, sizeof(dloc->name), "%s", dwarf_diename(&var_die));
 	}
 
 	if (!found && loc->multi_regs && reg == loc->reg1 && loc->reg1 != loc->reg2) {

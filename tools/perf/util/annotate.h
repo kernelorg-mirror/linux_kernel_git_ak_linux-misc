@@ -595,7 +595,8 @@ annotate__get_data_type(struct map_symbol *ms,
 			int *type_offset,
 			struct thread *thread,
 			u8 cpumode,
-			struct annotated_item_stat *istat);
+			struct annotated_item_stat *istat,
+			char **name);
 int evsel__get_arch(struct evsel *evsel, struct arch **parch);
 
 #endif	/* __PERF_ANNOTATE_H */

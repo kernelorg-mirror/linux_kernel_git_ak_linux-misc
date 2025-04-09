@@ -2704,7 +2704,8 @@ annotate__get_data_type(struct map_symbol *ms,
 			int *type_offset,
 			struct thread *thread,
 			u8 cpumode,
-			struct annotated_item_stat *istat)
+			struct annotated_item_stat *istat,
+			char **name) /* Must be freed by caller if non null */
 {
 	struct annotated_insn_loc loc;
 	struct annotated_op_loc *op_loc;
@@ -2752,6 +2753,9 @@ annotate__get_data_type(struct map_symbol *ms,
 
 		mem_type = find_data_type(&dloc);
 
+		if (dloc.name[0] && name)
+			*name = strdup(dloc.name);
+
 		if (mem_type == NULL && is_stack_canary(arch, op_loc)) {
 			istat->good++;
 			*type_offset = 0;
@@ -2785,7 +2789,8 @@ __hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
 		return NO_TYPE;
 	}
 	mem_type = annotate__get_data_type(&he->ms, arch, dbg, dl, type_offset,
-					   he->thread, he->cpumode, istat);
+					   he->thread, he->cpumode, istat,
+					   NULL);
 	if (!mem_type || mem_type == NO_TYPE)
 		return mem_type;
 	if (symbol_conf.annotate_data_sample) {
