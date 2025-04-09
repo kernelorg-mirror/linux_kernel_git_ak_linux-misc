@@ -1357,6 +1357,12 @@ static enum type_match_result find_data_type_block(struct data_loc_info *dloc,
 	if (!arch_supports_insn_tracking(dloc))
 		return PERF_TMR_BAIL_OUT;
 
+	/* Not supported for perf script for now. */
+	if (!symbol__annotation(dloc->ms->sym)) {
+		pr_debug_dtp("no block traversal in perf script\n");
+		return PERF_TMR_BAIL_OUT;
+	}
+
 	prev_dst_ip = dst_ip = dloc->ip;
 	for (int i = nr_scopes - 1; i >= 0; i--) {
 		Dwarf_Addr base, start, end;
