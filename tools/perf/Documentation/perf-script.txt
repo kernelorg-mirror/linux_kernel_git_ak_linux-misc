@@ -135,6 +135,7 @@ OPTIONS
         brstackinsn, brstackinsnlen, brstackdisasm, brstackoff, callindent, insn, disasm,
         insnlen, synth, phys_addr, metric, misc, srccode, ipc, data_page_size,
         code_page_size, ins_lat, machine_pid, vcpu, cgroup, retire_lat, brcntr,
+	data_type
 
         Field list can be prepended with the type, trace, sw or hw,
         to indicate to which event type the field list applies.
@@ -270,6 +271,9 @@ OPTIONS
 	perf is built with the capstone library.
 
 	The brstackoff field will print an offset into a specific dso/binary.
+
+	data_type enables outputting data_types and variable names
+	with brstackdisasm and disasm
 
 	With the metric option perf script can compute metrics for
 	sampling periods, similar to perf stat. This requires
