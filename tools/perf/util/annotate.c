@@ -87,8 +87,6 @@ struct annotated_data_type canary_type = {
 	},
 };
 
-#define NO_TYPE ((struct annotated_data_type *)-1UL)
-
 /* symbol histogram: key = offset << 16 | evsel->core.idx */
 static size_t sym_hist_hash(long key, void *ctx __maybe_unused)
 {
@@ -978,7 +976,7 @@ void symbol__calc_percent(struct symbol *sym, struct evsel *evsel)
 	annotation__calc_percent(notes, evsel, symbol__size(sym));
 }
 
-static int evsel__get_arch(struct evsel *evsel, struct arch **parch)
+int evsel__get_arch(struct evsel *evsel, struct arch **parch)
 {
 	struct perf_env *env = evsel__env(evsel);
 	const char *arch_name = perf_env__arch(env);
@@ -2696,23 +2694,22 @@ void debuginfo_cache__delete(void)
 	di_cache.dbg = NULL;
 }
 
-static struct annotated_data_type *
-__hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
-			    struct debuginfo *dbg, struct disasm_line *dl,
-			    int *type_offset)
+/* Low level function that can be also used from perf script. */
+
+struct annotated_data_type *
+annotate__get_data_type(struct map_symbol *ms,
+			struct arch *arch,
+			struct debuginfo *dbg,
+			struct disasm_line *dl,
+			int *type_offset,
+			struct thread *thread,
+			u8 cpumode,
+			struct annotated_item_stat *istat)
 {
-	struct map_symbol *ms = &he->ms;
 	struct annotated_insn_loc loc;
 	struct annotated_op_loc *op_loc;
 	struct annotated_data_type *mem_type;
-	struct annotated_item_stat *istat;
 	int i;
-
-	istat = annotate_data_stat(&ann_insn_stat, dl->ins.name);
-	if (istat == NULL) {
-		ann_data_stat.no_insn++;
-		return NO_TYPE;
-	}
 
 	if (annotate_get_insn_location(arch, dl, &loc) < 0) {
 		ann_data_stat.no_insn_ops++;
@@ -2729,10 +2726,10 @@ __hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
 	for_each_insn_op_loc(&loc, i, op_loc) {
 		struct data_loc_info dloc = {
 			.arch = arch,
-			.thread = he->thread,
+			.thread = thread,
 			.ms = ms,
 			.ip = ms->sym->start + dl->al.offset,
-			.cpumode = he->cpumode,
+			.cpumode = cpumode,
 			.op = op_loc,
 			.di = dbg,
 		};
@@ -2766,20 +2763,40 @@ __hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
 		else
 			istat->bad++;
 
-		if (symbol_conf.annotate_data_sample) {
-			struct evsel *evsel = hists_to_evsel(he->hists);
-
-			annotated_data_type__update_samples(mem_type, evsel,
-							    dloc.type_offset,
-							    he->stat.nr_events,
-							    he->stat.period);
-		}
 		*type_offset = dloc.type_offset;
 		return mem_type ?: NO_TYPE;
 	}
 
 	/* retry with a fused instruction */
 	return NULL;
+}
+
+static struct annotated_data_type *
+__hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
+			    struct debuginfo *dbg, struct disasm_line *dl,
+			    int *type_offset)
+{
+	struct annotated_data_type *mem_type;
+	struct annotated_item_stat *istat;
+
+	istat = annotate_data_stat(&ann_insn_stat, dl->ins.name);
+	if (istat == NULL) {
+		ann_data_stat.no_insn++;
+		return NO_TYPE;
+	}
+	mem_type = annotate__get_data_type(&he->ms, arch, dbg, dl, type_offset,
+					   he->thread, he->cpumode, istat);
+	if (!mem_type || mem_type == NO_TYPE)
+		return mem_type;
+	if (symbol_conf.annotate_data_sample) {
+		struct evsel *evsel = hists_to_evsel(he->hists);
+
+		annotated_data_type__update_samples(mem_type, evsel,
+						    *type_offset,
+						    he->stat.nr_events,
+						    he->stat.period);
+	}
+	return mem_type;
 }
 
 /**
