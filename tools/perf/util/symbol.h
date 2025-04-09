@@ -156,6 +156,10 @@ void symbol__elf_init(void);
 int symbol__annotation_init(void);
 
 struct symbol *symbol__new(u64 start, u64 len, u8 binding, u8 type, const char *name);
+size_t __symbol__fprintf_symname_offs_buf(const struct symbol *sym,
+				      const struct addr_location *al,
+				      bool unknown_as_addr,
+				      bool print_offsets, char *buf, int len);
 size_t __symbol__fprintf_symname_offs(const struct symbol *sym,
 				      const struct addr_location *al,
 				      bool unknown_as_addr,
