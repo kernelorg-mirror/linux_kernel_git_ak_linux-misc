@@ -582,4 +582,18 @@ void debuginfo_cache__delete(void);
 int annotation_br_cntr_entry(char **str, int br_cntr_nr, u64 *br_cntr,
 			     int num_aggr, struct evsel *evsel);
 int annotation_br_cntr_abbr_list(char **str, struct evsel *evsel, bool header);
+
+
+#define NO_TYPE ((struct annotated_data_type *)-1UL)
+
+struct annotated_data_type *
+annotate__get_data_type(struct map_symbol *ms,
+			struct arch *arch,
+			struct debuginfo *dbg, struct disasm_line *dl,
+			int *type_offset,
+			struct thread *thread,
+			u8 cpumode,
+			struct annotated_item_stat *istat);
+int evsel__get_arch(struct evsel *evsel, struct arch **parch);
+
 #endif	/* __PERF_ANNOTATE_H */
