@@ -131,6 +131,7 @@ struct data_loc_info {
 
 	/* This is for the result */
 	int type_offset;
+	char name[512];
 };
 
 /**
