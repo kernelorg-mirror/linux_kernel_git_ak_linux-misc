@@ -558,8 +558,7 @@ struct annotated_item_stat {
 extern struct list_head ann_insn_stat;
 
 /* Calculate PC-relative address */
-u64 annotate_calc_pcrel(struct map_symbol *ms, u64 ip, int offset,
-			struct disasm_line *dl);
+u64 annotate_calc_pcrel(u64 ip, int offset, struct map *map, int insn_len);
 
 /**
  * struct annotated_basic_block - Basic block of instructions
@@ -594,7 +593,8 @@ annotate__get_data_type(struct map_symbol *ms,
 			struct thread *thread,
 			u8 cpumode,
 			struct annotated_item_stat *istat,
-			char **name);
+			int insn_len, char **name);
 int evsel__get_arch(struct evsel *evsel, struct arch **parch);
+int annotation__dl_insn_len(struct map_symbol *ms, struct disasm_line *dl);
 
 #endif	/* __PERF_ANNOTATE_H */

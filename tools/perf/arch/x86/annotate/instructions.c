@@ -276,8 +276,8 @@ static void update_insn_state_x86(struct type_state *state,
 			 state->regs[src->reg1].kind == TSR_KIND_CONST)
 			imm_value = state->regs[src->reg1].imm_value;
 		else if (src->reg1 == DWARF_REG_PC) {
-			u64 var_addr = annotate_calc_pcrel(dloc->ms, ip,
-							   src->offset, dl);
+			u64 var_addr = annotate_calc_pcrel(ip, src->offset, dloc->ms->map,
+							   annotation__dl_insn_len(dloc->ms, dl));
 
 			if (get_global_var_info(dloc, var_addr,
 						&var_name, &offset) &&
@@ -462,7 +462,8 @@ retry:
 			u64 addr;
 			int offset;
 
-			addr = annotate_calc_pcrel(ms, ip, src->offset, dl);
+			addr = annotate_calc_pcrel(ip, src->offset, ms->map,
+						   annotation__dl_insn_len(ms, dl));
 
 			if (!get_global_var_type(cu_die, dloc, ip, addr, &offset,
 						 &type_die) ||

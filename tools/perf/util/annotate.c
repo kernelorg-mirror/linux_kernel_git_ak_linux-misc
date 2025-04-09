@@ -2656,28 +2656,15 @@ annotation__next_asm_line(struct annotation *notes, struct disasm_line *curr)
 	return next;
 }
 
-u64 annotate_calc_pcrel(struct map_symbol *ms, u64 ip, int offset,
-			struct disasm_line *dl)
+u64 annotate_calc_pcrel(u64 ip, int offset, struct map *map, int insn_len)
 {
-	struct annotation *notes;
-	struct disasm_line *next;
 	u64 addr;
 
-	notes = symbol__annotation(ms->sym);
 	/*
 	 * PC-relative addressing starts from the next instruction address
-	 * But the IP is for the current instruction.  Since disasm_line
-	 * doesn't have the instruction size, calculate it using the next
-	 * disasm_line.  If it's the last one, we can use symbol's end
-	 * address directly.
 	 */
-	next = annotation__next_asm_line(notes, dl);
-	if (next == NULL)
-		addr = ms->sym->end + offset;
-	else
-		addr = ip + (next->al.offset - dl->al.offset) + offset;
-
-	return map__rip_2objdump(ms->map, addr);
+	addr = ip + insn_len + offset;
+	return map__rip_2objdump(map, addr);
 }
 
 static struct debuginfo_cache {
@@ -2705,6 +2692,7 @@ annotate__get_data_type(struct map_symbol *ms,
 			struct thread *thread,
 			u8 cpumode,
 			struct annotated_item_stat *istat,
+			int insn_len,
 			char **name) /* Must be freed by caller if non null */
 {
 	struct annotated_insn_loc loc;
@@ -2740,8 +2728,9 @@ annotate__get_data_type(struct map_symbol *ms,
 
 		/* PC-relative addressing */
 		if (op_loc->reg1 == DWARF_REG_PC) {
-			dloc.var_addr = annotate_calc_pcrel(ms, dloc.ip,
-							    op_loc->offset, dl);
+			dloc.var_addr = annotate_calc_pcrel(dloc.ip,
+							    op_loc->offset, ms->map,
+							    insn_len);
 		}
 
 		/* This CPU access in kernel - pretend PC-relative addressing */
@@ -2775,6 +2764,26 @@ annotate__get_data_type(struct map_symbol *ms,
 	return NULL;
 }
 
+int annotation__dl_insn_len(struct map_symbol *ms, struct disasm_line *dl)
+{
+	struct annotation *notes;
+	struct disasm_line *next;
+	int insn_len;
+
+	notes = symbol__annotation(ms->sym);
+	next = annotation__next_asm_line(notes, dl);
+	/*
+	 * Since disasm_line doesn't have the instruction size,
+	 * calculate it using the next disasm_line.  If it's the last
+	 * one, we can use symbol's end address directly.
+	 */
+	if (next == NULL)
+		insn_len = ms->sym->end - (ms->sym->start + dl->al.offset);
+	else
+		insn_len = (next->al.offset - dl->al.offset);
+	return insn_len;
+}
+
 static struct annotated_data_type *
 __hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
 			    struct debuginfo *dbg, struct disasm_line *dl,
@@ -2782,15 +2791,17 @@ __hist_entry__get_data_type(struct hist_entry *he, struct arch *arch,
 {
 	struct annotated_data_type *mem_type;
 	struct annotated_item_stat *istat;
+	int insn_len;
 
 	istat = annotate_data_stat(&ann_insn_stat, dl->ins.name);
 	if (istat == NULL) {
 		ann_data_stat.no_insn++;
 		return NO_TYPE;
 	}
+	insn_len = annotation__dl_insn_len(&he->ms, dl);
 	mem_type = annotate__get_data_type(&he->ms, arch, dbg, dl, type_offset,
 					   he->thread, he->cpumode, istat,
-					   NULL);
+					   insn_len, NULL);
 	if (!mem_type || mem_type == NO_TYPE)
 		return mem_type;
 	if (symbol_conf.annotate_data_sample) {
