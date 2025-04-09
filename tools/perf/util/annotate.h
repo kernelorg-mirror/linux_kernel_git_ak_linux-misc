@@ -405,6 +405,8 @@ annotated_source__hist_entry(struct annotated_source *src, const struct evsel *e
 
 static inline struct annotation *symbol__annotation(struct symbol *sym)
 {
+	if (!symbol_conf.priv_size)
+		return NULL;
 	return (void *)sym - symbol_conf.priv_size;
 }
 

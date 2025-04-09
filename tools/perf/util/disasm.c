@@ -1043,7 +1043,7 @@ struct disasm_line *disasm_line__new(struct annotate_args *args)
 {
 	struct disasm_line *dl = NULL;
 	struct annotation *notes = symbol__annotation(args->ms.sym);
-	int nr = notes->src->nr_events;
+	int nr = notes ? notes->src->nr_events : 0;
 
 	dl = zalloc(disasm_line_size(nr));
 	if (!dl)

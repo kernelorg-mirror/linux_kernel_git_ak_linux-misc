@@ -3115,6 +3115,11 @@ int annotate_get_basic_blocks(struct symbol *sym, s64 src, s64 dst,
 	struct disasm_line *dl;
 	int ret = -1;
 
+	if (!symbol__annotation(sym)) {
+		pr_debug3("cannot walk %s in perf script", sym->name);
+		return -1;
+	}
+
 	dl = find_disasm_line(sym, src, /*allow_update=*/false);
 	if (dl == NULL)
 		return -1;
