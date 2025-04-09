@@ -2882,7 +2882,6 @@ struct annotated_data_type *hist_entry__get_data_type(struct hist_entry *he)
 		ann_data_stat.no_insn++;
 		return NULL;
 	}
-
 retry:
 	mem_type = __hist_entry__get_data_type(he, arch, di_cache.dbg, dl,
 					       &he->mem_type_off);

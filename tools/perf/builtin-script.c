@@ -137,6 +137,7 @@ enum perf_output_field {
 	PERF_OUTPUT_DISASM          = 1ULL << 42,
 	PERF_OUTPUT_BRSTACKDISASM   = 1ULL << 43,
 	PERF_OUTPUT_BRCNTR          = 1ULL << 44,
+	PERF_OUTPUT_DATA_TYPE	    = 1ULL << 45,
 };
 
 struct perf_script {
@@ -213,6 +214,7 @@ struct output_option {
 	{.str = "retire_lat", .field = PERF_OUTPUT_RETIRE_LAT},
 	{.str = "brstackdisasm", .field = PERF_OUTPUT_BRSTACKDISASM},
 	{.str = "brcntr", .field = PERF_OUTPUT_BRCNTR},
+	{.str = "data_type", .field = PERF_OUTPUT_DATA_TYPE},
 };
 
 enum {
@@ -539,6 +541,10 @@ static int evsel__check_attr(struct evsel *evsel, struct perf_session *session)
 	    !(evlist__combined_branch_type(session->evlist) & PERF_SAMPLE_BRANCH_ANY)) {
 		pr_err("Display of branch stack assembler requested, but non all-branch filter set\n"
 		       "Hint: run 'perf record -b ...'\n");
+		return -EINVAL;
+	}
+	if (PRINT_FIELD(DATA_TYPE) && !(PRINT_FIELD(BRSTACKDISASM) || PRINT_FIELD(DISASM))) {
+		pr_err("data_type is only supported with brstackdisasm or disasm\n");
 		return -EINVAL;
 	}
 	if (PRINT_FIELD(BRCNTR) &&
@@ -1224,10 +1230,16 @@ static int any_dump_insn(struct evsel *evsel __maybe_unused,
 {
 #ifdef HAVE_LIBCAPSTONE_SUPPORT
 	if (PRINT_FIELD(BRSTACKDISASM)) {
-		int printed = fprintf_insn_asm(x->machine, x->thread, x->cpumode, x->is64bit,
-					       (uint8_t *)inbuf, inlen, ip, lenp,
-					       PRINT_INSN_IMM_HEX, fp);
+		int printed;
+		struct arch *arch = NULL;
 
+		if (PRINT_FIELD(DATA_TYPE))
+			evsel__get_arch(evsel, &arch); /* errors are handled later */
+
+		printed = fprintf_insn_asm(x->machine, x->thread, x->cpumode, x->is64bit,
+					   (uint8_t *)inbuf, inlen, ip, lenp,
+					   PRINT_INSN_IMM_HEX, fp,
+					   PRINT_FIELD(DATA_TYPE), arch);
 		if (printed > 0)
 			return printed;
 	}
@@ -1633,8 +1645,14 @@ static int perf_sample__fprintf_insn(struct perf_sample *sample,
 		printed += sample__fprintf_insn_raw(sample, fp);
 	}
 	if (PRINT_FIELD(DISASM) && sample->insn_len) {
+		struct arch *arch = NULL;
+
+		if (PRINT_FIELD(DATA_TYPE))
+			evsel__get_arch(evsel, &arch);
+
 		printed += fprintf(fp, "\t\t");
-		printed += sample__fprintf_insn_asm(sample, thread, machine, fp, al);
+		printed += sample__fprintf_insn_asm(sample, thread, machine, fp, al,
+						    PRINT_FIELD(DATA_TYPE), arch);
 	}
 	if (PRINT_FIELD(BRSTACKINSN) || PRINT_FIELD(BRSTACKINSNLEN) || PRINT_FIELD(BRSTACKDISASM))
 		printed += perf_sample__fprintf_brstackinsn(sample, evsel, thread, attr, machine, fp);
@@ -3749,7 +3767,7 @@ int cmd_script(int argc, const char **argv)
 		     "brstackinsnlen,brstackdisasm,brstackoff,callindent,insn,disasm,insnlen,synth,"
 		     "phys_addr,metric,misc,srccode,ipc,tod,data_page_size,"
 		     "code_page_size,ins_lat,machine_pid,vcpu,cgroup,retire_lat,"
-		     "brcntr",
+		     "brcntr,data_type",
 		     parse_output_fields),
 	OPT_BOOLEAN('a', "all-cpus", &system_wide,
 		    "system-wide collection from all CPUs"),
