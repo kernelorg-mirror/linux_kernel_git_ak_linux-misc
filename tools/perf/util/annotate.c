@@ -2667,10 +2667,7 @@ u64 annotate_calc_pcrel(u64 ip, int offset, struct map *map, int insn_len)
 	return map__rip_2objdump(map, addr);
 }
 
-static struct debuginfo_cache {
-	struct dso *dso;
-	struct debuginfo *dbg;
-} di_cache;
+struct debuginfo_cache di_cache;
 
 void debuginfo_cache__delete(void)
 {

@@ -26,6 +26,9 @@ struct option;
 struct perf_sample;
 struct symbol;
 struct annotated_data_type;
+struct thread;
+struct debuginfo;
+struct dso;
 
 #define ANNOTATION__IPC_WIDTH 6
 #define ANNOTATION__CYCLES_WIDTH 6
@@ -573,6 +576,13 @@ struct annotated_basic_block {
 	struct disasm_line *begin;
 	struct disasm_line *end;
 };
+
+struct debuginfo_cache {
+	struct dso *dso;
+	struct debuginfo *dbg;
+};
+
+extern struct debuginfo_cache di_cache;
 
 /* Get a list of basic blocks from src to dst addresses */
 int annotate_get_basic_blocks(struct symbol *sym, s64 src, s64 dst,
