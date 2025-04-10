@@ -797,6 +797,7 @@ bool get_global_var_type(Dwarf_Die *cu_die, struct data_loc_info *dloc,
 			return false;
 
 		*var_offset = var_addr - gvar->start;
+		snprintf(dloc->name, sizeof(dloc->name), "%s", gvar->name);
 		return true;
 	}
 
