@@ -159,8 +159,6 @@ static void add_data_type(char *buf, struct thread *thread,
 	struct annotated_data_type *mem_type;
 	char buf2[4096];
 	struct addr_location al;
-	static struct debuginfo *cache_dbg; /* Will never be put */
-	static struct dso *cache_dso; /* Dito. */
 	char *name = NULL;
 
 	addr_location__init(&al);
@@ -173,19 +171,19 @@ static void add_data_type(char *buf, struct thread *thread,
 	args.ms.map = al.map;
 	args.ms.sym = al.sym;
 	args.offset = al.addr - al.sym->start;
-	if (map__dso(al.map) != cache_dso || !cache_dbg) {
-		dso__put(cache_dso);
-		cache_dso = dso__get(map__dso(al.map));
+	if (map__dso(al.map) != di_cache.dso || !di_cache.dbg) {
+		dso__put(di_cache.dso);
+		di_cache.dso = dso__get(map__dso(al.map));
 
-		debuginfo__delete(cache_dbg);
-		cache_dbg = debuginfo__new(dso__long_name(cache_dso));
-		if (!cache_dbg)
+		debuginfo__delete(di_cache.dbg);
+		di_cache.dbg = debuginfo__new(dso__long_name(di_cache.dso));
+		if (!di_cache.dbg)
 			goto out;
 	}
        	dl = disasm_line__new(&args);
 	if (!dl)
 		goto out;
-	mem_type = annotate__get_data_type(&args.ms, arch, cache_dbg, dl,
+	mem_type = annotate__get_data_type(&args.ms, arch, di_cache.dbg, dl,
 					   &type_offset, thread,
 					   cpumode, &istat, insn_len, &name);
 	if (mem_type == NULL || mem_type == NO_TYPE)
