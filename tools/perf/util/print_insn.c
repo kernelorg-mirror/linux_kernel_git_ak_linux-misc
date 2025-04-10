@@ -158,12 +158,15 @@ static void add_data_type(char *buf, struct thread *thread,
 		goto out;
 	args.ms.map = al.map;
 	args.ms.sym = al.sym;
-	if (map__dso(al.map) != cache_dso) {
+	args.offset = al.addr - al.sym->start;
+	if (map__dso(al.map) != cache_dso || !cache_dbg) {
 		dso__put(cache_dso);
 		cache_dso = dso__get(map__dso(al.map));
 
 		debuginfo__delete(cache_dbg);
 		cache_dbg = debuginfo__new(dso__long_name(cache_dso));
+		if (!cache_dbg)
+			goto out;
 	}
        	dl = disasm_line__new(&args);
 	if (!dl)
