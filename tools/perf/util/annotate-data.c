@@ -986,7 +986,15 @@ static void prepend_basic_blocks(struct list_head *this_blocks,
 	}
 
 	/* Point to the insn before the last when adding this block to full_blocks */
-	last_bb->end = list_prev_entry(last_bb->end, al.node);
+	do {
+		/* Nothing useful found */
+		if (last_bb->end == last_bb->begin) {
+			list_del(&last_bb->list);
+			free(last_bb);
+			goto out;
+		}
+		last_bb->end = list_prev_entry(last_bb->end, al.node);
+	} while (last_bb->end->al.offset == -1);
 
 out:
 	list_splice(this_blocks, full_blocks);

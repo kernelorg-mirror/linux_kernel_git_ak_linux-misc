@@ -2966,6 +2966,7 @@ static int add_basic_block(struct basic_block_data *bb_data,
 
 	if (dl == NULL)
 		return -1;
+	BUG_ON(dl->al.offset == -1);
 
 	if (!is_new_basic_block(bb_data, dl))
 		return 0;
@@ -3006,7 +3007,7 @@ static bool process_basic_block(struct basic_block_data *bb_data,
 
 	last_dl = list_last_entry(&notes->src->source,
 				  struct disasm_line, al.node);
-	if (last_dl->al.offset == -1)
+	while (last_dl && last_dl->al.offset == -1)
 		last_dl = annotation__prev_asm_line(notes, last_dl);
 
 	if (last_dl == NULL)
@@ -3052,6 +3053,7 @@ static bool process_basic_block(struct basic_block_data *bb_data,
 		break;
 
 	}
+	BUG_ON(dl->al.offset == -1);
 	link->bb->end = dl;
 	return found;
 }
