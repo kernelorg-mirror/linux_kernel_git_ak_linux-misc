@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include "debug.h"
 #include "sample.h"
 #include "symbol.h"
@@ -130,6 +131,20 @@ static bool is64bitip(struct machine *machine, struct addr_location *al)
 		machine__normalized_is(machine, "s390");
 }
 
+static int append_snprintf(char *buf, int bufl, const char *fmt, ...)
+{
+	int len = strlen(buf);
+	int ret;
+	va_list ap;
+
+	if (len >= bufl)
+		return -1;
+	va_start(ap, fmt);
+	ret = vsnprintf(buf + len, bufl - len, fmt, ap);
+	va_end(ap);
+	return ret;
+}
+
 static void add_data_type(char *buf, struct thread *thread,
 			  u8 cpumode, struct arch *arch, uint64_t ip,
 			  int insn_len)
@@ -142,7 +157,6 @@ static void add_data_type(char *buf, struct thread *thread,
 	int type_offset;
 	struct annotated_item_stat istat;
 	struct annotated_data_type *mem_type;
-	int len;
 	char buf2[4096];
 	struct addr_location al;
 	static struct debuginfo *cache_dbg; /* Will never be put */
@@ -176,30 +190,16 @@ static void add_data_type(char *buf, struct thread *thread,
 					   cpumode, &istat, insn_len, &name);
 	if (mem_type == NULL || mem_type == NO_TYPE)
 		goto out_line;
+	append_snprintf(buf, MAX_INSN_LEN, " { ");
 	/* No need to handle fusing here. */
-	len = strlen(buf);
-	if (len >= MAX_INSN_LEN - 1)
-		goto out_line;
-	if (name) {
-		len = strlen(buf);
-		if (len >= MAX_INSN_LEN - 1)
-			goto out;
-		snprintf(buf + len, MAX_INSN_LEN - len, " @ [%s]", name);
-	}
-	len = strlen(buf);
-	if (len >= MAX_INSN_LEN - 1)
-		goto out_line;
-	snprintf(buf + len, MAX_INSN_LEN - len, "%s {%s}",
-		 name ? "" : " @",
-		 mem_type->self.type_name);
-	len = strlen(buf);
-	if (len >= MAX_INSN_LEN - 1)
-		goto out_line;
+	if (name)
+		append_snprintf(buf, MAX_INSN_LEN, "%s", name);
+	append_snprintf(buf, MAX_INSN_LEN, " , %s", mem_type->self.type_name);
 	if (annotated_data_type__get_member_name(mem_type, buf2, sizeof(buf2),
-						 type_offset))
-		snprintf(buf + len, MAX_INSN_LEN - len, " ->%s [%#x]", buf2,
-			 type_offset);
-
+						 type_offset)) {
+		append_snprintf(buf, MAX_INSN_LEN, " ->%s [%#x]", buf2, type_offset);
+	}
+	append_snprintf(buf, MAX_INSN_LEN, " }");
 out_line:
 	zfree(&name);
 	disasm_line__free(dl);
