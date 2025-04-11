@@ -1453,6 +1453,8 @@ static int __die_find_var_reg_cb(Dwarf_Die *die_mem, void *arg)
 				     /*is_pointer=*/false))
 			return DIE_FIND_CB_END;
 
+		/* XXX add locals support here */
+
 		/* Only match with a simple case */
 		if (data->reg < DWARF_OP_DIRECT_REGS) {
 			/* pointer variables saved in a register 0 to 31 */

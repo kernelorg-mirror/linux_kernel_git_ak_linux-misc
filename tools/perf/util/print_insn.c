@@ -156,10 +156,13 @@ static void add_data_type(char *buf, struct thread *thread,
 	struct disasm_line *dl;
 	int type_offset;
 	struct annotated_item_stat istat;
-	struct annotated_data_type *mem_type;
+	struct annotated_data_type *type;
 	char buf2[4096];
 	struct addr_location al;
 	char *name = NULL;
+	struct annotated_insn_loc loc;
+	struct annotated_op_loc *op_loc;
+	int i;
 
 	addr_location__init(&al);
 	thread__find_map(thread, cpumode, ip, &al);
@@ -183,17 +186,40 @@ static void add_data_type(char *buf, struct thread *thread,
        	dl = disasm_line__new(&args);
 	if (!dl)
 		goto out;
-	mem_type = annotate__get_data_type(&args.ms, arch, di_cache.dbg, dl,
-					   &type_offset, thread,
-					   cpumode, &istat, insn_len, &name);
-	if (mem_type == NULL || mem_type == NO_TYPE)
+
+	/* Handle non memory register references */
+	if (annotate_get_insn_location(arch, dl, &loc) < 0)
+		goto out_line;
+	for_each_insn_op_loc(&loc, i, op_loc) {
+		struct data_loc_info dloc = {
+			.arch = arch,
+			.thread = thread,
+			.ms = &args.ms,
+			.ip = args.ms.sym->start + dl->al.offset,
+			.op = op_loc,
+			.di = di_cache.dbg
+		};
+		if (op_loc->mem_ref || op_loc->imm)
+			continue;
+		/* Must be single register */
+		type = find_data_type(&dloc);
+		if (type)
+			append_snprintf(buf, MAX_INSN_LEN, " { %s , %s }",
+					dloc.name, type->self.type_name);
+	}
+
+	/* This handles single memory accesses */
+	type = annotate__get_data_type(&args.ms, arch, di_cache.dbg, dl,
+				       &type_offset, thread,
+				       cpumode, &istat, insn_len, &name);
+	if (type == NULL || type == NO_TYPE)
 		goto out_line;
 	append_snprintf(buf, MAX_INSN_LEN, " { ");
 	/* No need to handle fusing here. */
 	if (name)
 		append_snprintf(buf, MAX_INSN_LEN, "%s", name);
-	append_snprintf(buf, MAX_INSN_LEN, " , %s", mem_type->self.type_name);
-	if (annotated_data_type__get_member_name(mem_type, buf2, sizeof(buf2),
+	append_snprintf(buf, MAX_INSN_LEN, " , %s", type->self.type_name);
+	if (annotated_data_type__get_member_name(type, buf2, sizeof(buf2),
 						 type_offset)) {
 		append_snprintf(buf, MAX_INSN_LEN, " ->%s [%#x]", buf2, type_offset);
 	}
