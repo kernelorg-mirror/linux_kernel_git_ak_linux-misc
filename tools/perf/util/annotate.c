@@ -2066,6 +2066,13 @@ void annotation_line__write(struct annotation_line *al, struct annotation *notes
 	}
 	width -= pcnt_width;
 
+	if (annotate_opts.show_weight) {
+		if (show_title)
+			obj__printf(obj, "%*s", ANNOTATION__WEIGHT_WIDTH, "Weight");
+		else
+			obj__printf(obj, "%*d", ANNOTATION__WEIGHT_WIDTH, al->weight);
+	}
+
 	if (notes->branch) {
 		if (al->cycles && al->cycles->ipc)
 			obj__printf(obj, "%*.2f ", ANNOTATION__IPC_WIDTH - 1, al->cycles->ipc);

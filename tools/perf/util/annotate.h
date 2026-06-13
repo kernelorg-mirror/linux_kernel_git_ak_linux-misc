@@ -30,6 +30,7 @@ struct annotated_data_type;
 #define ANNOTATION__IPC_WIDTH 6
 #define ANNOTATION__CYCLES_WIDTH 6
 #define ANNOTATION__MINMAX_CYCLES_WIDTH 19
+#define ANNOTATION__WEIGHT_WIDTH 6
 #define ANNOTATION__AVG_IPC_WIDTH 36
 #define ANNOTATION__BR_CNTR_WIDTH 30
 #define ANNOTATION_DUMMY_LEN	256
@@ -55,6 +56,7 @@ struct annotation_options {
 	     show_minmax_cycle,
 	     show_asm_raw,
 	     show_br_cntr,
+	     show_weight,
 	     annotate_src,
 	     code_with_type,
 	     full_addr;
@@ -122,6 +124,7 @@ struct annotation_line {
 	int			 br_cntr_nr;
 	u64			*br_cntr;
 	struct evsel		*evsel;
+	int			 weight;
 	int			 jump_sources;
 	u32			 idx;
 	int			 idx_asm;
@@ -389,6 +392,11 @@ static inline bool annotation_line__filter(struct annotation_line *al)
 static inline u8 annotation__br_cntr_width(void)
 {
 	return annotate_opts.show_br_cntr ? ANNOTATION__BR_CNTR_WIDTH : 0;
+}
+
+static inline u8 annotation__weight_width(void)
+{
+	return annotate_opts.show_weight ? ANNOTATION__WEIGHT_WIDTH : 0;
 }
 
 void annotation__update_column_widths(struct annotation *notes);

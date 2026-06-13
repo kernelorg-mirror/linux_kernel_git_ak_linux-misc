@@ -191,6 +191,7 @@ static void annotate_browser__draw_current_jump(struct ui_browser *browser)
 	struct annotation *notes = symbol__annotation(sym);
 	u8 pcnt_width = annotation__pcnt_width(notes);
 	u8 cntr_width = annotation__br_cntr_width();
+	u8 weight_width = annotation__weight_width();
 	int width;
 	int diff = 0;
 
@@ -240,13 +241,15 @@ static void annotate_browser__draw_current_jump(struct ui_browser *browser)
 
 	ui_browser__set_color(browser, HE_COLORSET_JUMP_ARROWS);
 	__ui_browser__line_arrow(browser,
-				 pcnt_width + 2 + notes->src->widths.addr + width + cntr_width,
+				 pcnt_width + 2 + notes->src->widths.addr + width + cntr_width +
+				 weight_width,
 				 from, to);
 
 	diff = is_fused(ab, cursor);
 	if (diff > 0) {
 		ui_browser__mark_fused(browser,
-				       pcnt_width + 3 + notes->src->widths.addr + width + cntr_width,
+				       pcnt_width + 3 + notes->src->widths.addr + width + cntr_width +
+				       weight_width,
 				       from - diff, diff, to > from);
 	}
 }

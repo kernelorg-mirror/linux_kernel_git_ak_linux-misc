@@ -3738,6 +3738,8 @@ int block_hists_tui_browse(struct block_hist *bh, struct evsel *evsel,
 	if (!annotation_br_cntr_abbr_list(&br_cntr_text, evsel, false))
 		annotate_opts.show_br_cntr = true;
 
+	//
+
 	while (1) {
 		key = hist_browser__run(browser, "? - help", true, 0);
 
